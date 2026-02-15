@@ -20,13 +20,13 @@ Fulcrum doesn't replace your tools—it gives you leverage over them. You config
 - **Project Management** — Tasks with dependencies, due dates, time estimates, priority levels, recurrence, labels, and attachments. Visual kanban boards.
 - **Production Deployment** — Docker Compose with automatic Traefik routing and Cloudflare DNS/tunnels.
 - **Agent Memory** — Persistent knowledge store with full-text search. Agents remember across sessions.
-- **MCP-First Architecture** — 60+ tools exposed via Model Context Protocol. Agents discover what they need.
+- **MCP-First Architecture** — 100+ tools exposed via Model Context Protocol. Agents discover what they need.
 
 ## MCP-First Architecture
 
 Everything in Fulcrum is exposed through MCP (Model Context Protocol):
 
-- **60+ MCP tools** for tasks, projects, apps, repos, notifications, and remote execution
+- **100+ MCP tools** for tasks, projects, apps, repos, notifications, and remote execution
 - **Smart tool discovery** — `search_tools` lets agents find relevant tools without loading everything into context
 - **Integrated assistant** — Built-in AI assistant with full context of your tasks, projects, and apps
 - **External agent support** — Connect Claude Desktop, Clawdbot, or any MCP-compatible agent
@@ -252,7 +252,7 @@ fulcrum opencode uninstall  # Remove both
 
 ## MCP Tools
 
-Both plugins include an MCP server with 60+ tools:
+Both plugins include an MCP server with 100+ tools:
 
 | Category | Description |
 |----------|-------------|
