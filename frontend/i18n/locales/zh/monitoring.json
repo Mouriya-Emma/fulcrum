@@ -12,7 +12,8 @@
     "assistant": "助手",
     "messages": "消息",
     "memory": "记忆",
-    "review": "审核"
+    "review": "审核",
+    "observer": "观察者"
   },
   "claude": {
     "showAllInstances": "显示所有实例",
@@ -142,6 +143,42 @@
     "labels": {
       "from": "发件人：",
       "to": "收件人："
+    }
+  },
+  "observer": {
+    "status": {
+      "healthy": "观察者正常",
+      "circuitOpen": "熔断器已打开",
+      "failures": "次失败"
+    },
+    "stats": {
+      "total": "总处理数",
+      "successRate": "成功率",
+      "avgDuration": "平均耗时",
+      "tasksCreated": "已创建任务",
+      "memoriesStored": "已存储记忆",
+      "last24h": "最近24小时"
+    },
+    "filters": {
+      "allChannels": "所有频道",
+      "allStatuses": "所有状态",
+      "allProviders": "所有提供者",
+      "completed": "已完成",
+      "failed": "失败",
+      "timeout": "超时",
+      "circuitOpen": "熔断器打开"
+    },
+    "invocations": {
+      "title": "最近调用",
+      "empty": "暂无观察者调用记录"
+    },
+    "actions": {
+      "createTask": "已创建任务",
+      "storeMemory": "已存储记忆"
+    },
+    "details": {
+      "error": "错误",
+      "actions": "操作"
     }
   }
 }

@@ -285,18 +285,20 @@ async function parseAndExecuteResponse(
   responseText: string,
   options: { channelType: string },
   sessionId: string,
-): Promise<void> {
-  if (!responseText) return
+): Promise<ObserverAction[]> {
+  if (!responseText) return []
 
   const parsed = extractJsonFromResponse(responseText) as { actions?: ObserverAction[] } | null
   if (parsed?.actions && Array.isArray(parsed.actions)) {
     const fulcrumPort = getSettings().server?.port ?? 7777
     await executeObserverActions(parsed.actions, options, sessionId, fulcrumPort)
+    return parsed.actions
   } else if (parsed === null) {
     log.messaging.debug('Observer response was not valid JSON, skipping', {
       sessionId, responsePreview: responseText.slice(0, 200),
     })
   }
+  return []
 }
 
 /**
@@ -384,9 +386,11 @@ ${contextualMessage}`
     const startTime = Date.now()
     const state: EventLoopState = { userMessageId: null, responseText: '', partTextCache: new Map() }
 
+    let timedOut = false
     for await (const event of eventResult.stream) {
       if (Date.now() - startTime > timeout) {
         log.messaging.warn('OpenCode observer timeout', { sessionId })
+        timedOut = true
         break
       }
 
@@ -404,9 +408,15 @@ ${contextualMessage}`
     }
 
     await promptPromise
-    await parseAndExecuteResponse(state.responseText, options, sessionId)
 
-    yield { type: 'done', data: {} }
+    if (timedOut) {
+      yield { type: 'timeout', data: {} }
+      return
+    }
+
+    const executedActions = await parseAndExecuteResponse(state.responseText, options, sessionId)
+
+    yield { type: 'done', data: { actions: executedActions } }
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err)
     log.messaging.error('OpenCode observer error', { sessionId, error: errorMsg })

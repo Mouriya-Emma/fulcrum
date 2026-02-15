@@ -12,7 +12,8 @@
     "assistant": "Assistant",
     "messages": "Messages",
     "memory": "Memory",
-    "review": "Review"
+    "review": "Review",
+    "observer": "Observer"
   },
   "claude": {
     "showAllInstances": "Show all instances",
@@ -152,6 +153,42 @@
     "labels": {
       "from": "From:",
       "to": "To:"
+    }
+  },
+  "observer": {
+    "status": {
+      "healthy": "Observer Healthy",
+      "circuitOpen": "Circuit Breaker Open",
+      "failures": "failures"
+    },
+    "stats": {
+      "total": "Total Processed",
+      "successRate": "Success Rate",
+      "avgDuration": "Avg Duration",
+      "tasksCreated": "Tasks Created",
+      "memoriesStored": "Memories Stored",
+      "last24h": "Last 24h"
+    },
+    "filters": {
+      "allChannels": "All Channels",
+      "allStatuses": "All Statuses",
+      "allProviders": "All Providers",
+      "completed": "Completed",
+      "failed": "Failed",
+      "timeout": "Timeout",
+      "circuitOpen": "Circuit Open"
+    },
+    "invocations": {
+      "title": "Recent Invocations",
+      "empty": "No observer invocations recorded"
+    },
+    "actions": {
+      "createTask": "Task Created",
+      "storeMemory": "Memory Stored"
+    },
+    "details": {
+      "error": "Error",
+      "actions": "Actions"
     }
   }
 }

@@ -11,6 +11,14 @@ import * as assistantService from '../assistant-service'
 import { getRecentOutgoingMessages, getRecentChannelMessages } from './message-storage'
 import { streamOpencodeObserverMessage } from '../opencode-channel-service'
 import { getSettings } from '../../lib/settings/core'
+import {
+  createInvocation,
+  completeInvocation,
+  failInvocation,
+  timeoutInvocation,
+  skipInvocation,
+} from '../observer-tracking'
+import type { ObserverActionRecord } from '../../db/schema'
 import type { IncomingMessage } from './types'
 
 // Internal deps - exposed for test replacement (avoids unreliable mock.module)
@@ -502,8 +510,19 @@ function splitMessage(content: string, maxLength: number): string[] {
  * Important information is stored as memories with appropriate tags.
  */
 async function processObserveOnlyMessage(msg: IncomingMessage): Promise<void> {
+  const settings = getSettings()
+  const observerProvider = (settings.assistant.observerProvider ?? settings.assistant.provider) as 'claude' | 'opencode'
+
   // Circuit breaker: skip processing if too many recent failures
   if (isObserverCircuitOpen()) {
+    skipInvocation({
+      channelType: msg.channelType,
+      connectionId: msg.connectionId,
+      senderId: msg.senderId,
+      senderName: msg.senderName,
+      messageContent: msg.content,
+      provider: observerProvider,
+    })
     return
   }
 
@@ -536,15 +555,20 @@ async function processObserveOnlyMessage(msg: IncomingMessage): Promise<void> {
     msg.channelType
   )
 
-  const settings = getSettings()
-
-  // Determine which provider to use for observer processing
-  const observerProvider = settings.assistant.observerProvider ?? settings.assistant.provider
+  const invocationId = createInvocation({
+    channelType: msg.channelType,
+    connectionId: msg.connectionId,
+    senderId: msg.senderId,
+    senderName: msg.senderName,
+    messageContent: msg.content,
+    provider: observerProvider,
+  })
 
   if (observerProvider === 'opencode') {
     // Route to OpenCode text-only observer (no direct tool access)
     try {
       let hadError = false
+      let errorMsg = ''
       const stream = _deps.streamOpencodeObserverMessage(session.id, msg.content, {
         channelType: msg.channelType,
         senderId: msg.senderId,
@@ -555,17 +579,29 @@ async function processObserveOnlyMessage(msg: IncomingMessage): Promise<void> {
       for await (const event of stream) {
         if (event.type === 'error') {
           hadError = true
-          const errorMsg = (event.data as { message: string }).message
+          errorMsg = (event.data as { message: string }).message
           log.messaging.error('Error in OpenCode observe-only processing', { error: errorMsg })
+        } else if (event.type === 'timeout') {
+          timeoutInvocation(invocationId)
+          recordObserverFailure()
+          return
+        } else if (event.type === 'done') {
+          const actions = ((event.data as { actions?: unknown[] })?.actions ?? []) as ObserverActionRecord[]
+          completeInvocation(invocationId, actions)
         }
       }
-      if (hadError) recordObserverFailure()
-      else recordObserverSuccess()
+      if (hadError) {
+        failInvocation(invocationId, errorMsg)
+        recordObserverFailure()
+      } else {
+        recordObserverSuccess()
+      }
     } catch (err) {
       log.messaging.error('Error processing observe-only message via OpenCode', {
         connectionId: msg.connectionId,
         error: String(err),
       })
+      failInvocation(invocationId, String(err))
       recordObserverFailure()
     }
     return
@@ -586,6 +622,7 @@ async function processObserveOnlyMessage(msg: IncomingMessage): Promise<void> {
 
   try {
     let hadError = false
+    let lastErrorMsg = ''
     const observerModelId = settings.assistant.observerModel
 
     // Stream with observer security tier: no built-in tools, MCP restricted to memory only.
@@ -602,17 +639,23 @@ async function processObserveOnlyMessage(msg: IncomingMessage): Promise<void> {
     for await (const event of stream) {
       if (event.type === 'error') {
         hadError = true
-        const errorMsg = (event.data as { message: string }).message
-        log.messaging.error('Error in observe-only message processing', { error: errorMsg })
+        lastErrorMsg = (event.data as { message: string }).message
+        log.messaging.error('Error in observe-only message processing', { error: lastErrorMsg })
       }
     }
-    if (hadError) recordObserverFailure()
-    else recordObserverSuccess()
+    if (hadError) {
+      failInvocation(invocationId, lastErrorMsg)
+      recordObserverFailure()
+    } else {
+      completeInvocation(invocationId, []) // Claude provider: actions unknown (tool calls handled via MCP)
+      recordObserverSuccess()
+    }
   } catch (err) {
     log.messaging.error('Error processing observe-only message', {
       connectionId: msg.connectionId,
       error: String(err),
     })
+    failInvocation(invocationId, String(err))
     recordObserverFailure()
   }
 }

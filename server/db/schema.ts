@@ -545,6 +545,32 @@ export const memories = sqliteTable('memories', {
   updatedAt: text('updated_at').notNull(),
 })
 
+// Observer invocations - tracks observe-only message processing
+export const observerInvocations = sqliteTable('observer_invocations', {
+  id: text('id').primaryKey(),
+  channelMessageId: text('channel_message_id'), // FK to channelMessages (nullable - message may not be stored yet)
+  channelType: text('channel_type').notNull(), // 'whatsapp' | 'discord' | 'telegram' | 'slack' | 'email'
+  connectionId: text('connection_id').notNull(), // FK to messagingConnections
+  senderId: text('sender_id').notNull(),
+  senderName: text('sender_name'),
+  messagePreview: text('message_preview').notNull(), // Truncated to 200 chars
+  provider: text('provider').notNull(), // 'claude' | 'opencode'
+  status: text('status').notNull(), // 'processing' | 'completed' | 'failed' | 'timeout' | 'circuit_open'
+  actions: text('actions', { mode: 'json' }).$type<ObserverActionRecord[]>(), // JSON array of actions taken
+  error: text('error'), // Error message if status is 'failed'
+  startedAt: text('started_at').notNull(),
+  completedAt: text('completed_at'),
+  createdAt: text('created_at').notNull(),
+})
+
+// Observer action record type for JSON storage
+export type ObserverActionRecord = {
+  type: 'create_task' | 'store_memory'
+  title?: string // For create_task
+  content?: string // For store_memory
+  tags?: string[]
+}
+
 // Type inference helpers
 export type Repository = typeof repositories.$inferSelect
 export type NewRepository = typeof repositories.$inferInsert
@@ -617,6 +643,8 @@ export type CaldavCopiedEvent = typeof caldavCopiedEvents.$inferSelect
 export type NewCaldavCopiedEvent = typeof caldavCopiedEvents.$inferInsert
 export type Memory = typeof memories.$inferSelect
 export type NewMemory = typeof memories.$inferInsert
+export type ObserverInvocation = typeof observerInvocations.$inferSelect
+export type NewObserverInvocation = typeof observerInvocations.$inferInsert
 export type GoogleAccount = typeof googleAccounts.$inferSelect
 export type NewGoogleAccount = typeof googleAccounts.$inferInsert
 export type GmailDraft = typeof gmailDrafts.$inferSelect

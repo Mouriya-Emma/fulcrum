@@ -13,6 +13,7 @@ import {
   Database01Icon,
   GitPullRequestIcon,
   Folder01Icon,
+  EyeIcon,
 } from '@hugeicons/core-free-icons'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
@@ -27,11 +28,12 @@ import {
   MemoryTab,
   ReviewTab,
   ScratchDirsTab,
+  ObserverTab,
 } from '@/components/monitoring/tabs'
 
-type MonitoringTab = 'system' | 'processes' | 'claude' | 'fulcrum' | 'worktrees' | 'scratch' | 'usage' | 'assistant' | 'messages' | 'memory' | 'review'
+type MonitoringTab = 'system' | 'processes' | 'claude' | 'fulcrum' | 'worktrees' | 'scratch' | 'usage' | 'assistant' | 'messages' | 'memory' | 'review' | 'observer'
 
-const VALID_TABS: MonitoringTab[] = ['system', 'processes', 'claude', 'fulcrum', 'worktrees', 'scratch', 'usage', 'assistant', 'messages', 'memory', 'review']
+const VALID_TABS: MonitoringTab[] = ['system', 'processes', 'claude', 'fulcrum', 'worktrees', 'scratch', 'usage', 'assistant', 'messages', 'memory', 'review', 'observer']
 
 export const Route = createFileRoute('/monitoring/')({
   component: MonitoringPage,
@@ -105,6 +107,10 @@ function MonitoringPage() {
               <HugeiconsIcon icon={Database01Icon} size={14} strokeWidth={2} />
               <span className="max-sm:hidden">{t('tabs.memory')}</span>
             </TabsTrigger>
+            <TabsTrigger value="observer" className="gap-1.5 data-[state=active]:bg-muted">
+              <HugeiconsIcon icon={EyeIcon} size={14} strokeWidth={2} />
+              <span className="max-sm:hidden">{t('tabs.observer')}</span>
+            </TabsTrigger>
           </TabsList>
           </div>
 
@@ -151,6 +157,10 @@ function MonitoringPage() {
 
             <TabsContent value="memory" className="m-0">
               <MemoryTab />
+            </TabsContent>
+
+            <TabsContent value="observer" className="m-0">
+              <ObserverTab />
             </TabsContent>
           </div>
         </Tabs>

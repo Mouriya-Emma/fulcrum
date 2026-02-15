@@ -9,6 +9,8 @@ import { getDtachService } from '../terminal/dtach-service'
 import { getMetrics, getCurrentMetrics } from '../services/metrics-collector'
 import { getZAiSettings } from '../lib/settings'
 import { getChannelMessages, getChannelMessageCounts } from '../services/channels/message-storage'
+import { getCircuitBreaker } from '../services/channels/message-handler'
+import { getInvocations, getInvocationStats } from '../services/observer-tracking'
 import type { ChannelType } from '../services/channels/types'
 import type { AgentType } from '@shared/types'
 
@@ -1232,4 +1234,43 @@ monitoringRoutes.get('/channel-messages', (c) => {
 monitoringRoutes.get('/channel-message-counts', (_c) => {
   const counts = getChannelMessageCounts()
   return _c.json(counts)
+})
+
+// GET /api/monitoring/observer/invocations
+// Returns observer invocations with filtering
+monitoringRoutes.get('/observer/invocations', (c) => {
+  const channelType = c.req.query('channelType') || undefined
+  const status = c.req.query('status') || undefined
+  const provider = c.req.query('provider') || undefined
+  const limit = parseInt(c.req.query('limit') || '50', 10)
+  const offset = parseInt(c.req.query('offset') || '0', 10)
+
+  const invocations = getInvocations({ channelType, status, provider, limit, offset })
+
+  return c.json({
+    invocations,
+    count: invocations.length,
+  })
+})
+
+// GET /api/monitoring/observer/status
+// Returns circuit breaker status
+monitoringRoutes.get('/observer/status', (c) => {
+  const cb = getCircuitBreaker()
+  return c.json({
+    circuitBreaker: {
+      state: cb.state,
+      failureCount: cb.failureCount,
+      failureThreshold: cb.failureThreshold,
+      nextProbeAt: cb.nextProbeAt,
+      cooldownMs: cb.cooldownMs,
+    },
+  })
+})
+
+// GET /api/monitoring/observer/stats
+// Returns aggregate observer stats
+monitoringRoutes.get('/observer/stats', (c) => {
+  const stats = getInvocationStats()
+  return c.json(stats)
 })
