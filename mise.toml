@@ -157,7 +157,6 @@ description = "Build for production"
 depends = ["install"]
 run = """
 rm -rf dist
-bunx drizzle-kit generate
 bunx tsc -b --force && bunx vite build
 """
 
@@ -165,7 +164,6 @@ bunx tsc -b --force && bunx vite build
 description = "Build for production with debug logging enabled"
 run = """
 rm -rf dist
-bunx drizzle-kit generate
 bunx tsc -b --force && DEBUG=1 bunx vite build
 """
 
@@ -411,9 +409,8 @@ cp node_modules/bun-pty/rust-pty/target/release/librust_pty.dylib cli/lib/ 2>/de
 cp node_modules/bun-pty/rust-pty/target/release/librust_pty_arm64.dylib cli/lib/ 2>/dev/null || true
 cp node_modules/bun-pty/rust-pty/target/release/rust_pty.dll cli/lib/ 2>/dev/null || true
 
-# Generate SQL migrations
-echo "Generating migrations..." >&2
-bunx drizzle-kit generate
+# Copy SQL migrations (generated during development via: mise run db:generate)
+echo "Copying migrations..." >&2
 mkdir -p cli/drizzle
 cp -r drizzle/* cli/drizzle/
 
@@ -639,9 +636,8 @@ cp node_modules/bun-pty/rust-pty/target/release/librust_pty.dylib "$BUNDLE_DIR/l
 cp node_modules/bun-pty/rust-pty/target/release/librust_pty_arm64.dylib "$BUNDLE_DIR/lib/" 2>/dev/null || true
 cp node_modules/bun-pty/rust-pty/target/release/rust_pty.dll "$BUNDLE_DIR/lib/" 2>/dev/null || true
 
-# Generate and copy migrations
-echo "Generating migrations..." >&2
-bunx drizzle-kit generate
+# Copy migrations (generated during development via: mise run db:generate)
+echo "Copying migrations..." >&2
 cp -r drizzle/* "$BUNDLE_DIR/drizzle/"
 
 # Copy frontend build
@@ -699,9 +695,8 @@ cp node_modules/bun-pty/rust-pty/target/release/librust_pty.dylib "$BUNDLE_DIR/l
 cp node_modules/bun-pty/rust-pty/target/release/librust_pty_arm64.dylib "$BUNDLE_DIR/lib/" 2>/dev/null || true
 cp node_modules/bun-pty/rust-pty/target/release/rust_pty.dll "$BUNDLE_DIR/lib/" 2>/dev/null || true
 
-# Generate and copy migrations
-echo "Generating migrations..." >&2
-bunx drizzle-kit generate
+# Copy migrations (generated during development via: mise run db:generate)
+echo "Copying migrations..." >&2
 cp -r drizzle/* "$BUNDLE_DIR/drizzle/"
 
 # Copy frontend build (with debug logging)

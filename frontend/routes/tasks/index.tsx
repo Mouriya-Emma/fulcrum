@@ -118,7 +118,7 @@ function TasksView() {
           <TagsFilter value={tagsFilter} onChange={setTagsFilter} />
           <TaskTypeFilter value={taskTypesFilter} onChange={setTaskTypesFilter} />
           <Tooltip>
-            <TooltipTrigger asChild>
+            <TooltipTrigger>
               <Toggle
                 size="sm"
                 variant="outline"
