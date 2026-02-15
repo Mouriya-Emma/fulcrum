@@ -74,36 +74,11 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check if version changed in this push
-        id: version_changed
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          # Get the version from the parent commit(s)
-          # For merge commits, check both parents
-          CHANGED="false"
-          for parent in $(git log -1 --format='%P' HEAD); do
-            PARENT_VERSION=$(git show "$parent:package.json" 2>/dev/null | jq -r '.version' 2>/dev/null || echo "")
-            if [ "$PARENT_VERSION" != "$VERSION" ]; then
-              CHANGED="true"
-              break
-            fi
-          done
-          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION, changed in this push: $CHANGED"
-
       - name: Check release status
         id: check_release
         run: |
           TAG="v${{ steps.version.outputs.version }}"
           VERSION="${{ steps.version.outputs.version }}"
-          VERSION_CHANGED="${{ steps.version_changed.outputs.changed }}"
-
-          # Only release if the version was actually bumped in this push
-          if [ "$VERSION_CHANGED" != "true" ]; then
-            echo "Version $VERSION was not changed in this push, skipping release"
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
 
           # Check if tag exists
           if git rev-parse "$TAG" >/dev/null 2>&1; then
@@ -126,9 +101,10 @@ jobs:
             TAG_EXISTS="false"
           fi
 
-          echo "tag_exists=$TAG_EXISTS" >> $GITHUB_OUTPUT
-          echo "npm_exists=$NPM_EXISTS" >> $GITHUB_OUTPUT
-          echo "should_release=$( [ "$TAG_EXISTS" = "false" ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+          # Release if tag doesn't exist yet (idempotent — won't re-release)
+          SHOULD_RELEASE=$( [ "$TAG_EXISTS" = "false" ] && echo 'true' || echo 'false' )
+          echo "tag_exists=$TAG_EXISTS, npm_exists=$NPM_EXISTS, should_release=$SHOULD_RELEASE"
+          echo "should_release=$SHOULD_RELEASE" >> $GITHUB_OUTPUT
 
       - name: Setup Bun
         if: steps.check_release.outputs.should_release == 'true'
