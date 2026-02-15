@@ -86,9 +86,8 @@ function KanbanBoardInner({ projectFilter, searchQuery, tagsFilter, taskTypesFil
     return allTasks.find((t) => t.id === selectedTaskId) ?? null
   }, [selectedTaskId, allTasks])
 
-  // Check if the selected task is a manual task (should show modal)
-  // Scratch tasks navigate to detail page even without worktreePath
-  const showTaskModal = selectedTask && !selectedTask.worktreePath && selectedTask.type !== 'scratch'
+  // Show modal for tasks without a worktreePath (manual, uninitialized scratch/worktree)
+  const showTaskModal = selectedTask && !selectedTask.worktreePath
 
   // Callback to close the modal by removing the task param from URL
   const handleTaskModalClose = useCallback(

@@ -152,6 +152,27 @@ export function WorktreeTaskSettings({ task, compact }: WorktreeTaskSettingsProp
   const marginClass = compact ? 'mb-2' : 'mb-3'
   const headingClass = compact ? 'text-xs' : 'text-sm'
 
+  // Uninitialized scratch task — show initialize button directly
+  if (task.type === 'scratch') {
+    return (
+      <div className={`rounded-lg border bg-card ${paddingClass}`}>
+        <h2 className={`${headingClass} font-medium text-muted-foreground ${marginClass}`}>Scratch Task</h2>
+        <Button
+          variant="outline"
+          onClick={handleInitializeScratch}
+          disabled={initializeScratch.isPending}
+          className="w-full"
+          size={compact ? 'sm' : 'default'}
+        >
+          {initializeScratch.isPending ? 'Creating...' : 'Initialize Scratch Task'}
+        </Button>
+        <p className={`text-muted-foreground italic mt-2 ${compact ? 'text-xs' : 'text-sm'}`}>
+          Creates an isolated directory without git for quick experiments.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className={`rounded-lg border bg-card ${paddingClass}`}>
       {/* Worktree section */}

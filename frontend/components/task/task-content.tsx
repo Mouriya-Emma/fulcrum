@@ -413,30 +413,32 @@ export function TaskContent({ task, onDeleted, compact }: TaskContentProps) {
               />
             </div>
 
-            {/* Repeat */}
-            <div className={`rounded-lg border bg-card ${paddingClass}`}>
-              <h2 className={`${headingClass} font-medium text-muted-foreground ${marginClass}`}>Repeat</h2>
-              <Select
-                value={task.recurrenceRule || 'none'}
-                onValueChange={handleRecurrenceChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="biweekly">Biweekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
-              {task.recurrenceSourceTaskId && (
-                <p className={`text-muted-foreground italic mt-2 ${compact ? 'text-xs' : 'text-sm'}`}>Part of a recurring series</p>
-              )}
-            </div>
+            {/* Repeat — only for manual tasks */}
+            {!task.type && (
+              <div className={`rounded-lg border bg-card ${paddingClass}`}>
+                <h2 className={`${headingClass} font-medium text-muted-foreground ${marginClass}`}>Repeat</h2>
+                <Select
+                  value={task.recurrenceRule || 'none'}
+                  onValueChange={handleRecurrenceChange}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="biweekly">Biweekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+                {task.recurrenceSourceTaskId && (
+                  <p className={`text-muted-foreground italic mt-2 ${compact ? 'text-xs' : 'text-sm'}`}>Part of a recurring series</p>
+                )}
+              </div>
+            )}
 
             {/* Project */}
             <div className={`rounded-lg border bg-card ${paddingClass} sm:col-span-2`}>
