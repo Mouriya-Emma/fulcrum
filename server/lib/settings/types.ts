@@ -45,11 +45,6 @@ export interface EmailSettings {
   googleAccountId: string | null
   imap: ImapConfig
   pollIntervalSeconds: number
-  /**
-   * List of email addresses or domain patterns that can always interact with the assistant.
-   * Supports exact matches (user@example.com) and wildcard domains (*@example.com).
-   */
-  allowedSenders: string[]
 }
 
 // Slack messaging settings
@@ -247,7 +242,6 @@ Then store the action plan as a memory tagged with: ritual, plan, evening-ritual
         password: '',
       },
       pollIntervalSeconds: 30,
-      allowedSenders: [],
     },
     slack: {
       enabled: false,
@@ -327,7 +321,6 @@ export const VALID_SETTING_PATHS = new Set([
   'channels.email.imap.user',
   'channels.email.imap.password',
   'channels.email.pollIntervalSeconds',
-  'channels.email.allowedSenders',
   'channels.slack.enabled',
   'channels.slack.botToken',
   'channels.slack.appToken',

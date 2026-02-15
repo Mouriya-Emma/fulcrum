@@ -16,7 +16,6 @@ import {
 } from '../channel-manager'
 import { getStoredEmails as getStoredEmailsFromDb } from '../email-storage'
 import { listMessages } from '../../google/gmail-service'
-import { getSettings } from '../../../lib/settings'
 import type { ConnectionStatus, EmailAuthState } from '../types'
 
 // Re-export connection ID for backward compatibility
@@ -50,7 +49,6 @@ export async function configureEmail(credentials: EmailAuthState): Promise<{
   updateSettingByPath('channels.email.imap.user', credentials.imap.user)
   updateSettingByPath('channels.email.imap.password', imapPassword)
   updateSettingByPath('channels.email.pollIntervalSeconds', credentials.pollIntervalSeconds)
-  updateSettingByPath('channels.email.allowedSenders', credentials.allowedSenders || [])
 
   // Start the channel
   await startEmailChannel()
@@ -191,7 +189,6 @@ export function getEmailStatus(): {
 export function getEmailConfig(): {
   imap: { host: string; port: number; secure: boolean; user: string; password: string } | null
   pollIntervalSeconds: number
-  allowedSenders: string[]
 } | null {
   const settings = getSettings()
   const emailConfig = settings.channels.email
@@ -209,7 +206,6 @@ export function getEmailConfig(): {
       password: emailConfig.imap.password ? '••••••••' : '',
     } : null,
     pollIntervalSeconds: emailConfig.pollIntervalSeconds,
-    allowedSenders: emailConfig.allowedSenders,
   }
 }
 

@@ -264,7 +264,7 @@ Chat with the AI assistant via external messaging platforms:
 - **Discord**: Bot token auth, slash commands (`/reset`, `/help`, `/status`)
 - **Telegram**: Bot token from @BotFather, handles private chats
 - **Slack**: Socket Mode with bot + app tokens, Block Kit formatting, slash commands
-- **Email**: Gmail API or IMAP/SMTP backends, collects all non-automated emails (allowlist controls AI responses only)
+- **Email**: Gmail API or IMAP/SMTP backends, collects all non-automated emails (observe-only, no auto-responses)
 - **Gmail**: Send emails via Gmail API (OAuth2), always sends to user's own address
 - **Session persistence**: Conversations map to `chatSessions` table, one session per user
 - **User-only messaging**: Outbound messages are restricted to the user's own accounts (no third-party messaging)

@@ -125,13 +125,6 @@ export interface EmailAuthState {
     password: string
   }
   pollIntervalSeconds: number
-  /**
-   * List of email addresses or domain patterns that can always interact with the assistant.
-   * Supports exact matches (user@example.com) and wildcard domains (*@example.com).
-   * Emails from non-allowlisted senders are only processed if they're part of a thread
-   * that was initialized by an allowlisted sender CCing the assistant.
-   */
-  allowedSenders?: string[]
 }
 
 /**

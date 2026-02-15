@@ -11,7 +11,6 @@ import {
   listMessages,
 } from '../google/gmail-service'
 import { storeEmail } from './email-storage'
-import { checkAuthorization } from './email-auth'
 import { isAutomatedEmail } from './email-types'
 import type { IncomingMessage, ChannelEvents, ConnectionStatus } from './types'
 import { db, googleAccounts } from '../../db'
@@ -107,9 +106,6 @@ export class GmailBackend {
         .get()
       const selfEmail = account?.email?.toLowerCase() ?? ''
 
-      const settings = getSettings()
-      const allowedSenders = settings.channels.email.allowedSenders ?? []
-
       for (const msg of result.messages) {
         if (!msg.from) continue
 
@@ -134,36 +130,15 @@ export class GmailBackend {
         })
         if (automatedCheck.isAutomated) continue
 
-        // Check authorization
-        const authResult = await checkAuthorization(
-          this.connectionId,
-          {
-            from: fromEmail,
-            fromName: msg.from.replace(/<[^>]+>/, '').trim() || null,
-            to: msg.to,
-            cc: msg.cc,
-            subject: msg.subject,
-            messageId: msg.messageId,
-            inReplyTo: msg.inReplyTo,
-            references: [],
-            date: msg.date ? new Date(msg.date) : null,
-            listUnsubscribe: null,
-            precedence: null,
-            autoSubmitted: null,
-            xAutoResponseSuppress: null,
-            xMailer: null,
-            contentType: null,
-          },
-          allowedSenders,
-          selfEmail
-        )
+        // Compute thread ID
+        const threadId = msg.inReplyTo || msg.messageId || undefined
 
         // Store email — skip observer if it's a duplicate
         if (msg.messageId) {
           const isNew = storeEmail({
             connectionId: this.connectionId,
             messageId: msg.messageId,
-            threadId: authResult.threadId,
+            threadId,
             inReplyTo: msg.inReplyTo ?? undefined,
             direction: 'incoming',
             fromAddress: fromEmail,
@@ -189,8 +164,8 @@ export class GmailBackend {
             messageId: msg.messageId,
             inReplyTo: msg.inReplyTo,
             subject: msg.subject,
-            threadId: authResult.threadId,
-            observeOnly: !authResult.authorized,
+            threadId,
+            observeOnly: true,
           },
         }
 

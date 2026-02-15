@@ -87,7 +87,6 @@ export function EmailSetup({ isLoading = false }: EmailSetupProps) {
   // Form state - simplified to just email + password
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [allowedSenders, setAllowedSenders] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [imapHost, setImapHost] = useState('')
   const [imapPort, setImapPort] = useState(993)
@@ -122,7 +121,6 @@ export function EmailSetup({ isLoading = false }: EmailSetupProps) {
       setImapUser(config.imap?.user || '')
       setImapPassword(config.imap?.password || '')  // Will be '••••••••' if set
       setPollInterval(config.pollIntervalSeconds || 30)
-      setAllowedSenders(config.allowedSenders?.join(', ') || '')
       // Show advanced if custom settings were used
       const detected = getProviderSettings(config.imap?.user || '')
       if (config.imap?.host && config.imap.host !== detected.imap.host) {
@@ -132,12 +130,6 @@ export function EmailSetup({ isLoading = false }: EmailSetupProps) {
   }, [status?.config])
 
   const buildCredentials = () => {
-    // Parse allowed senders (comma or newline separated)
-    const parsedAllowedSenders = allowedSenders
-      .split(/[,\n]/)
-      .map(s => s.trim())
-      .filter(s => s.length > 0)
-
     if (showAdvanced) {
       // Advanced mode: use custom IMAP credentials
       return {
@@ -149,7 +141,6 @@ export function EmailSetup({ isLoading = false }: EmailSetupProps) {
           password: imapPassword,
         },
         pollIntervalSeconds: pollInterval,
-        allowedSenders: parsedAllowedSenders.length > 0 ? parsedAllowedSenders : undefined,
       }
     }
 
@@ -161,7 +152,6 @@ export function EmailSetup({ isLoading = false }: EmailSetupProps) {
         password,
       },
       pollIntervalSeconds: pollInterval,
-      allowedSenders: parsedAllowedSenders.length > 0 ? parsedAllowedSenders : undefined,
     }
   }
 
@@ -346,22 +336,6 @@ export function EmailSetup({ isLoading = false }: EmailSetupProps) {
             </>
           )}
 
-          {/* Allowed Senders (shown in both modes) */}
-          <div className="space-y-2">
-            <Label htmlFor="allowedSenders">Allowed Senders</Label>
-            <Input
-              id="allowedSenders"
-              placeholder="you@example.com, *@company.com"
-              value={allowedSenders}
-              onChange={(e) => setAllowedSenders(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Email addresses that can interact with the assistant. Use *@domain.com for wildcards.
-              Others will receive a polite rejection. You can CC the assistant into threads to allow
-              all participants.
-            </p>
-          </div>
-
           {/* Advanced settings toggle */}
           <div className="pt-2">
             <button
@@ -536,26 +510,12 @@ export function EmailSetup({ isLoading = false }: EmailSetupProps) {
             Disable Email
           </Button>
 
-          {/* Allowed senders */}
-          {status?.config?.allowedSenders && status.config.allowedSenders.length > 0 && (
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                Allowed Senders
-              </h4>
-              <div className="text-xs text-muted-foreground font-mono">
-                {status.config.allowedSenders.join(', ')}
-              </div>
-            </div>
-          )}
-
         </div>
       )}
 
       {/* Help text */}
       <p className="ml-4 sm:ml-44 text-xs text-muted-foreground">
-        Receive emails at your configured address to chat with the AI assistant.
-        Only allowed senders can interact directly. CC the assistant into threads to allow all
-        participants. Use /reset in the email body to start a fresh conversation.
+        Incoming emails are processed as observe-only (creating tasks and memories, no auto-responses).
         Email sending is disabled — use Gmail drafts instead.
       </p>
     </div>

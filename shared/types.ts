@@ -815,5 +815,4 @@ export interface EmailChannelConfig {
     password: string  // '••••••••' when set, '' when not set
   }
   pollIntervalSeconds: number
-  allowedSenders?: string[]
 }

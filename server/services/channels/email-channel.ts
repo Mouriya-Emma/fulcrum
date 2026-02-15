@@ -2,15 +2,7 @@
  * Email channel implementation using imapflow (IMAP) for receiving.
  * Sending is disabled — use Gmail drafts for human-in-the-loop email.
  *
- * Collection model: Collect everything, respond selectively.
- * All non-automated emails are stored in the DB and shown in the UI.
- * The allowedSenders list controls who gets AI responses, not who gets collected.
- *
- * Authorization (controls AI responses only):
- * 1. Allowlisted sender -> respond
- * 2. CC'd by allowlisted person -> authorize the thread, respond
- * 3. Reply in an authorized thread -> respond (even from non-allowlisted senders)
- * 4. Otherwise -> observe only (stored, shown in UI, no AI response)
+ * All incoming emails are observe-only (create tasks/memories, never auto-respond).
  */
 
 import { ImapFlow } from 'imapflow'
@@ -26,7 +18,6 @@ import type {
 
 // Import from new modules
 import { parseEmailHeaders, parseEmailContent } from './email-parser'
-import { checkAuthorization } from './email-auth'
 import { storeEmail, getStoredEmails as getStoredEmailsFromDb, getStoredEmailByMessageId, type StoredEmail } from './email-storage'
 import { isAutomatedEmail } from './email-types'
 
@@ -90,7 +81,6 @@ export class EmailChannel implements MessagingChannel {
       this.credentials = {
         imap: emailConfig.imap,
         pollIntervalSeconds: emailConfig.pollIntervalSeconds,
-        allowedSenders: emailConfig.allowedSenders,
       }
     }
 
@@ -225,20 +215,15 @@ export class EmailChannel implements MessagingChannel {
           const content = await parseEmailContent(message.source, this.connectionId)
           if (!content) continue
 
-          // Check authorization (controls AI responses, not collection)
-          const authResult = await checkAuthorization(
-            this.connectionId,
-            headers,
-            this.credentials?.allowedSenders || [],
-            this.credentials?.imap.user.toLowerCase() ?? ''
-          )
+          // Compute thread ID from email chain
+          const threadId = headers.references[0] || headers.inReplyTo || headers.messageId || undefined
 
           // Store ALL non-automated emails locally — skip observer if duplicate
           if (headers.messageId) {
             const isNew = storeEmail({
               connectionId: this.connectionId,
               messageId: headers.messageId,
-              threadId: authResult.threadId,
+              threadId,
               inReplyTo: headers.inReplyTo ?? undefined,
               references: headers.references.length > 0 ? headers.references : undefined,
               direction: 'incoming',
@@ -267,9 +252,8 @@ export class EmailChannel implements MessagingChannel {
               inReplyTo: headers.inReplyTo,
               references: headers.references,
               subject: headers.subject,
-              threadId: authResult.threadId,
-              // Unauthorized emails are observe-only (stored + shown, no AI response)
-              observeOnly: !authResult.authorized,
+              threadId,
+              observeOnly: true,
             },
           }
 
@@ -278,9 +262,7 @@ export class EmailChannel implements MessagingChannel {
             from: headers.from,
             subject: headers.subject,
             contentLength: content.length,
-            threadId: authResult.threadId,
-            authorized: authResult.authorized,
-            authorizedBy: authResult.authorizedBy,
+            threadId,
           })
 
           // Route through message handler (observe-only messages won't get AI responses)

@@ -476,7 +476,6 @@ export async function startEmailChannel(): Promise<void> {
   const credentials: EmailAuthState = {
     imap: emailConfig.imap,
     pollIntervalSeconds: emailConfig.pollIntervalSeconds,
-    allowedSenders: emailConfig.allowedSenders,
   }
 
   // Create and initialize the email channel
