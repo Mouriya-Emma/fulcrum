@@ -189,9 +189,10 @@ set -e
 set -o pipefail
 
 # Run linter first (doesn't need isolation)
+# Target specific source dirs to avoid traversing cli/dist, node_modules, .jj etc.
 # React Compiler ESLint plugin (v7+) performs deep data flow analysis and needs extra heap
 echo "Running linter..." >&2
-NODE_OPTIONS='--max-old-space-size=8192' bunx eslint . || exit 1
+NODE_OPTIONS='--max-old-space-size=4096' bunx eslint frontend/ server/ cli/src/ shared/ plugins/ || exit 1
 
 # Create isolated test directories BEFORE bun starts.
 # This is critical because Bun caches os.homedir() at process startup,
@@ -250,7 +251,7 @@ bun test --watch
 
 [tasks.lint]
 description = "Run ESLint"
-run = "NODE_OPTIONS='--max-old-space-size=8192' bunx eslint ."
+run = "NODE_OPTIONS='--max-old-space-size=4096' bunx eslint frontend/ server/ cli/src/ shared/ plugins/"
 
 [tasks.typecheck]
 description = "Check TypeScript types"

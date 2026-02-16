@@ -6,19 +6,32 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'docs']),
+  globalIgnores(['**/dist', 'docs']),
+  // Base TypeScript rules for all files
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
     ],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Allow _-prefixed variables for intentional destructuring omission (e.g. const { x: _, ...rest } = obj)
+      '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
+    },
+  },
+  // React Compiler / hooks rules only for frontend code
+  // react-hooks v7+ performs deep data flow analysis — restrict to frontend to avoid
+  // running it on server/cli/shared code that doesn't use React
+  {
+    files: ['frontend/**/*.{ts,tsx}'],
+    extends: [
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
     rules: {
       // Disable overly-strict React Compiler rules that flag legitimate patterns
       // (e.g., syncing local form state with async data, terminal ID syncing)
@@ -27,8 +40,6 @@ export default defineConfig([
       'react-hooks/preserve-manual-memoization': 'off',
       // Allow exporting utilities alongside components (common shadcn/ui pattern)
       'react-refresh/only-export-components': 'off',
-      // Allow _-prefixed variables for intentional destructuring omission (e.g. const { x: _, ...rest } = obj)
-      '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
     },
   },
 ])
