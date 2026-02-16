@@ -330,6 +330,7 @@ export interface Repository {
   defaultAgent: AgentType | null
   remoteUrl: string | null
   isCopierTemplate: boolean
+  lastBaseBranch: string | null
   createdAt: string
   updatedAt: string
 }

@@ -144,6 +144,7 @@ export const repositories = sqliteTable('repositories', {
   remoteUrl: text('remote_url'), // GitHub remote URL for filtering issues/PRs
   isCopierTemplate: integer('is_copier_template', { mode: 'boolean' }).default(false), // Mark as Copier template
   lastUsedAt: text('last_used_at'), // Timestamp of last task creation with this repo
+  lastBaseBranch: text('last_base_branch'), // Last base branch used for task creation
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })

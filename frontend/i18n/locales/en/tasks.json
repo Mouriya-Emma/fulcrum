@@ -97,6 +97,7 @@
     "selectRepositoryFirst": "Select repository first",
     "loadingBranches": "Loading branches...",
     "selectBranch": "Select branch",
+    "noBranchesFound": "No branches found",
     "current": "(current)",
     "createTask": "Create Task",
     "noProject": "No project (Inbox)",

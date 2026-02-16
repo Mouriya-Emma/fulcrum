@@ -1,0 +1,1 @@
+ALTER TABLE `repositories` ADD `last_base_branch` text;
