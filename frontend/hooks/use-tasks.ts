@@ -56,6 +56,8 @@ export function useCreateTask() {
       recurrenceEndDate?: string | null
       // Dependencies - tasks that must be completed before this one can start
       blockedByTaskIds?: string[]
+      // Pin
+      pinned?: boolean
     }) =>
       fetchJSON<Task>(`${API_BASE}/api/tasks`, {
         method: 'POST',

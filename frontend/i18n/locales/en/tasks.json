@@ -105,6 +105,8 @@
     "blockedByPlaceholder": "Search tasks to block this...",
     "noTasksFound": "No tasks found",
     "startImmediately": "Start work immediately",
+    "pinTask": "Pin task to top",
+    "unpinTask": "Unpin task",
     "errors": {
       "notGitRepo": "Selected folder is not a git repository",
       "validationFailed": "Failed to validate repository",

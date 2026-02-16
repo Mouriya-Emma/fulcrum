@@ -284,6 +284,7 @@ app.post('/', async (c) => {
       recurrenceRule: body.recurrenceRule || null,
       recurrenceEndDate: body.recurrenceEndDate || null,
       recurrenceSourceTaskId: null,
+      pinned: body.pinned ?? false,
       createdAt: now,
       updatedAt: now,
     }

@@ -105,6 +105,8 @@
     "blockedByPlaceholder": "搜索阻塞任务...",
     "noTasksFound": "未找到任务",
     "startImmediately": "立即开始工作",
+    "pinTask": "置顶任务",
+    "unpinTask": "取消置顶",
     "errors": {
       "notGitRepo": "所选文件夹不是 Git 仓库",
       "validationFailed": "验证仓库失败",

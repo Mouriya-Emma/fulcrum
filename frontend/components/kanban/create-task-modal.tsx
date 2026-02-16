@@ -34,7 +34,7 @@ import {
   ComboboxEmpty,
 } from '@/components/ui/combobox'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { TaskAdd01Icon, Folder01Icon, Cancel01Icon, Attachment01Icon, Link01Icon, Add01Icon, Tick01Icon } from '@hugeicons/core-free-icons'
+import { TaskAdd01Icon, Folder01Icon, Cancel01Icon, Attachment01Icon, Link01Icon, Add01Icon, Tick01Icon, PinIcon, PinOffIcon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { getTaskTypeCssVar } from '@/lib/task-type-colors'
@@ -136,6 +136,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const [projectSearchQuery, setProjectSearchQuery] = useState('')
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
+  const [pinned, setPinned] = useState(false)
   const tagContainerRef = useRef<HTMLDivElement>(null)
   const projectContainerRef = useRef<HTMLDivElement>(null)
 
@@ -394,6 +395,8 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
         prUrl: prUrl.trim() || null,
         // Dependencies
         blockedByTaskIds: blockedByTaskIds.length > 0 ? blockedByTaskIds : undefined,
+        // Pin
+        pinned: pinned || undefined,
       },
       {
         onSuccess: async (task) => {
@@ -469,6 +472,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
     setRepoError(null)
     setSelectedProjectId(null)
     setBlockedByTaskIds([])
+    setPinned(false)
     setShowTagDropdown(false)
     setProjectSearchQuery('')
     setShowProjectDropdown(false)
@@ -615,14 +619,30 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
             <FieldGroup className="mt-2 py-4 px-3 overflow-y-auto min-h-0 flex-1">
               <Field>
                 <FieldLabel htmlFor="title">{t('createModal.fields.title')}</FieldLabel>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder={t('createModal.fields.titlePlaceholder')}
-                  required
-                  autoFocus
-                />
+                <div className="flex gap-1.5 items-center">
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder={t('createModal.fields.titlePlaceholder')}
+                    required
+                    autoFocus
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn(
+                      'shrink-0 cursor-pointer',
+                      pinned ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    onClick={() => setPinned(!pinned)}
+                    title={pinned ? t('createModal.unpinTask') : t('createModal.pinTask')}
+                  >
+                    <HugeiconsIcon icon={pinned ? PinOffIcon : PinIcon} size={16} strokeWidth={2} />
+                  </Button>
+                </div>
               </Field>
 
               <Field>
