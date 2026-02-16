@@ -16,6 +16,7 @@ import {
   waitForServicesHealthy,
   addCloudflaredToStack,
   validateAndAllocatePorts,
+  waitForPortsReleased,
 } from './docker-swarm'
 import { createDnsRecord, createOriginCACertificate, deleteDnsRecord } from './cloudflare'
 import {
@@ -356,6 +357,28 @@ export async function deployApp(
   }
 
   try {
+    // Pre-deploy: Remove existing stack to free host ports before validation
+    if (app.status === 'running' || app.status === 'failed') {
+      onProgress?.({ stage: 'building', message: 'Stopping existing stack to free ports...' })
+      const removeResult = await stackRemove(projectName)
+      if (removeResult.success) {
+        log.deploy.info('Removed existing stack before redeploy', { appId, projectName })
+        const portsResult = await waitForPortsReleased(repo.path, app.composeFile, env ?? {})
+        if (!portsResult.released) {
+          log.deploy.warn('Some ports still in use after stack removal', {
+            appId,
+            blockedPorts: portsResult.blockedPorts,
+          })
+        }
+      } else {
+        log.deploy.warn('Failed to remove existing stack before redeploy', {
+          appId,
+          projectName,
+          error: removeResult.error,
+        })
+      }
+    }
+
     // Stage 0: Validate ports are available (host mode requires unique ports)
     onProgress?.({ stage: 'building', message: 'Checking port availability...' })
     const autoAllocatePorts = app.autoPortAllocation ?? true
