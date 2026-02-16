@@ -293,6 +293,77 @@ export async function validateAndAllocatePorts(
 }
 
 /**
+ * Extract published (host) port numbers from a compose file
+ */
+function extractPublishedPorts(
+  cwd: string,
+  composeFile: string,
+  env: Record<string, string> = {}
+): Promise<number[]> {
+  return readFile(join(cwd, composeFile), 'utf-8').then((content) => {
+    const parsed = parseYaml(content) as Record<string, unknown>
+    const services = parsed.services as Record<string, Record<string, unknown>> | undefined
+    if (!services) return []
+
+    const ports: number[] = []
+    for (const serviceConfig of Object.values(services)) {
+      if (!Array.isArray(serviceConfig.ports)) continue
+      for (const portSpec of serviceConfig.ports) {
+        const info = extractPortInfo(portSpec, env)
+        if (info) ports.push(info.publishedPort)
+      }
+    }
+    return ports
+  }).catch(() => [])
+}
+
+/**
+ * Wait for all published ports in a compose file to become available.
+ * Useful after removing a stack to wait for Docker to release host ports.
+ */
+export async function waitForPortsReleased(
+  cwd: string,
+  composeFile: string,
+  env: Record<string, string> = {},
+  timeoutMs = 15000
+): Promise<{ released: boolean; blockedPorts?: number[] }> {
+  const ports = await extractPublishedPorts(cwd, composeFile, env)
+  if (ports.length === 0) return { released: true }
+
+  const startTime = Date.now()
+
+  while (Date.now() - startTime < timeoutMs) {
+    const blocked: number[] = []
+    for (const port of ports) {
+      if (!(await isPortAvailable(port))) {
+        blocked.push(port)
+      }
+    }
+
+    if (blocked.length === 0) {
+      log.deploy.info('All ports released', { ports })
+      return { released: true }
+    }
+
+    log.deploy.debug('Waiting for ports to be released', { blocked, elapsed: Date.now() - startTime })
+    await sleep(1000)
+  }
+
+  // Final check
+  const blockedPorts: number[] = []
+  for (const port of ports) {
+    if (!(await isPortAvailable(port))) {
+      blockedPorts.push(port)
+    }
+  }
+
+  if (blockedPorts.length === 0) return { released: true }
+
+  log.deploy.warn('Timed out waiting for ports to be released', { blockedPorts, timeoutMs })
+  return { released: false, blockedPorts }
+}
+
+/**
  * Extract port number and associated env var from a port specification
  */
 function extractPortInfo(
