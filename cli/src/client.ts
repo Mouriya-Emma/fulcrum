@@ -470,10 +470,10 @@ export class FulcrumClient {
     return this.fetch(`/api/repositories/${id}`)
   }
 
-  async addRepository(path: string, displayName?: string): Promise<Repository> {
+  async addRepository(path: string, displayName?: string, projectId?: string): Promise<Repository> {
     return this.fetch('/api/repositories', {
       method: 'POST',
-      body: JSON.stringify({ path, displayName }),
+      body: JSON.stringify({ path, displayName, projectId }),
     })
   }
 

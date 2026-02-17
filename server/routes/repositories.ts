@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid'
 import { db, repositories, projects, projectRepositories, apps, appServices, tasks } from '../db'
 import { eq, desc, sql } from 'drizzle-orm'
 import { getSettings, expandPath } from '../lib/settings'
+import { broadcast } from '../websocket/terminal-ws'
 import type { Repository } from '../../../shared/types'
 
 const app = new Hono()
@@ -101,13 +102,16 @@ app.get('/:id', (c) => {
   })
 })
 
-// POST /api/repositories - Create a standalone repository from a local path
-// Body: { path: string, displayName?: string }
+// POST /api/repositories - Create a repository and associate it with a project
+// Body: { path: string, displayName?: string, projectId?: string }
+// If projectId is provided, links to that existing project (404 if not found).
+// If projectId is omitted, auto-creates a project with the same name as the repo.
 app.post('/', async (c) => {
   try {
     const body = await c.req.json<{
       path: string
       displayName?: string
+      projectId?: string
     }>()
 
     if (!body.path) {
@@ -155,7 +159,52 @@ app.post('/', async (c) => {
       return c.json({ error: 'Failed to create repository' }, 500)
     }
 
-    return c.json(toApiResponse(repo), 201)
+    // Associate with a project
+    let projectId: string
+    let projectName: string
+
+    if (body.projectId) {
+      // Link to existing project
+      const existingProject = db.select().from(projects).where(eq(projects.id, body.projectId)).get()
+      if (!existingProject) {
+        // Clean up the repo we just created
+        db.delete(repositories).where(eq(repositories.id, id)).run()
+        return c.json({ error: 'Project not found' }, 404)
+      }
+      projectId = existingProject.id
+      projectName = existingProject.name
+    } else {
+      // Auto-create a project with the same name
+      projectId = nanoid()
+      projectName = displayName
+      db.insert(projects)
+        .values({
+          id: projectId,
+          name: displayName,
+          repositoryId: id,
+          status: 'active',
+          lastAccessedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run()
+    }
+
+    // Link repo to project via join table
+    db.insert(projectRepositories)
+      .values({
+        id: nanoid(),
+        projectId,
+        repositoryId: id,
+        isPrimary: true,
+        createdAt: now,
+      })
+      .run()
+
+    broadcast({ type: 'project:updated', payload: { projectId } })
+    broadcast({ type: 'repositories:updated' })
+
+    return c.json({ ...toApiResponse(repo), project: { id: projectId, name: projectName } }, 201)
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : 'Failed to create repository' }, 400)
   }

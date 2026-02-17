@@ -139,7 +139,7 @@ describe('Repositories Routes', () => {
   })
 
   describe('POST /api/repositories', () => {
-    test('creates repository from valid path', async () => {
+    test('creates repository and auto-creates project', async () => {
       // Create a real git repo directory
       const repoPath = join(testEnv.fulcrumDir, 'test-git-repo')
       mkdirSync(repoPath, { recursive: true })
@@ -156,9 +156,24 @@ describe('Repositories Routes', () => {
       expect(body.id).toBeDefined()
       expect(body.path).toBe(repoPath)
       expect(body.displayName).toBe('Test Git Repo')
+
+      // Should include the auto-created project
+      expect(body.project).toBeDefined()
+      expect(body.project.name).toBe('Test Git Repo')
+
+      // Verify project exists in DB
+      const project = db.select().from(projects).where(eq(projects.id, body.project.id)).get()
+      expect(project).toBeDefined()
+      expect(project!.name).toBe('Test Git Repo')
+
+      // Verify join table entry
+      const link = db.select().from(projectRepositories).where(eq(projectRepositories.repositoryId, body.id)).get()
+      expect(link).toBeDefined()
+      expect(link!.projectId).toBe(body.project.id)
+      expect(link!.isPrimary).toBe(true)
     })
 
-    test('defaults displayName to folder name', async () => {
+    test('defaults displayName to folder name and uses it for project name', async () => {
       const repoPath = join(testEnv.fulcrumDir, 'my-custom-repo')
       mkdirSync(repoPath, { recursive: true })
       mkdirSync(join(repoPath, '.git'), { recursive: true })
@@ -171,6 +186,62 @@ describe('Repositories Routes', () => {
 
       expect(res.status).toBe(201)
       expect(body.displayName).toBe('my-custom-repo')
+      expect(body.project.name).toBe('my-custom-repo')
+    })
+
+    test('links to specified project when projectId provided', async () => {
+      const now = new Date().toISOString()
+      db.insert(projects)
+        .values({
+          id: 'existing-project',
+          name: 'Existing Project',
+          status: 'active',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run()
+
+      const repoPath = join(testEnv.fulcrumDir, 'linked-repo')
+      mkdirSync(repoPath, { recursive: true })
+      mkdirSync(join(repoPath, '.git'), { recursive: true })
+
+      const { post } = createTestApp()
+      const res = await post('/api/repositories', {
+        path: repoPath,
+        displayName: 'Linked Repo',
+        projectId: 'existing-project',
+      })
+      const body = await res.json()
+
+      expect(res.status).toBe(201)
+      expect(body.project.id).toBe('existing-project')
+      expect(body.project.name).toBe('Existing Project')
+
+      // Verify join table
+      const link = db.select().from(projectRepositories).where(eq(projectRepositories.repositoryId, body.id)).get()
+      expect(link).toBeDefined()
+      expect(link!.projectId).toBe('existing-project')
+    })
+
+    test('returns 404 when projectId does not exist', async () => {
+      const repoPath = join(testEnv.fulcrumDir, 'orphan-attempt')
+      mkdirSync(repoPath, { recursive: true })
+      mkdirSync(join(repoPath, '.git'), { recursive: true })
+
+      const { post } = createTestApp()
+      const res = await post('/api/repositories', {
+        path: repoPath,
+        displayName: 'Orphan Attempt',
+        projectId: 'nonexistent-project',
+      })
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body.error).toContain('not found')
+
+      // Verify repo was NOT created (cleaned up)
+      const repos = db.select().from(repositories).all()
+      expect(repos.length).toBe(0)
     })
 
     test('returns 400 when path is missing', async () => {

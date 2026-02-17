@@ -49,14 +49,15 @@ export const registerRepositoryTools: ToolRegistrar = (server, client) => {
   // add_repository
   server.tool(
     'add_repository',
-    'Add a repository from a local path. The path must be an existing git repository.',
+    'Add a repository from a local path. The path must be an existing git repository. If projectId is provided, links to that project. Otherwise, auto-creates a project with the same name.',
     {
       path: z.string().describe('Absolute path to the git repository'),
       displayName: z.optional(z.string()).describe('Display name (defaults to folder name)'),
+      projectId: z.optional(z.string()).describe('Project ID to link the repository to (auto-creates a project if omitted)'),
     },
-    async ({ path, displayName }) => {
+    async ({ path, displayName, projectId }) => {
       try {
-        const repo = await client.addRepository(path, displayName)
+        const repo = await client.addRepository(path, displayName, projectId)
         return formatSuccess(repo)
       } catch (err) {
         return handleToolError(err)
