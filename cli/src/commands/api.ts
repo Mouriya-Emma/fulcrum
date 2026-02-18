@@ -509,30 +509,6 @@ function getRawArgsAfterApi(): string[] {
 // Command Definitions
 // ============================================================================
 
-const routesCommand = defineCommand({
-  meta: { name: 'routes', description: 'List available API routes' },
-  args: {
-    ...globalArgs,
-    category: { type: 'string' as const, description: 'Filter by category' },
-    search: { type: 'string' as const, description: 'Search routes by keyword' },
-  },
-  async run({ args }) {
-    setupJsonOutput(args)
-    await handleRoutes(toFlags(args))
-  },
-})
-
-const toolsCommand = defineCommand({
-  meta: { name: 'tools', description: 'Print compact tool reference for context window injection' },
-  args: {
-    ...globalArgs,
-  },
-  async run({ args }) {
-    setupJsonOutput(args)
-    await handleTools(toFlags(args))
-  },
-})
-
 export const apiCommand = defineCommand({
   meta: { name: 'api', description: 'REST API access — route discovery, HTTP proxy, and resource/action CLI' },
   args: {
@@ -542,10 +518,6 @@ export const apiCommand = defineCommand({
     data: { type: 'string' as const, alias: 'd', description: 'Request body (JSON)' },
     category: { type: 'string' as const, description: 'Filter routes by category' },
     search: { type: 'string' as const, description: 'Search routes by keyword' },
-  },
-  subCommands: {
-    routes: routesCommand,
-    tools: toolsCommand,
   },
   async run({ args }) {
     setupJsonOutput(args)
