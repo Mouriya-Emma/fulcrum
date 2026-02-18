@@ -149,6 +149,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
   const addTaskLink = useAddTaskLink()
   const formRef = useRef<HTMLFormElement>(null)
   const attachmentInputRef = useRef<HTMLInputElement>(null)
+  const hasInitializedRef = useRef(false)
   const { data: worktreeBasePath } = useWorktreeBasePath()
   const { data: scratchBasePath } = useScratchBasePath()
   const { data: defaultGitReposDir } = useDefaultGitReposDir()
@@ -233,57 +234,69 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
 
   // Initialize with default repository when modal opens, or auto-select most recently used
   useEffect(() => {
-    if (open) {
-      // Set task defaults from settings
-      if (defaultTaskType) {
-        setTaskType(defaultTaskType)
-      }
-      if (defaultStartImmediately !== undefined) {
-        setStartImmediately(defaultStartImmediately)
-      }
+    if (!open) {
+      hasInitializedRef.current = false
+      return
+    }
 
-      // Determine which repository will be selected
-      const selectedRepo = defaultRepository ?? (repositories && repositories.length > 0 ? repositories[0] : null)
+    // Only initialize once per modal session
+    // (prevents background refetches of repositories from resetting user's selection)
+    if (hasInitializedRef.current) return
 
-      // Find the project for this repository (for config fallback)
-      const repoProject = selectedRepo && projects
-        ? projects.find((p) => p.repositories.some((r) => r.id === selectedRepo.id))
-        : null
+    // Wait for repositories data before initializing
+    if (!repositories) return
 
-      // Set agent priority: repo -> project -> global -> 'claude'
-      if (selectedRepo?.defaultAgent) {
-        setAgent(selectedRepo.defaultAgent)
-      } else if (repoProject?.defaultAgent) {
-        setAgent(repoProject.defaultAgent)
-      } else if (defaultAgent) {
-        setAgent(defaultAgent)
-      }
+    hasInitializedRef.current = true
 
-      // Set OpenCode model: repo -> project -> global -> null
-      if (selectedRepo?.opencodeModel) {
-        setOpencodeModel(selectedRepo.opencodeModel)
-      } else if (repoProject?.opencodeModel) {
-        setOpencodeModel(repoProject.opencodeModel)
-      } else if (globalOpencodeModel) {
-        setOpencodeModel(globalOpencodeModel)
-      } else {
-        setOpencodeModel(null)
-      }
+    // Set task defaults from settings
+    if (defaultTaskType) {
+      setTaskType(defaultTaskType)
+    }
+    if (defaultStartImmediately !== undefined) {
+      setStartImmediately(defaultStartImmediately)
+    }
 
-      if (defaultRepository) {
-        // Use provided default repository
-        setSelectedRepoId(defaultRepository.id)
-        setRepoPath(defaultRepository.path)
-        setRepoSearchQuery(defaultRepository.displayName)
-        setRepoTab('saved')
-      } else if (repositories && repositories.length > 0) {
-        // Auto-select first repository (most recently used due to sorting)
-        const firstRepo = repositories[0]
-        setSelectedRepoId(firstRepo.id)
-        setRepoPath(firstRepo.path)
-        setRepoSearchQuery(firstRepo.displayName)
-        setRepoTab('saved')
-      }
+    // Determine which repository will be selected
+    const selectedRepo = defaultRepository ?? (repositories.length > 0 ? repositories[0] : null)
+
+    // Find the project for this repository (for config fallback)
+    const repoProject = selectedRepo && projects
+      ? projects.find((p) => p.repositories.some((r) => r.id === selectedRepo.id))
+      : null
+
+    // Set agent priority: repo -> project -> global -> 'claude'
+    if (selectedRepo?.defaultAgent) {
+      setAgent(selectedRepo.defaultAgent)
+    } else if (repoProject?.defaultAgent) {
+      setAgent(repoProject.defaultAgent)
+    } else if (defaultAgent) {
+      setAgent(defaultAgent)
+    }
+
+    // Set OpenCode model: repo -> project -> global -> null
+    if (selectedRepo?.opencodeModel) {
+      setOpencodeModel(selectedRepo.opencodeModel)
+    } else if (repoProject?.opencodeModel) {
+      setOpencodeModel(repoProject.opencodeModel)
+    } else if (globalOpencodeModel) {
+      setOpencodeModel(globalOpencodeModel)
+    } else {
+      setOpencodeModel(null)
+    }
+
+    if (defaultRepository) {
+      // Use provided default repository
+      setSelectedRepoId(defaultRepository.id)
+      setRepoPath(defaultRepository.path)
+      setRepoSearchQuery(defaultRepository.displayName)
+      setRepoTab('saved')
+    } else if (repositories.length > 0) {
+      // Auto-select first repository (most recently used due to sorting)
+      const firstRepo = repositories[0]
+      setSelectedRepoId(firstRepo.id)
+      setRepoPath(firstRepo.path)
+      setRepoSearchQuery(firstRepo.displayName)
+      setRepoTab('saved')
     }
   }, [open, defaultRepository, repositories, projects, defaultAgent, globalOpencodeModel, defaultTaskType, defaultStartImmediately])
 
