@@ -16,6 +16,7 @@ import { statusCommand } from './commands/status'
 import { doctorCommand } from './commands/doctor'
 import { devCommand } from './commands/dev'
 import { mcpCommand } from './commands/mcp'
+import { apiCommand } from './commands/api'
 import { migrateFromViboraCommand } from './commands/migrate-from-vibora'
 import { updateCommand } from './commands/update'
 
@@ -73,6 +74,7 @@ const main = defineCommand({
     doctor: doctorCommand,
     dev: devCommand,
     mcp: mcpCommand,
+    api: apiCommand,
     update: updateCommand,
 
     // Migration

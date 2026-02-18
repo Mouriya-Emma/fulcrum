@@ -13,7 +13,7 @@ import { log } from '../lib/logger'
 import type { PageContext, AttachmentData } from '../../shared/types'
 import type { ChannelHistoryMessage } from './channels/message-storage'
 import { saveDocument, readDocument, deleteDocument, renameDocument, generateDocumentFilename } from './document-service'
-import { getFullKnowledge, getCondensedKnowledge } from './assistant-knowledge'
+import { getFullKnowledge, getCondensedKnowledge, getObserverKnowledge } from './assistant-knowledge'
 import { readMemoryFile } from './memory-file-service'
 
 type ModelId = 'opus' | 'sonnet' | 'haiku'
@@ -282,12 +282,15 @@ export function getMessages(sessionId: string): ChatMessage[] {
 /**
  * Build the baseline system prompt that's always present.
  * @param condensed - Use condensed knowledge (for channels) vs full knowledge (for UI)
+ * @param securityTier - 'observer' uses minimal knowledge (no tool capabilities)
  */
 /** @internal Exported for testing */
-export function buildBaselinePrompt(condensed = false): string {
+export function buildBaselinePrompt(condensed = false, securityTier?: 'observer' | 'trusted'): string {
   const settings = getSettings()
   const instanceContext = getInstanceContext(settings.assistant.documentsDir)
-  const knowledge = condensed ? getCondensedKnowledge() : getFullKnowledge()
+  const knowledge = securityTier === 'observer'
+    ? getObserverKnowledge()
+    : condensed ? getCondensedKnowledge() : getFullKnowledge()
 
   let baseline = `${instanceContext}
 
@@ -303,9 +306,9 @@ ${knowledge}`
 This is your persistent memory (MEMORY.md), injected into every conversation.
 
 **What belongs here:** user preferences, project conventions, recurring patterns, key relationships, important decisions.
-**What does NOT belong:** sweep/ritual summaries, specific dates or attendee counts for upcoming events, invoices, pending responses, transient task status, anything that will be stale in a week. Use \`memory_store\` with appropriate tags for time-sensitive items instead.
+**What does NOT belong:** sweep/ritual summaries, specific dates or attendee counts for upcoming events, invoices, pending responses, transient task status, anything that will be stale in a week. Use \`fulcrum api memory store\` with appropriate tags for time-sensitive items instead.
 
-Update with \`memory_file_update\` only for broadly useful, long-term knowledge. The hourly sweep automatically curates this file.
+Update with \`fulcrum api memory-file update\` only for broadly useful, long-term knowledge. The hourly sweep automatically curates this file.
 
 ${memoryFileContent}`
   }
@@ -428,10 +431,11 @@ export interface StreamMessageOptions {
   /** UI mode: 'full' includes canvas/editor/chart instructions, 'compact' uses inline markdown only */
   uiMode?: 'full' | 'compact'
   /**
-   * Security tier controls tool access.
-   * - 'observer': No built-in tools, MCP restricted to memory tools only.
+   * Security tier controls tool access and knowledge scope.
+   * - 'observer': No built-in tools, restricted tool set (memory, tasks, notifications).
+   *   Baseline prompt uses minimal knowledge (no tool capabilities section).
    *   Used for untrusted input (observe-only channel messages).
-   * - 'trusted' (default): Full tool access (claude_code preset + all MCP tools).
+   * - 'trusted' (default): Full tool access (claude_code preset + full tool set).
    */
   securityTier?: 'observer' | 'trusted'
   /**
@@ -673,7 +677,7 @@ export async function* streamMessage(
     let systemPrompt: string
     if (options.systemPromptAdditions) {
       // Channel/ritual mode: baseline (condensed) + additions
-      const baseline = buildBaselinePrompt(options.condensedKnowledge ?? true)
+      const baseline = buildBaselinePrompt(options.condensedKnowledge ?? true, options.securityTier)
       systemPrompt = `${baseline}
 
 ${options.systemPromptAdditions}`

@@ -1,63 +1,78 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { search } from '../services/search-service'
 
-const app = new Hono()
+const app = new OpenAPIHono()
 
-// GET /api/search?q=<query>&entities=tasks,projects&limit=10&...
-app.get('/', async (c) => {
-  const query = c.req.query('q')
-  if (!query?.trim()) {
-    return c.json({ error: 'q parameter is required' }, 400)
-  }
+const searchRoute = createRoute({
+  method: 'get',
+  path: '/',
+  operationId: 'search-query',
+  tags: ['search'],
+  summary: 'Search across tasks, projects, messages, events, memories, conversations',
+  request: {
+    query: z.object({
+      q: z.string().min(1),
+      entities: z.string().optional(),
+      limit: z.string().optional(),
+      taskStatus: z.string().optional(),
+      projectStatus: z.string().optional(),
+      messageChannel: z.string().optional(),
+      messageDirection: z.string().optional(),
+      eventFrom: z.string().optional(),
+      eventTo: z.string().optional(),
+      memoryTags: z.string().optional(),
+      conversationRole: z.string().optional(),
+      conversationProvider: z.string().optional(),
+      conversationProjectId: z.string().optional(),
+      gmailFrom: z.string().optional(),
+      gmailTo: z.string().optional(),
+      gmailAfter: z.string().optional(),
+      gmailBefore: z.string().optional(),
+    }),
+  },
+  responses: {
+    200: { description: 'Search results' },
+    400: { description: 'Missing query parameter' },
+    500: { description: 'Search failed' },
+  },
+})
 
-  const entitiesParam = c.req.query('entities')
+app.openapi(searchRoute, async (c) => {
+  const query = c.req.valid('query')
+
+  const entitiesParam = query.entities
   const entities = entitiesParam
     ? (entitiesParam.split(',').map((e) => e.trim()) as ('tasks' | 'projects' | 'messages' | 'events' | 'memories' | 'conversations' | 'gmail')[])
     : undefined
 
-  const limitParam = c.req.query('limit')
+  const limitParam = query.limit
   const limit = limitParam ? parseInt(limitParam, 10) : undefined
 
-  const taskStatusParam = c.req.query('taskStatus')
+  const taskStatusParam = query.taskStatus
   const taskStatus = taskStatusParam ? taskStatusParam.split(',').map((s) => s.trim()) : undefined
 
-  const projectStatus = c.req.query('projectStatus') as 'active' | 'archived' | undefined
-  const messageChannel = c.req.query('messageChannel') || undefined
-  const messageDirection = c.req.query('messageDirection') as 'incoming' | 'outgoing' | undefined
-  const eventFrom = c.req.query('eventFrom') || undefined
-  const eventTo = c.req.query('eventTo') || undefined
-
-  const memoryTagsParam = c.req.query('memoryTags')
+  const memoryTagsParam = query.memoryTags
   const memoryTags = memoryTagsParam ? memoryTagsParam.split(',').map((t) => t.trim()) : undefined
-
-  const conversationRole = c.req.query('conversationRole') || undefined
-  const conversationProvider = c.req.query('conversationProvider') || undefined
-  const conversationProjectId = c.req.query('conversationProjectId') || undefined
-
-  const gmailFrom = c.req.query('gmailFrom') || undefined
-  const gmailTo = c.req.query('gmailTo') || undefined
-  const gmailAfter = c.req.query('gmailAfter') || undefined
-  const gmailBefore = c.req.query('gmailBefore') || undefined
 
   try {
     const results = await search({
-      query: query.trim(),
+      query: query.q.trim(),
       entities,
       limit,
       taskStatus,
-      projectStatus,
-      messageChannel,
-      messageDirection,
-      eventFrom,
-      eventTo,
+      projectStatus: query.projectStatus as 'active' | 'archived' | undefined,
+      messageChannel: query.messageChannel,
+      messageDirection: query.messageDirection as 'incoming' | 'outgoing' | undefined,
+      eventFrom: query.eventFrom,
+      eventTo: query.eventTo,
       memoryTags,
-      conversationRole,
-      conversationProvider,
-      conversationProjectId,
-      gmailFrom,
-      gmailTo,
-      gmailAfter,
-      gmailBefore,
+      conversationRole: query.conversationRole,
+      conversationProvider: query.conversationProvider,
+      conversationProjectId: query.conversationProjectId,
+      gmailFrom: query.gmailFrom,
+      gmailTo: query.gmailTo,
+      gmailAfter: query.gmailAfter,
+      gmailBefore: query.gmailBefore,
     })
 
     return c.json(results)

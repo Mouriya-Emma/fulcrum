@@ -98,6 +98,10 @@ fulcrum down           # Stop the daemon
 fulcrum status         # Check if server is running
 fulcrum doctor         # Check all dependencies and versions
 fulcrum mcp            # Run as MCP server (stdio transport)
+fulcrum api tools      # Compact tool reference (~2K tokens for context injection)
+fulcrum api tasks list --search bug  # Resource/action CLI syntax
+fulcrum api GET /api/tasks  # Raw HTTP mode (backward compat)
+fulcrum api routes     # List API routes by category
 fulcrum tasks          # List/manage tasks
 fulcrum notifications  # Manage notification settings
 fulcrum notify <title> <message>  # Send notification

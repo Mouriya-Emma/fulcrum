@@ -20,19 +20,19 @@ Fulcrum doesn't replace your tools—it gives you leverage over them. You config
 - **Project Management** — Tasks with dependencies, due dates, time estimates, priority levels, recurrence, labels, and attachments. Visual kanban boards.
 - **Production Deployment** — Docker Compose with automatic Traefik routing and Cloudflare DNS/tunnels.
 - **Agent Memory** — Persistent knowledge store with full-text search. Agents remember across sessions.
-- **MCP-First Architecture** — 100+ tools exposed via Model Context Protocol. Agents discover what they need.
+- **Skills-First Architecture** — Agents discover capabilities through skills and the `fulcrum api` CLI. MCP available for clients that support it.
 
-## MCP-First Architecture
+## Skills-First Architecture
 
-Everything in Fulcrum is exposed through MCP (Model Context Protocol):
+Fulcrum's capabilities are exposed through skills and a unified CLI:
 
-- **100+ MCP tools** for tasks, projects, apps, repos, notifications, and remote execution
-- **Smart tool discovery** — `search_tools` lets agents find relevant tools without loading everything into context
+- **`fulcrum api` CLI** — Resource/action CLI to all 100+ API endpoints. `fulcrum api tools` prints a compact reference (~2K tokens) for context injection
+- **Skills for Claude Code** — The Fulcrum skill teaches agents how to use `current-task`, notifications, config, and the API
+- **MCP for other clients** — Claude Desktop, OpenCode, and other MCP-compatible agents can use the full MCP server
+- **No context bloat** — Skills load on demand; `fulcrum api tools` replaces ~45K tokens of MCP definitions with ~2K tokens
 - **Integrated assistant** — Built-in AI assistant with full context of your tasks, projects, and apps
-- **External agent support** — Connect Claude Desktop, Clawdbot, or any MCP-compatible agent
-- **No context bloat** — Agents discover and use only the tools they need
 
-Whether you use Fulcrum's built-in assistant or an external agent like Claude Desktop, AI has seamless access to your entire workflow.
+Whether you use Claude Code with skills, Claude Desktop with MCP, or any other agent, Fulcrum provides seamless access to your entire workflow.
 
 ## Proactive Digital Concierge
 
@@ -250,9 +250,9 @@ fulcrum opencode install    # Install plugin + MCP server
 fulcrum opencode uninstall  # Remove both
 ```
 
-## MCP Tools
+## Skills & API
 
-Both plugins include an MCP server with 100+ tools:
+Fulcrum exposes 100+ API endpoints that agents access through skills and the `fulcrum api` CLI:
 
 | Category | Description |
 |----------|-------------|
@@ -273,9 +273,9 @@ Both plugins include an MCP server with 100+ tools:
 | **Jobs** | List, create, update, delete, enable/disable, and run systemd timers and launchd jobs |
 | **Assistant** | Send messages via channels (WhatsApp, Discord, Telegram, Slack, Gmail); query sweep history |
 
-Use `search_tools` to discover available tools by keyword or category.
+Use `fulcrum api tools` for a compact reference of all resources and actions, or `fulcrum api routes --search <keyword>` for detailed route discovery.
 
-For Claude Desktop, add to your `claude_desktop_config.json`:
+For Claude Desktop (MCP), add to your `claude_desktop_config.json`:
 
 ```json
 {
@@ -353,6 +353,10 @@ fulcrum down                      # Stop server
 fulcrum status                    # Check server status
 fulcrum doctor                    # Check all dependencies
 fulcrum mcp                       # Start MCP server (stdio)
+fulcrum api tools                 # Compact tool reference (~2K tokens)
+fulcrum api tasks list --search bug  # Resource/action syntax
+fulcrum api GET /api/tasks        # Raw HTTP mode (backward compat)
+fulcrum api routes                # List API routes by category
 ```
 
 ### Current Task (auto-detected from worktree)
