@@ -306,9 +306,9 @@ ${knowledge}`
 This is your persistent memory (MEMORY.md), injected into every conversation.
 
 **What belongs here:** user preferences, project conventions, recurring patterns, key relationships, important decisions.
-**What does NOT belong:** sweep/ritual summaries, specific dates or attendee counts for upcoming events, invoices, pending responses, transient task status, anything that will be stale in a week. Use \`fulcrum api memory store\` with appropriate tags for time-sensitive items instead.
+**What does NOT belong:** sweep/ritual summaries, specific dates or attendee counts for upcoming events, invoices, pending responses, transient task status, anything that will be stale in a week. Use \`memory_store\` with appropriate tags for time-sensitive items instead.
 
-Update with \`fulcrum api memory-file update\` only for broadly useful, long-term knowledge. The hourly sweep automatically curates this file.
+Update with \`memory_file_update\` only for broadly useful, long-term knowledge. The hourly sweep automatically curates this file.
 
 ${memoryFileContent}`
   }

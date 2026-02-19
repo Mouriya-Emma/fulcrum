@@ -75,6 +75,48 @@ export const registerAppTools: ToolRegistrar = (server, client) => {
     }
   )
 
+  // update_app
+  server.tool(
+    'update_app',
+    'Update app settings including service exposure, environment variables, and deployment options',
+    {
+      id: z.string().describe('App ID'),
+      name: z.optional(z.string()).describe('App name'),
+      branch: z.optional(z.string()).describe('Git branch'),
+      autoDeployEnabled: z.optional(z.boolean()).describe('Enable auto-deploy on git push'),
+      autoPortAllocation: z.optional(z.boolean()).describe('Auto-allocate host ports on conflicts'),
+      environmentVariables: z
+        .optional(z.record(z.string(), z.string()))
+        .describe('Environment variables (key-value pairs)'),
+      noCacheBuild: z.optional(z.boolean()).describe('Disable Docker build cache'),
+      notificationsEnabled: z.optional(z.boolean()).describe('Send notifications on deploy success/failure'),
+      services: z
+        .optional(
+          z.array(
+            z.object({
+              id: z.optional(z.string()).describe('Service ID (for updating existing)'),
+              serviceName: z.string().describe('Service name (must match compose file)'),
+              containerPort: z.optional(z.number()).describe('Port the container listens on'),
+              exposed: z.boolean().describe('Make publicly accessible'),
+              domain: z.optional(z.string()).describe('Domain to route traffic to this service'),
+              exposureMethod: z
+                .optional(z.enum(['dns', 'tunnel']))
+                .describe('Exposure method: dns (Traefik + Cloudflare A record) or tunnel (Cloudflare Tunnel)'),
+            })
+          )
+        )
+        .describe('Service exposure configuration'),
+    },
+    async ({ id, ...rest }) => {
+      try {
+        const app = await client.updateApp(id, rest)
+        return formatSuccess(app)
+      } catch (err) {
+        return handleToolError(err)
+      }
+    }
+  )
+
   // deploy_app
   server.tool(
     'deploy_app',

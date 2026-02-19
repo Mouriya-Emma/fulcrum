@@ -194,6 +194,13 @@ export const toolRegistry: ToolMetadata[] = [
     defer_loading: true,
   },
   {
+    name: 'update_app',
+    description: 'Update app settings including service exposure, environment variables, and deployment options',
+    category: 'apps',
+    keywords: ['app', 'update', 'configure', 'service', 'exposure', 'domain', 'tunnel', 'dns', 'environment'],
+    defer_loading: true,
+  },
+  {
     name: 'deploy_app',
     description: 'Trigger a deployment for an app',
     category: 'apps',

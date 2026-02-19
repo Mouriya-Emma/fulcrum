@@ -53,6 +53,38 @@ function getPackageRoot(): string {
   return dirname(dirname(dirname(currentFile)))
 }
 
+interface DependencySpec {
+  name: string
+  isInstalled: () => boolean
+  install: () => boolean
+  reason: string
+  description: string
+}
+
+async function ensureDependency(spec: DependencySpec, autoYes: boolean): Promise<void> {
+  if (spec.isInstalled()) return
+
+  const dep = getDependency(spec.name)!
+  const method = getInstallMethod(dep)
+  console.error(spec.reason)
+  console.error(`  ${spec.description}`)
+
+  const shouldInstall = autoYes || (await confirm(`Would you like to install ${spec.name} via ${method}?`))
+  if (shouldInstall) {
+    const success = spec.install()
+    if (!success) {
+      throw new CliError('INSTALL_FAILED', `Failed to install ${spec.name}`, ExitCodes.ERROR)
+    }
+    console.error(`${spec.name} installed successfully!`)
+  } else {
+    throw new CliError(
+      'MISSING_DEPENDENCY',
+      `${spec.name} is required. Install manually: ${getInstallCommand(dep)}`,
+      ExitCodes.ERROR
+    )
+  }
+}
+
 async function handleUpCommand(flags: Record<string, string>) {
   const autoYes = flags.yes === 'true' || flags.y === 'true'
   const shouldUpdate = flags.update === 'true'
@@ -85,119 +117,26 @@ async function handleUpCommand(flags: Record<string, string>) {
     console.error('')
   }
 
-  // Check if bun is installed (needed to run the server)
-  if (!isBunInstalled()) {
-    const bunDep = getDependency('bun')!
-    const method = getInstallMethod(bunDep)
-    console.error('Bun is required to run Fulcrum but is not installed.')
-    console.error('  Bun is the JavaScript runtime that powers Fulcrum.')
-
-    const shouldInstall = autoYes || (await confirm(`Would you like to install bun via ${method}?`))
-    if (shouldInstall) {
-      const success = installBun()
-      if (!success) {
-        throw new CliError('INSTALL_FAILED', 'Failed to install bun', ExitCodes.ERROR)
-      }
-      console.error('Bun installed successfully!')
-    } else {
-      throw new CliError(
-        'MISSING_DEPENDENCY',
-        `Bun is required. Install manually: ${getInstallCommand(bunDep)}`,
-        ExitCodes.ERROR
-      )
-    }
-  }
-
-  // Check if dtach is installed (required for terminal persistence)
-  if (!isDtachInstalled()) {
-    const dtachDep = getDependency('dtach')!
-    const method = getInstallMethod(dtachDep)
-    console.error('dtach is required for terminal persistence but is not installed.')
-    console.error('  dtach enables persistent terminal sessions that survive disconnects.')
-
-    const shouldInstall = autoYes || (await confirm(`Would you like to install dtach via ${method}?`))
-    if (shouldInstall) {
-      const success = installDtach()
-      if (!success) {
-        throw new CliError('INSTALL_FAILED', 'Failed to install dtach', ExitCodes.ERROR)
-      }
-      console.error('dtach installed successfully!')
-    } else {
-      throw new CliError(
-        'MISSING_DEPENDENCY',
-        `dtach is required. Install manually: ${getInstallCommand(dtachDep)}`,
-        ExitCodes.ERROR
-      )
-    }
-  }
-
-  // Check if uv is installed (required for Python package management)
-  if (!isUvInstalled()) {
-    const uvDep = getDependency('uv')!
-    const method = getInstallMethod(uvDep)
-    console.error('uv is required but is not installed.')
-    console.error('  uv is a fast Python package manager used by Claude Code.')
-
-    const shouldInstall = autoYes || (await confirm(`Would you like to install uv via ${method}?`))
-    if (shouldInstall) {
-      const success = installUv()
-      if (!success) {
-        throw new CliError('INSTALL_FAILED', 'Failed to install uv', ExitCodes.ERROR)
-      }
-      console.error('uv installed successfully!')
-    } else {
-      throw new CliError(
-        'MISSING_DEPENDENCY',
-        `uv is required. Install manually: ${getInstallCommand(uvDep)}`,
-        ExitCodes.ERROR
-      )
-    }
-  }
-
-  // Check if fnox is installed (required for secrets management)
-  if (!isFnoxInstalled()) {
-    const fnoxDep = getDependency('fnox')!
-    const method = getInstallMethod(fnoxDep)
-    console.error('fnox is required for encrypted secrets management but is not installed.')
-    console.error('  fnox encrypts sensitive settings like API keys and tokens.')
-
-    const shouldInstall = autoYes || (await confirm(`Would you like to install fnox via ${method}?`))
-    if (shouldInstall) {
-      const success = installFnox()
-      if (!success) {
-        throw new CliError('INSTALL_FAILED', 'Failed to install fnox', ExitCodes.ERROR)
-      }
-      console.error('fnox installed successfully!')
-    } else {
-      throw new CliError(
-        'MISSING_DEPENDENCY',
-        `fnox is required. Install manually: ${getInstallCommand(fnoxDep)}`,
-        ExitCodes.ERROR
-      )
-    }
-  }
-
-  // Check if age is installed (required for encryption key generation)
-  if (!isAgeInstalled()) {
-    const ageDep = getDependency('age')!
-    const method = getInstallMethod(ageDep)
-    console.error('age is required for encryption but is not installed.')
-    console.error('  age generates encryption keys used by fnox to encrypt secrets.')
-
-    const shouldInstall = autoYes || (await confirm(`Would you like to install age via ${method}?`))
-    if (shouldInstall) {
-      const success = installAge()
-      if (!success) {
-        throw new CliError('INSTALL_FAILED', 'Failed to install age', ExitCodes.ERROR)
-      }
-      console.error('age installed successfully!')
-    } else {
-      throw new CliError(
-        'MISSING_DEPENDENCY',
-        `age is required. Install manually: ${getInstallCommand(ageDep)}`,
-        ExitCodes.ERROR
-      )
-    }
+  // Ensure all required dependencies are installed
+  const requiredDeps: DependencySpec[] = [
+    { name: 'bun', isInstalled: isBunInstalled, install: installBun,
+      reason: 'Bun is required to run Fulcrum but is not installed.',
+      description: 'Bun is the JavaScript runtime that powers Fulcrum.' },
+    { name: 'dtach', isInstalled: isDtachInstalled, install: installDtach,
+      reason: 'dtach is required for terminal persistence but is not installed.',
+      description: 'dtach enables persistent terminal sessions that survive disconnects.' },
+    { name: 'uv', isInstalled: isUvInstalled, install: installUv,
+      reason: 'uv is required but is not installed.',
+      description: 'uv is a fast Python package manager used by Claude Code.' },
+    { name: 'fnox', isInstalled: isFnoxInstalled, install: installFnox,
+      reason: 'fnox is required for encrypted secrets management but is not installed.',
+      description: 'fnox encrypts sensitive settings like API keys and tokens.' },
+    { name: 'age', isInstalled: isAgeInstalled, install: installAge,
+      reason: 'age is required for encryption but is not installed.',
+      description: 'age generates encryption keys used by fnox to encrypt secrets.' },
+  ]
+  for (const dep of requiredDeps) {
+    await ensureDependency(dep, autoYes)
   }
 
   // Auto-install/update Claude Code plugin if Claude is installed

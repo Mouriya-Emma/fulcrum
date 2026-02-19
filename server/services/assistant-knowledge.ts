@@ -100,50 +100,133 @@ export function getDataModel(): string {
 }
 
 /**
- * Tool capabilities via the fulcrum api CLI
+ * Built-in MCP tool capabilities
  */
-export function getToolCapabilities(): string {
-  return `## Available Tools
+export function getMcpToolCapabilities(): string {
+  return `## Available MCP Tools
 
-Use the \`fulcrum api\` CLI to interact with Fulcrum:
+You have access to Fulcrum's MCP tools. Use them proactively to help users.
 
-\`\`\`
-fulcrum api <resource> <action> [<id>] [--key value]
-\`\`\`
+**Task Management:**
+- \`list_tasks\` - List tasks with filtering (status, tags, due dates, search)
+- \`get_task\` - Get full task details
+- \`create_task\` - Create tasks (type: worktree/scratch/manual, with optional time estimate, recurrence rule, recurrence end date)
+- \`update_task\` - Update task metadata (including time estimate, recurrence rule, and end date)
+- \`move_task\` - Change task status (TO_DO, IN_PROGRESS, IN_REVIEW, DONE, CANCELED). Moving a repeating task to DONE auto-creates the next occurrence.
+- \`delete_task\` - Delete a task
+- \`add_task_tag\`, \`remove_task_tag\` - Manage task tags
+- \`set_task_due_date\` - Set or clear due dates
+- \`add_task_dependency\`, \`remove_task_dependency\` - Manage dependencies
+- \`upload_task_attachment\`, \`list_task_attachments\` - File attachments
+- \`add_task_link\`, \`list_task_links\` - URL links
 
-**Discover all tools:** Run \`fulcrum api tools\` for a compact reference of all available actions with parameters.
+**Project Management:**
+- \`list_projects\`, \`get_project\`, \`create_project\`, \`update_project\`, \`delete_project\`
+- \`add_project_tag\`, \`remove_project_tag\`
+- \`upload_project_attachment\`, \`list_project_attachments\`
+- \`add_project_link\`, \`list_project_links\`
 
-**Key resources:**
-- **tasks** — CRUD, status transitions, tags, links, dependencies, attachments, due dates, time estimates, recurrence, priority
-- **projects** — CRUD, tags, links, attachments
-- **repositories** — list, add, update; link/unlink to projects
-- **apps** — create, deploy, stop; check status/logs; deployment history
-- **jobs** — scheduled job management (create, enable/disable, run now, logs)
-- **memory** — store, search, list, update, delete persistent knowledge with tags
-- **memory-file** — read/update master memory file (MEMORY.md)
-- **search** — unified FTS5 search across tasks, projects, messages, events, memories, conversations, gmail (gmail is opt-in via \`--entities gmail\`)
-- **notifications** — send notifications across configured channels
-- **settings** — list, get, update, reset configuration; notification channel config
-- **backup** — create, list, restore, delete backups
-- **assistant** — send messages to channels (\`--channel whatsapp --body "..."\`), list channels, query sweep history
-- **filesystem** — read, write, edit files; list directories
-- **exec** — execute shell commands with persistent sessions
-- **caldav** — calendar accounts, sync, copy rules
-- **google** — Google accounts, Gmail drafts
-- **tags** — list and delete tags across entities
-- **git** — check if a path is a git repository
+**Repository Management:**
+- \`list_repositories\`, \`get_repository\`, \`add_repository\`, \`update_repository\`
+- \`link_repository_to_project\`, \`unlink_repository_from_project\`
 
-**Common patterns:**
-\`\`\`bash
-fulcrum api tasks list --search "bug" --statuses "TO_DO,IN_PROGRESS"
-fulcrum api tasks create --title "Fix login" --type worktree --tags "bug,urgent"
-fulcrum api tasks move <id> --status DONE
-fulcrum api memory store --content "User prefers dark mode" --tags "preferences"
-fulcrum api search query --q "deployment" --entities "tasks,memories"
-fulcrum api assistant message --channel whatsapp --body "Task completed"
-\`\`\`
+**App Deployment:**
+- \`list_apps\`, \`get_app\`, \`create_app\`, \`update_app\`, \`delete_app\`
+- \`deploy_app\`, \`stop_app\`
+- \`get_app_logs\`, \`get_app_status\`
+- \`list_deployments\`
 
-Run \`fulcrum api tools\` to see the full reference.`
+**Job Scheduling:**
+- \`list_jobs\` - List scheduled jobs (systemd timers / launchd agents)
+- \`get_job\` - Get job details (schedule, command, execution stats, unit files)
+- \`get_job_logs\` - Get job execution logs
+- \`create_job\` - Create a scheduled job (Linux systemd only)
+- \`update_job\` - Update a scheduled job
+- \`delete_job\` - Delete a scheduled job
+- \`enable_job\` - Enable a job's timer
+- \`disable_job\` - Disable a job's timer
+- \`run_job_now\` - Trigger immediate execution
+
+**File Operations:**
+- \`read_file\`, \`write_file\`, \`edit_file\`
+- \`list_directory\`, \`get_file_tree\`
+- \`file_stat\`
+
+**Command Execution:**
+- \`execute_command\` - Run CLI commands with persistent sessions
+- \`list_exec_sessions\`, \`destroy_exec_session\` - Manage sessions
+
+**Notifications:**
+- \`send_notification\` - Send notifications (Slack, Discord, Pushover, WhatsApp, Telegram, Gmail, desktop, sound)
+
+**Settings Management:**
+- \`list_settings\` - View all settings with current values
+- \`get_setting\` - Get a specific setting value
+- \`update_setting\` - Change a setting value
+- \`reset_setting\` - Reset a setting to default
+- \`get_notification_settings\` - View notification channel configuration
+- \`update_notification_settings\` - Configure notification channels
+
+**Backup & Restore:**
+- \`list_backups\` - List all available backups
+- \`create_backup\` - Create a backup of database and settings
+- \`get_backup\` - Get details of a specific backup
+- \`restore_backup\` - Restore from a backup (auto-creates pre-restore backup)
+- \`delete_backup\` - Delete a backup to free space
+
+**Email Tools:**
+- \`list_emails\` - List stored emails from local database (queries unified channel_messages table)
+- \`get_email\` - Get a specific email by ID
+- \`search_emails\` - Search emails via IMAP
+- \`fetch_emails\` - Fetch specific emails by IMAP UID
+
+**Assistant Tools (Proactive Agent):**
+- \`message\` - Send a message to a channel (whatsapp, discord, telegram, slack, gmail). The \`to\` param is optional — omit it and the recipient auto-resolves to the channel's primary user. Messages are restricted to the user's own accounts only.
+- \`get_last_sweep\` - Check when last sweep ran
+- Use \`memory_store\` with tag \`actionable\` to track things that need attention
+- Use \`search\` with \`memoryTags: ["actionable"]\` to review tracked items
+
+**Unified Search:**
+- \`search\` - Cross-entity FTS5 full-text search across tasks, projects, messages, events, memories, conversations, and gmail
+  - Filter by entity type: \`entities: ["tasks", "projects", "messages", "events", "memories", "conversations", "gmail"]\`
+  - **Gmail is opt-in** — not included in default searches to avoid latency/rate-limit impact. Must be explicitly requested via \`entities: ["gmail"]\`
+  - Gmail-specific filters: \`gmailFrom\`, \`gmailTo\`, \`gmailAfter\`, \`gmailBefore\`
+  - Entity-specific filters: \`taskStatus\`, \`projectStatus\`, \`messageChannel\`, \`messageDirection\`, \`eventFrom\`, \`eventTo\`, \`memoryTags\`, \`conversationRole\`, \`conversationProvider\`, \`conversationProjectId\`
+  - Conversations search indexes AI assistant chat messages (excludes system prompts) with session context
+  - Results sorted by relevance score with BM25 ranking
+
+**Memory File (Persistent Knowledge):**
+- \`memory_file_read\` - Read the master memory file (MEMORY.md)
+- \`memory_file_update\` - Update the file (whole or by section heading)
+
+**Memory Management:**
+- \`memory_store\` - Store individual knowledge snippets with optional tags
+- \`memory_search\` - Full-text search across memories (FTS5: AND, OR, NOT, "phrases", prefix*)
+- \`memory_list\` - List memories with optional tag filter and pagination
+- \`memory_delete\` - Delete a memory by ID (for cleanup of resolved/stale items)
+
+**Google Account & Gmail Tools:**
+- \`list_google_accounts\` - List all Google accounts with calendar/Gmail status
+- \`list_gmail_drafts\` - List Gmail drafts for a Google account
+- \`create_gmail_draft\` - Create a new Gmail draft (to, cc, bcc, subject, body, htmlBody)
+- \`update_gmail_draft\` - Update an existing Gmail draft
+- \`delete_gmail_draft\` - Delete a Gmail draft
+
+**Calendar Management:**
+- \`list_caldav_accounts\` - List all CalDAV accounts
+- \`create_caldav_account\` - Add a new CalDAV account (basic or Google OAuth)
+- \`delete_caldav_account\` - Remove an account and its calendars
+- \`sync_caldav_account\` - Trigger sync for a specific account
+- \`list_caldav_copy_rules\` - List event copy rules
+- \`create_caldav_copy_rule\` - Create a rule to copy events between calendars
+- \`delete_caldav_copy_rule\` - Remove a copy rule
+- \`execute_caldav_copy_rule\` - Manually run a copy rule
+
+**Utilities:**
+- \`list_tags\` - See all tags in use
+- \`delete_tag\` - Delete a tag and all its associations
+- \`get_task_dependency_graph\` - Visualize task dependencies
+- \`is_git_repo\` - Check if a path is a git repository`
 }
 
 /**
@@ -152,10 +235,10 @@ Run \`fulcrum api tools\` to see the full reference.`
 export function getOrchestrationCapabilities(): string {
   return `## Orchestration Capabilities
 
-You can run any CLI command via \`fulcrum api exec run --command "..."\` or directly in bash:
+Beyond the MCP tools, you can use \`execute_command\` to run any CLI command:
 
 **Scheduling Jobs:**
-Fulcrum has a built-in Jobs feature (see **Job Scheduling Guide**). Use \`fulcrum api jobs\` commands or direct users to the Jobs UI (/jobs, Cmd+6).
+Fulcrum has a built-in Jobs feature (see **Job Scheduling Guide**). Use the job scheduling MCP tools (\`list_jobs\`, \`create_job\`, \`get_job_logs\`, etc.) or direct users to the Jobs UI (/jobs, Cmd+6).
 
 **Package Management:**
 \`\`\`bash
@@ -222,7 +305,7 @@ export function getProblemSolvingPatterns(): string {
 ### Automation Tasks
 
 **"Schedule a daily job" (e.g., email responder, report generator):**
-See the **Job Scheduling Guide** section for full details. In short: help write the script, then use \`fulcrum api jobs create\` to schedule it (or direct the user to the Jobs UI at /jobs).
+See the **Job Scheduling Guide** section for full details. In short: help write the script, then use the \`create_job\` MCP tool to schedule it (or direct the user to the Jobs UI at /jobs).
 
 **"Deploy my app":**
 See the **App Deployment Guide** section for the full step-by-step workflow (create app → configure exposure → deploy → verify).
@@ -299,8 +382,9 @@ export function getAppDeploymentGuide(): string {
 
 **Step 1: Create the app**
 
-\`\`\`bash
-fulcrum api apps create --name "my-app" --repositoryId <id> --branch main
+Use the \`create_app\` MCP tool:
+\`\`\`
+create_app name="my-app" repositoryId=<id> branch="main"
 \`\`\`
 - \`composeFile\` is optional — Fulcrum auto-detects compose files (checks \`compose.yml\`, \`compose.yaml\`, \`docker-compose.yml\`, \`docker-compose.yaml\` in order)
 - \`autoDeployEnabled\` (optional) — enable auto-deploy on git push
@@ -308,8 +392,9 @@ fulcrum api apps create --name "my-app" --repositoryId <id> --branch main
 
 **Step 2: Configure service exposure**
 
-\`\`\`bash
-fulcrum api apps update <app-id> --services '[{"serviceName":"web","containerPort":3000,"exposed":true,"domain":"myapp.example.com","exposureMethod":"dns"}]'
+Use the \`update_app\` MCP tool:
+\`\`\`
+update_app id=<app-id> services=[{serviceName: "web", containerPort: 3000, exposed: true, domain: "myapp.example.com", exposureMethod: "dns"}]
 \`\`\`
 
 Service configuration fields:
@@ -319,27 +404,27 @@ Service configuration fields:
 - \`domain\` — the domain to route traffic to this service
 - \`exposureMethod\` — \`"dns"\` (Traefik + Cloudflare A record) or \`"tunnel"\` (Cloudflare Tunnel)
 
-You can also set other app options in the same PATCH:
+You can also set other app options in the same call:
 - \`autoPortAllocation\` — auto-allocate host ports when conflicts are detected
 - \`environmentVariables\` — key-value pairs injected into the deployment
 - \`notificationsEnabled\` — send notifications on deploy success/failure
 
 **Step 3: Deploy**
 
-\`\`\`bash
-fulcrum api apps deploy <app-id>
+\`\`\`
+deploy_app id=<app-id>
 \`\`\`
 
 This builds images (if the compose file has \`build\` directives), generates a Swarm-compatible compose file, and deploys the stack.
 
 **Step 4: Verify**
 
-\`\`\`bash
-fulcrum api apps status <app-id>
-fulcrum api apps logs <app-id>
 \`\`\`
-- \`status\` shows container status and replica health (e.g., "1/1")
-- \`logs\` returns container logs (use \`--service\` to filter, \`--tail\` to limit lines)
+get_app_status id=<app-id>
+get_app_logs id=<app-id>
+\`\`\`
+- \`get_app_status\` shows container status and replica health (e.g., "1/1")
+- \`get_app_logs\` returns container logs (use \`service\` param to filter, \`tail\` to limit lines)
 
 ### Docker Compose Tips
 
@@ -367,12 +452,12 @@ fulcrum api apps logs <app-id>
 
 ### Debugging
 
-- **Container logs**: \`fulcrum api apps logs <id>\` (use \`--service\` to filter)
+- **Container logs**: \`get_app_logs id=<id>\` (optionally filter by \`service\`)
 - **Generated Swarm compose**: Check \`~/.fulcrum/apps/<id>/swarm-compose.yml\` to see what was actually deployed
 - **Port conflicts**: Detected and reported during deployment — enable \`autoPortAllocation\` to auto-resolve
-- **Replica health**: \`fulcrum api apps status <id>\` shows replica counts (e.g., "1/1" means healthy, "0/1" means failing)
+- **Replica health**: \`get_app_status\` shows replica counts (e.g., "1/1" means healthy, "0/1" means failing)
 - **Traefik routing**: Fulcrum checks for route conflicts across all apps before adding new routes
-- **Deployment history**: \`fulcrum api apps deployments <id>\` shows past deployments with status and logs`
+- **Deployment history**: \`list_deployments\` shows past deployments with status and logs`
 }
 
 /**
@@ -381,7 +466,7 @@ fulcrum api apps logs <app-id>
 export function getJobSchedulingGuide(): string {
   return `## Job Scheduling Guide
 
-Fulcrum provides a built-in interface for managing scheduled jobs (cron-style). Rather than implementing its own scheduler, Fulcrum delegates to the OS's native job scheduler and provides CLI tools and a UI on top.
+Fulcrum provides a built-in interface for managing scheduled jobs (cron-style). Rather than implementing its own scheduler, Fulcrum delegates to the OS's native job scheduler and provides MCP tools and a UI on top.
 
 ### Platform Support
 
@@ -390,17 +475,17 @@ Fulcrum provides a built-in interface for managing scheduled jobs (cron-style). 
 | **Linux** | systemd user timers | Full CRUD: create, edit, delete, enable/disable, run now, view logs |
 | **macOS** | launchd | Read-only: list and inspect LaunchAgents/LaunchDaemons, view logs |
 
-### Managing Jobs via CLI
+### Managing Jobs via MCP Tools
 
 **Discover existing jobs:**
-\`\`\`bash
-fulcrum api jobs list --scope user
-fulcrum api jobs get daily-backup
+\`\`\`
+list_jobs scope="user"
+get_job name="daily-backup"
 \`\`\`
 
 **Create a job (Linux only):**
-\`\`\`bash
-fulcrum api jobs create --name "daily-backup" --description "Back up database nightly" --schedule "*-*-* 02:00:00" --command "/home/user/scripts/backup.sh" --workingDirectory "/home/user" --persistent true
+\`\`\`
+create_job name="daily-backup" description="Back up database nightly" schedule="*-*-* 02:00:00" command="/home/user/scripts/backup.sh" workingDirectory="/home/user" persistent=true
 \`\`\`
 
 This creates both a \`.timer\` and \`.service\` unit file in \`~/.config/systemd/user/\`, enables the timer, and starts it.
@@ -414,21 +499,21 @@ This creates both a \`.timer\` and \`.service\` unit file in \`~/.config/systemd
 - \`hourly\` — every hour
 
 **Update and manage jobs:**
-\`\`\`bash
-fulcrum api jobs update daily-backup --schedule "*-*-* 03:00:00" --command "/home/user/scripts/backup-v2.sh"
-fulcrum api jobs delete old-job
+\`\`\`
+update_job name="daily-backup" schedule="*-*-* 03:00:00" command="/home/user/scripts/backup-v2.sh"
+delete_job name="old-job"
 \`\`\`
 
 **Control job execution:**
-\`\`\`bash
-fulcrum api jobs enable daily-backup
-fulcrum api jobs disable daily-backup
-fulcrum api jobs run daily-backup
+\`\`\`
+enable_job name="daily-backup"
+disable_job name="daily-backup"
+run_job_now name="daily-backup"
 \`\`\`
 
 **Debug with logs:**
-\`\`\`bash
-fulcrum api jobs logs daily-backup --lines 50
+\`\`\`
+get_job_logs name="daily-backup" lines=50
 \`\`\`
 
 ### The Jobs UI
@@ -445,16 +530,16 @@ Users can also manage jobs at the **/jobs** page (Cmd+6):
 ### Typical Workflow
 
 1. Help the user write the script they want to schedule (create a task with worktree or scratch)
-2. Once the script is ready, use \`fulcrum api jobs create\` with the appropriate schedule
-3. Verify it's running: \`fulcrum api jobs get <name>\` to check status, \`fulcrum api jobs logs <name>\` for output
+2. Once the script is ready, use \`create_job\` with the appropriate schedule
+3. Verify it's running: \`get_job\` to check status, \`get_job_logs\` for output
 4. Optionally set up notifications for success/failure
 
 ### Debugging
 
-- **Job not running?** Use \`fulcrum api jobs get <name>\` — check \`enabled\` and \`state\` fields
-- **View logs**: \`fulcrum api jobs logs <name>\` — shows journalctl output with timestamps and priority
-- **Execution stats**: \`fulcrum api jobs get <name>\` includes \`lastRunDurationMs\`, \`lastRunCpuTimeMs\`, \`lastResult\` (success/failed)
-- **Unit files**: \`fulcrum api jobs get <name>\` includes \`timerContent\` and \`serviceContent\` for inspecting the raw systemd units
+- **Job not running?** Use \`get_job\` — check \`enabled\` and \`state\` fields
+- **View logs**: \`get_job_logs\` — shows journalctl output with timestamps and priority
+- **Execution stats**: \`get_job\` includes \`lastRunDurationMs\`, \`lastRunCpuTimeMs\`, \`lastResult\` (success/failed)
+- **Unit files**: \`get_job\` includes \`timerContent\` and \`serviceContent\` for inspecting the raw systemd units
 - **Persistent timers**: When \`persistent: true\` (default), missed executions run on next boot`
 }
 
@@ -464,7 +549,7 @@ Users can also manage jobs at the **/jobs** page (Cmd+6):
 export function getSettingsKnowledge(): string {
   return `## Fulcrum Settings Reference
 
-You can read and modify all Fulcrum settings via the CLI. Settings use dot notation (e.g., "appearance.theme").
+You can read and modify all Fulcrum settings using the settings MCP tools. Settings use dot notation (e.g., "appearance.theme").
 
 ### Settings Categories
 
@@ -534,7 +619,7 @@ You can read and modify all Fulcrum settings via the CLI. Settings use dot notat
 
 ### Notification Settings
 
-Notification settings are managed separately via \`fulcrum api notifications get\` and \`fulcrum api notifications update\`.
+Notification settings are managed separately via \`get_notification_settings\` and \`update_notification_settings\`.
 
 **Global:**
 - \`enabled\` - Master toggle for all notifications
@@ -570,28 +655,28 @@ Notification settings are managed separately via \`fulcrum api notifications get
 ### Common Configuration Tasks
 
 **Change the UI theme:**
-\`\`\`bash
-fulcrum api settings update --key "appearance.theme" --value "dark"
+\`\`\`
+update_setting key="appearance.theme" value="dark"
 \`\`\`
 
 **Set up GitHub integration:**
-\`\`\`bash
-fulcrum api settings update --key "integrations.githubPat" --value "ghp_xxxx"
+\`\`\`
+update_setting key="integrations.githubPat" value="ghp_xxxx"
 \`\`\`
 
 **Enable Slack notifications:**
-\`\`\`bash
-fulcrum api notifications update --slack '{"enabled": true, "webhookUrl": "https://hooks.slack.com/..."}'
+\`\`\`
+update_notification_settings slack={enabled: true, webhookUrl: "https://hooks.slack.com/..."}
 \`\`\`
 
 **Change default editor:**
-\`\`\`bash
-fulcrum api settings update --key "editor.app" --value "cursor"
+\`\`\`
+update_setting key="editor.app" value="cursor"
 \`\`\`
 
 **View all current settings:**
-\`\`\`bash
-fulcrum api settings list
+\`\`\`
+list_settings
 \`\`\`
 
 ### Configuration Storage (fnox)
@@ -613,7 +698,7 @@ All Fulcrum configuration is stored in \`~/.fulcrum/fnox.toml\` using fnox. This
 ### Important Notes
 
 - Sensitive values (API tokens, webhooks) are encrypted with fnox and masked when displayed
-- Use \`fulcrum api settings reset --key "..."\` to restore any setting to its default
+- Use \`reset_setting\` to restore any setting to its default
 - Changes take effect immediately
 - Some settings (like server.port) require a server restart to take effect`
 }
@@ -626,7 +711,7 @@ export function getFullKnowledge(): string {
 
 ${getDataModel()}
 
-${getToolCapabilities()}
+${getMcpToolCapabilities()}
 
 ${getSettingsKnowledge()}
 
@@ -659,14 +744,17 @@ Fulcrum is your digital concierge - a personal command center where you track ev
 - Calendar awareness via multi-account CalDAV sync with event copy rules
 - Persistent memory across conversations (memory file + ephemeral store)
 
-**Tools:** Use \`fulcrum api <resource> <action>\` — run \`fulcrum api tools\` for the full reference.
-Key resources: tasks, projects, memory, memory-file, search, notifications, assistant, settings, apps, jobs, backup, exec, filesystem, caldav, google.
-
-**Common patterns:**
-- \`fulcrum api tasks list --search "..." --statuses "TO_DO,IN_PROGRESS"\`
-- \`fulcrum api memory store --content "..." --tags "actionable"\` (track things needing attention)
-- \`fulcrum api search query --q "..." --memoryTags "actionable"\` (find tracked items)
-- \`fulcrum api assistant message --channel whatsapp --body "..."\` (send to user's own accounts)
+**Key tools available:**
+- list_tasks, create_task, update_task, move_task
+- list_projects, create_project
+- execute_command (run any CLI command)
+- send_notification
+- search (unified FTS5 search across tasks, projects, messages, events, memories, conversations; gmail is opt-in via \`entities: ["gmail"]\`)
+- memory_file_read, memory_file_update (master memory file - always in prompt)
+- memory_store, memory_search, memory_list, memory_delete (persistent knowledge with tags)
+- message (send to WhatsApp/Discord/Telegram/Slack/Gmail - user-only, concierge mode)
+- memory_store with tag \`actionable\` (track things needing attention - concierge mode)
+- search with memoryTags filter (find tracked items by tag)
 
 **Remember:** When users need external services (email, cloud, APIs), guide them on what credentials to provide - don't say "Fulcrum can't do that."`
 }

@@ -164,6 +164,44 @@ fulcrum notify "Need Input" "Which approach should I use for the database migrat
 - `DONE` — Task is finished
 - `CANCELED` — Task was abandoned
 
+## MCP Tools Reference
+
+When using Fulcrum via MCP (Claude Desktop, built-in assistant), these tools are available:
+
+**Tasks:** `list_tasks`, `get_task`, `create_task`, `update_task`, `move_task`, `delete_task`, `add_task_tag`, `remove_task_tag`, `set_task_due_date`, `add_task_dependency`, `remove_task_dependency`, `upload_task_attachment`, `list_task_attachments`, `add_task_link`, `list_task_links`
+
+**Projects:** `list_projects`, `get_project`, `create_project`, `update_project`, `delete_project`, `add_project_tag`, `remove_project_tag`, `upload_project_attachment`, `list_project_attachments`, `add_project_link`, `list_project_links`
+
+**Repos:** `list_repositories`, `get_repository`, `add_repository`, `update_repository`, `link_repository_to_project`, `unlink_repository_from_project`
+
+**Apps:** `list_apps`, `get_app`, `create_app`, `update_app`, `delete_app`, `deploy_app`, `stop_app`, `get_app_logs`, `get_app_status`, `list_deployments`
+
+**Jobs:** `list_jobs`, `get_job`, `get_job_logs`, `create_job`, `update_job`, `delete_job`, `enable_job`, `disable_job`, `run_job_now`
+
+**Files:** `read_file`, `write_file`, `edit_file`, `list_directory`, `get_file_tree`, `file_stat`
+
+**Exec:** `execute_command`, `list_exec_sessions`, `destroy_exec_session`
+
+**Notifications:** `send_notification`
+
+**Settings:** `list_settings`, `get_setting`, `update_setting`, `reset_setting`, `get_notification_settings`, `update_notification_settings`
+
+**Backup:** `list_backups`, `create_backup`, `get_backup`, `restore_backup`, `delete_backup`
+
+**Search:** `search` (unified FTS5 across tasks, projects, messages, events, memories, conversations, gmail)
+
+**Memory:** `memory_file_read`, `memory_file_update`, `memory_store`, `memory_search`, `memory_list`, `memory_delete`
+
+**Assistant:** `message` (send to WhatsApp/Discord/Telegram/Slack/Gmail), `get_last_sweep`
+
+**Calendar:** `list_caldav_accounts`, `create_caldav_account`, `delete_caldav_account`, `sync_caldav_account`, `list_caldav_copy_rules`, `create_caldav_copy_rule`, `delete_caldav_copy_rule`, `execute_caldav_copy_rule`
+
+**Gmail:** `list_google_accounts`, `list_gmail_drafts`, `create_gmail_draft`, `update_gmail_draft`, `delete_gmail_draft`
+
+**Email:** `list_emails`, `get_email`, `search_emails`, `fetch_emails`
+
+**Utilities:** `list_tags`, `delete_tag`, `get_task_dependency_graph`, `is_git_repo`
+
 ## Best Practices
 
 1. **Use `current-task` inside worktrees** — It auto-detects which task you're in

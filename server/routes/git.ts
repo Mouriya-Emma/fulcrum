@@ -209,6 +209,69 @@ function restoreOriginalBranch(repoPath: string, originalBranch: string, default
   }
 }
 
+type SquashMergeResult =
+  | { ok: true }
+  | { ok: false; hasConflicts: true; conflictFiles: string[] }
+  | { ok: false; hasConflicts?: never; error: string }
+
+// Perform a squash merge of worktreeBranch into the currently checked-out branch.
+// Caller must ensure the repo is on the target branch before calling.
+function performSquashMerge(repoPath: string, worktreeBranch: string, defaultBranch: string): SquashMergeResult {
+  // Collect commit messages for the squash commit
+  let commitMessages = ''
+  try {
+    commitMessages = gitExec(repoPath, `log ${defaultBranch}..${worktreeBranch} --pretty=format:%s%n%b --reverse`)
+  } catch {
+    // Fall back to simple message if we can't get commit history
+  }
+  const squashMessage = commitMessages.trim() || `Merge branch '${worktreeBranch}'`
+
+  const squashMsgPath = path.join(repoPath, '.git', 'SQUASH_MSG')
+
+  try {
+    gitExec(repoPath, `merge --squash ${worktreeBranch}`)
+
+    // Use a temp file for the commit message to handle special characters
+    const tempFile = path.join(repoPath, '.git', 'SQUASH_MSG_TEMP')
+    fs.writeFileSync(tempFile, squashMessage)
+    try {
+      gitExec(repoPath, `commit -F "${tempFile}"`)
+    } finally {
+      fs.unlinkSync(tempFile)
+      if (fs.existsSync(squashMsgPath)) {
+        fs.unlinkSync(squashMsgPath)
+      }
+    }
+
+    return { ok: true }
+  } catch (mergeErr) {
+    // Always clean up SQUASH_MSG on failure
+    if (fs.existsSync(squashMsgPath)) {
+      fs.unlinkSync(squashMsgPath)
+    }
+
+    // Detect merge conflicts
+    try {
+      const mergeStatus = gitExec(repoPath, 'status')
+      if (mergeStatus.includes('Unmerged paths') || mergeStatus.includes('fix conflicts')) {
+        let conflictFiles: string[] = []
+        try {
+          const conflictOutput = gitExec(repoPath, 'diff --name-only --diff-filter=U')
+          conflictFiles = conflictOutput.split('\n').filter(f => f.trim())
+        } catch {
+          // Ignore if we can't get conflict files
+        }
+        gitExec(repoPath, 'merge --abort')
+        return { ok: false, hasConflicts: true, conflictFiles }
+      }
+    } catch {
+      // Ignore status check errors
+    }
+
+    return { ok: false, error: mergeErr instanceof Error ? mergeErr.message : 'Failed to merge' }
+  }
+}
+
 const app = new Hono()
 
 // GET /api/git/branches?repo=/path/to/repo
@@ -682,94 +745,40 @@ app.post('/merge-to-main', async (c) => {
       originalBranch = defaultBranch
     }
 
+    // Checkout the base branch
     try {
-      // Checkout the base branch
       if (originalBranch !== defaultBranch) {
         gitExec(repoPath, `checkout ${defaultBranch}`)
       }
-
-      // Get all commit messages from the worktree branch for the squash commit
-      let commitMessages = ''
-      try {
-        // Get commits that are in worktreeBranch but not in defaultBranch
-        commitMessages = gitExec(repoPath, `log ${defaultBranch}..${worktreeBranch} --pretty=format:%s%n%b --reverse`)
-      } catch {
-        // Fall back to simple message if we can't get commit history
-      }
-
-      // Build the squash commit message from concatenated branch commits
-      const squashMessage = commitMessages.trim() || `Merge branch '${worktreeBranch}'`
-
-      // Attempt the squash merge (git hooks will handle pushing to origin)
-      const squashMsgPath = path.join(repoPath, '.git', 'SQUASH_MSG')
-      try {
-        gitExec(repoPath, `merge --squash ${worktreeBranch}`)
-        // Use a temp file for the commit message to handle special characters
-        const tempFile = path.join(repoPath, '.git', 'SQUASH_MSG_TEMP')
-        fs.writeFileSync(tempFile, squashMessage)
-        try {
-          gitExec(repoPath, `commit -F "${tempFile}"`)
-        } finally {
-          fs.unlinkSync(tempFile)
-          // Clean up git's SQUASH_MSG file if it exists
-          if (fs.existsSync(squashMsgPath)) {
-            fs.unlinkSync(squashMsgPath)
-          }
-        }
-      } catch (mergeErr) {
-        // Always clean up SQUASH_MSG on failure to prevent pre-commit hook issues
-        if (fs.existsSync(squashMsgPath)) {
-          fs.unlinkSync(squashMsgPath)
-        }
-        // Check if it's a merge conflict
-        try {
-          const mergeStatus = gitExec(repoPath, 'status')
-          if (mergeStatus.includes('Unmerged paths') || mergeStatus.includes('fix conflicts')) {
-            let conflictFiles: string[] = []
-            try {
-              const conflictOutput = gitExec(repoPath, 'diff --name-only --diff-filter=U')
-              conflictFiles = conflictOutput.split('\n').filter(f => f.trim())
-            } catch {
-              // Ignore if we can't get conflict files
-            }
-
-            gitExec(repoPath, 'merge --abort')
-            restoreOriginalBranch(repoPath, originalBranch, defaultBranch)
-
-            return c.json({
-              error: 'Merge conflict detected. Merge has been aborted.',
-              hasConflicts: true,
-              conflictFiles,
-            }, 409)
-          }
-        } catch {
-          // Ignore status check errors
-        }
-
-        restoreOriginalBranch(repoPath, originalBranch, defaultBranch)
-
-        return c.json({
-          error: mergeErr instanceof Error ? mergeErr.message : 'Failed to merge',
-        }, 500)
-      }
-
-      restoreOriginalBranch(repoPath, originalBranch, defaultBranch)
-
-      // Fire-and-forget: trigger auto-deploy for apps watching this repo+branch
-      triggerAutoDeployForRepo(repoPath, defaultBranch).catch(() => {})
-
-      return c.json({
-        success: true,
-        baseBranch: defaultBranch,
-        mergedBranch: worktreeBranch,
-      })
     } catch (err) {
-      restoreOriginalBranch(repoPath, originalBranch, defaultBranch)
-
       return c.json({
-        error: err instanceof Error ? err.message : 'Failed to merge',
+        error: err instanceof Error ? err.message : 'Failed to checkout base branch',
       }, 500)
     }
+
+    const result = performSquashMerge(repoPath, worktreeBranch, defaultBranch)
+    restoreOriginalBranch(repoPath, originalBranch, defaultBranch)
+
+    if (!result.ok && result.hasConflicts) {
+      return c.json({
+        error: 'Merge conflict detected. Merge has been aborted.',
+        hasConflicts: true,
+        conflictFiles: result.conflictFiles,
+      }, 409)
+    }
+
+    if (!result.ok) {
+      return c.json({ error: result.error }, 500)
+    }
+
+    // Fire-and-forget: trigger auto-deploy for apps watching this repo+branch
+    triggerAutoDeployForRepo(repoPath, defaultBranch).catch(() => {})
+
+    return c.json({
+      success: true,
+      baseBranch: defaultBranch,
+      mergedBranch: worktreeBranch,
+    })
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : 'Failed to merge' }, 500)
   }
