@@ -29,6 +29,38 @@ function gitExec(cwd: string, args: string, timeoutMs = 30_000): string {
   }
 }
 
+// Async git command execution using Bun.spawn — does not block the event loop
+async function gitExecAsync(cwd: string, args: string[], timeoutMs = 30_000): Promise<string> {
+  const proc = Bun.spawn(['git', ...args], {
+    cwd,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+
+  let timedOut = false
+  const timeoutId = setTimeout(() => { timedOut = true; proc.kill() }, timeoutMs)
+
+  try {
+    const [stdout, stderr] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ])
+    const exitCode = await proc.exited
+    clearTimeout(timeoutId)
+
+    if (timedOut) {
+      throw new Error(`Git command timed out after ${timeoutMs}ms: git ${args.join(' ')}`)
+    }
+    if (exitCode !== 0) {
+      throw new Error(stderr.trim() || `git ${args.join(' ')} exited with code ${exitCode}`)
+    }
+    return stdout.trim()
+  } catch (err) {
+    clearTimeout(timeoutId)
+    throw err
+  }
+}
+
 function parseStatusCode(code: string): string {
   const index = code[0]
   const workTree = code[1]
@@ -459,7 +491,7 @@ app.delete('/worktree', async (c) => {
 })
 
 // GET /api/git/diff?path=/path/to/worktree - Get git diff for a worktree
-app.get('/diff', (c) => {
+app.get('/diff', async (c) => {
   const worktreePath = c.req.query('path')
   const staged = c.req.query('staged') === 'true'
   const ignoreWhitespace = c.req.query('ignoreWhitespace') === 'true'
@@ -475,32 +507,15 @@ app.get('/diff', (c) => {
   }
 
   try {
-    // Get the diff
-    const wsFlag = ignoreWhitespace ? ' -w' : ''
-    const diffArgs = staged ? `diff --cached${wsFlag}` : `diff${wsFlag}`
-    let diff = ''
-    try {
-      diff = gitExec(worktreePath, diffArgs)
-    } catch {
-      // No diff available
-      diff = ''
-    }
-
-    // Get status summary (10s timeout)
-    let status = ''
-    try {
-      status = gitExec(worktreePath, 'status --short', 10_000)
-    } catch {
-      status = ''
-    }
-
-    // Get current branch
-    let branch = ''
-    try {
-      branch = gitExec(worktreePath, 'rev-parse --abbrev-ref HEAD')
-    } catch {
-      branch = 'unknown'
-    }
+    // Run independent git commands in parallel
+    const diffArgs = staged
+      ? ['diff', '--cached', ...(ignoreWhitespace ? ['-w'] : [])]
+      : ['diff', ...(ignoreWhitespace ? ['-w'] : [])]
+    const [diff, status, branch] = await Promise.all([
+      gitExecAsync(worktreePath, diffArgs).catch(() => ''),
+      gitExecAsync(worktreePath, ['status', '--short'], 10_000).catch(() => ''),
+      gitExecAsync(worktreePath, ['rev-parse', '--abbrev-ref', 'HEAD']).catch(() => 'unknown'),
+    ])
 
     // If no local changes, get diff against base branch
     let branchDiff = ''
@@ -508,8 +523,8 @@ app.get('/diff', (c) => {
     if (!diff) {
       try {
         baseBranch = getDefaultBranch(worktreePath, baseBranchParam)
-        const mergeBase = gitExec(worktreePath, `merge-base ${baseBranch} HEAD`)
-        branchDiff = gitExec(worktreePath, `diff${wsFlag} ${mergeBase}..HEAD`)
+        const mergeBase = await gitExecAsync(worktreePath, ['merge-base', baseBranch, 'HEAD'])
+        branchDiff = await gitExecAsync(worktreePath, ['diff', ...(ignoreWhitespace ? ['-w'] : []), `${mergeBase}..HEAD`])
       } catch {
         // No branch diff available
         branchDiff = ''
