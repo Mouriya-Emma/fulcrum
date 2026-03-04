@@ -55,7 +55,7 @@ export const registerCopierTools: ToolRegistrar = (server, client) => {
         .string()
         .describe('Name for the new project'),
       answers: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .describe('Answers to the template questions (from get_template_questions)'),
       trust: z
         .optional(z.boolean())
