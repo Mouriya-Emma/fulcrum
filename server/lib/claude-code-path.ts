@@ -82,3 +82,14 @@ export function getClaudeCodePathForSdk(): string | undefined {
   log.claude.debug('Claude Code found', { path: result.path, source: result.source })
   return result.path
 }
+
+/**
+ * Get a clean environment for spawning Claude Code subprocesses.
+ * Removes CLAUDECODE env var which prevents nested Claude Code sessions.
+ * Without this, the SDK-spawned Claude Code process exits with code 1 when
+ * the Fulcrum server itself runs inside a Claude Code terminal.
+ */
+export function getCleanEnv(): Record<string, string | undefined> {
+  const { CLAUDECODE: _, ...env } = process.env
+  return env
+}

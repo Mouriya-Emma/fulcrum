@@ -14,7 +14,7 @@ Use the Fulcrum CLI when:
 - **Linking URLs** — Attach relevant URLs (design docs, specs, external resources) to the task
 - **Sending notifications** — Alert the user when work is complete or needs attention
 - **Server management** — Start, stop, and check server status
-- **API access** — Query or modify any Fulcrum data via `fulcrum api`
+- **API access** — Query or modify any Fulcrum data via `mcp2cli`
 
 ## CLI Commands
 
@@ -65,63 +65,51 @@ fulcrum status      # Check if server is running
 fulcrum doctor      # Check all dependencies and versions
 ```
 
-## fulcrum api — REST API Access
+## mcp2cli — MCP Tool Access
 
-The `fulcrum api` command provides direct access to all Fulcrum REST API endpoints via a resource/action CLI.
+Use `mcp2cli` to interact with the Fulcrum MCP server directly from the command line. No install needed — runs via `uvx` (ephemeral venv).
 
-### Syntax
+### Discovery
 
 ```bash
-fulcrum api <resource> <action> [<id> ...] [--flag value ...]
+# List all available tools (~16 tokens/tool)
+uvx mcp2cli --mcp-stdio "fulcrum mcp" --list
+
+# Get detailed help for a specific tool
+uvx mcp2cli --mcp-stdio "fulcrum mcp" <tool> --help
 ```
 
-### Getting the Full Tool Reference
+### Calling Tools
 
 ```bash
-fulcrum api tools    # Compact reference of all resources, actions, and flags
-```
-
-The `tools` output is designed for context window injection (~2,000 tokens for ~130 actions).
-
-### Common Examples
-
-```bash
-# Tasks
-fulcrum api tasks list --search bug --statuses TO_DO,IN_PROGRESS
-fulcrum api tasks create --title "Fix bug" --type worktree
-fulcrum api tasks get <id>
-fulcrum api tasks move <id> --status DONE
-fulcrum api tasks update <id> --priority high --tags "backend,urgent"
+# Syntax: uvx mcp2cli --mcp-stdio "fulcrum mcp" <tool> [--param value ...]
+uvx mcp2cli --mcp-stdio "fulcrum mcp" list_tasks --search bug --statuses TO_DO,IN_PROGRESS
+uvx mcp2cli --mcp-stdio "fulcrum mcp" create_task --title "Fix bug" --type worktree
+uvx mcp2cli --mcp-stdio "fulcrum mcp" get_task --id <task-id>
+uvx mcp2cli --mcp-stdio "fulcrum mcp" move_task --id <task-id> --status DONE
 
 # Memory
-fulcrum api memory store --content "Learned X" --tags "project,pattern"
-fulcrum api memory search --q "deployment"
+uvx mcp2cli --mcp-stdio "fulcrum mcp" memory_store --content "Learned X" --tags "project,pattern"
+uvx mcp2cli --mcp-stdio "fulcrum mcp" memory_search --query "deployment"
 
 # Search
-fulcrum api search query --q "authentication" --entities tasks,projects
+uvx mcp2cli --mcp-stdio "fulcrum mcp" search --query "authentication" --entities tasks,projects
 
 # Backup
-fulcrum api backup create --description "Before migration"
-fulcrum api backup list
+uvx mcp2cli --mcp-stdio "fulcrum mcp" create_backup --description "Before migration"
+uvx mcp2cli --mcp-stdio "fulcrum mcp" list_backups
 
 # Calendar
-fulcrum api caldav events --from 2026-01-01 --to 2026-01-31
-fulcrum api caldav sync
+uvx mcp2cli --mcp-stdio "fulcrum mcp" list_calendar_events --from 2026-01-01 --to 2026-01-31
+uvx mcp2cli --mcp-stdio "fulcrum mcp" sync_calendars
 ```
 
-### Raw HTTP Mode (Backward Compatible)
+### Token-Efficient Output
+
+Use `--toon` for compact output optimized for LLM context windows:
 
 ```bash
-fulcrum api GET /api/tasks
-fulcrum api POST /api/tasks -d '{"title":"Fix bug"}'
-```
-
-### Route Discovery
-
-```bash
-fulcrum api routes                          # List all routes by category
-fulcrum api routes --category tasks         # Filter by category
-fulcrum api routes --search calendar        # Search routes by keyword
+uvx mcp2cli --mcp-stdio "fulcrum mcp" list_tasks --toon
 ```
 
 ## Agent Workflow Patterns
@@ -164,48 +152,11 @@ fulcrum notify "Need Input" "Which approach should I use for the database migrat
 - `DONE` — Task is finished
 - `CANCELED` — Task was abandoned
 
-## MCP Tools Reference
-
-When using Fulcrum via MCP (Claude Desktop, built-in assistant), these tools are available:
-
-**Tasks:** `list_tasks`, `get_task`, `create_task`, `update_task`, `move_task`, `delete_task`, `add_task_tag`, `remove_task_tag`, `set_task_due_date`, `add_task_dependency`, `remove_task_dependency`, `upload_task_attachment`, `list_task_attachments`, `add_task_link`, `list_task_links`
-
-**Projects:** `list_projects`, `get_project`, `create_project`, `update_project`, `delete_project`, `add_project_tag`, `remove_project_tag`, `upload_project_attachment`, `list_project_attachments`, `add_project_link`, `list_project_links`
-
-**Repos:** `list_repositories`, `get_repository`, `add_repository`, `update_repository`, `link_repository_to_project`, `unlink_repository_from_project`
-
-**Apps:** `list_apps`, `get_app`, `create_app`, `update_app`, `delete_app`, `deploy_app`, `stop_app`, `get_app_logs`, `get_app_status`, `list_deployments`
-
-**Jobs:** `list_jobs`, `get_job`, `get_job_logs`, `create_job`, `update_job`, `delete_job`, `enable_job`, `disable_job`, `run_job_now`
-
-**Files:** `read_file`, `write_file`, `edit_file`, `list_directory`, `get_file_tree`, `file_stat`
-
-**Exec:** `execute_command`, `list_exec_sessions`, `destroy_exec_session`
-
-**Notifications:** `send_notification`
-
-**Settings:** `list_settings`, `get_setting`, `update_setting`, `reset_setting`, `get_notification_settings`, `update_notification_settings`
-
-**Backup:** `list_backups`, `create_backup`, `get_backup`, `restore_backup`, `delete_backup`
-
-**Search:** `search` (unified FTS5 across tasks, projects, messages, events, memories, conversations, gmail)
-
-**Memory:** `memory_file_read`, `memory_file_update`, `memory_store`, `memory_search`, `memory_list`, `memory_delete`
-
-**Assistant:** `message` (send to WhatsApp/Discord/Telegram/Slack/Gmail), `get_last_sweep`
-
-**Calendar:** `list_caldav_accounts`, `create_caldav_account`, `delete_caldav_account`, `sync_caldav_account`, `list_caldav_copy_rules`, `create_caldav_copy_rule`, `delete_caldav_copy_rule`, `execute_caldav_copy_rule`
-
-**Gmail:** `list_google_accounts`, `list_gmail_drafts`, `create_gmail_draft`, `update_gmail_draft`, `delete_gmail_draft`
-
-**Email:** `list_emails`, `get_email`, `search_emails`, `fetch_emails`
-
-**Utilities:** `list_tags`, `delete_tag`, `get_task_dependency_graph`, `is_git_repo`
-
 ## Best Practices
 
 1. **Use `current-task` inside worktrees** — It auto-detects which task you're in
 2. **Link PRs immediately** — Run `fulcrum current-task pr <url>` right after creating a PR
-3. **Use `fulcrum api routes --search <keyword>`** to discover endpoints before making calls
-4. **Mark review when done** — `fulcrum current-task review` notifies the user
-5. **Send notifications for blocking issues** — Keep the user informed of progress
+3. **Use `mcp2cli --list` to discover tools** — Tools are always up-to-date, no static reference needed
+4. **Use `--help` on any tool** to see its parameters before calling it
+5. **Mark review when done** — `fulcrum current-task review` notifies the user
+6. **Send notifications for blocking issues** — Keep the user informed of progress

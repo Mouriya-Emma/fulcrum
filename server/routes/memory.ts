@@ -1,36 +1,14 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import { Hono } from 'hono'
 import { storeMemory, searchMemories, deleteMemory, listMemories, updateMemory } from '../services/memory-service'
 
-const app = new OpenAPIHono()
+const app = new Hono()
 
 // POST / - Store a new memory
-const storeRoute = createRoute({
-  method: 'post',
-  path: '/',
-  operationId: 'memory-store',
-  tags: ['memory'],
-  summary: 'Store a memory',
-  request: {
-    body: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            content: z.string().min(1),
-            tags: z.array(z.string()).optional(),
-            source: z.string().optional(),
-          }),
-        },
-      },
-    },
-  },
-  responses: {
-    201: { description: 'Memory created' },
-    400: { description: 'Validation error' },
-  },
-})
-
-app.openapi(storeRoute, async (c) => {
-  const body = c.req.valid('json')
+app.post('/', async (c) => {
+  const body = await c.req.json<{ content: string; tags?: string[]; source?: string }>()
+  if (!body.content || !body.content.trim()) {
+    return c.json({ error: 'content is required and cannot be empty' }, 400)
+  }
   const memory = await storeMemory({
     content: body.content.trim(),
     tags: body.tags,
@@ -40,27 +18,14 @@ app.openapi(storeRoute, async (c) => {
 })
 
 // GET /search - Search memories via FTS5
-const searchRoute = createRoute({
-  method: 'get',
-  path: '/search',
-  operationId: 'memory-search',
-  tags: ['memory'],
-  summary: 'Search memories (FTS5)',
-  request: {
-    query: z.object({
-      q: z.string().min(1),
-      tags: z.string().optional(),
-      limit: z.string().optional(),
-    }),
-  },
-  responses: {
-    200: { description: 'Search results' },
-    400: { description: 'Missing query parameter' },
-  },
-})
+app.get('/search', async (c) => {
+  const q = c.req.query('q')
+  if (!q) {
+    return c.json({ error: 'Missing query parameter: q' }, 400)
+  }
 
-app.openapi(searchRoute, async (c) => {
-  const { q, tags: tagsParam, limit: limitParam } = c.req.valid('query')
+  const tagsParam = c.req.query('tags')
+  const limitParam = c.req.query('limit')
   const tags = tagsParam ? tagsParam.split(',').map((t) => t.trim()).filter(Boolean) : undefined
   const limit = limitParam ? parseInt(limitParam, 10) : undefined
 
@@ -74,26 +39,10 @@ app.openapi(searchRoute, async (c) => {
 })
 
 // GET / - List memories with optional filtering
-const listRoute = createRoute({
-  method: 'get',
-  path: '/',
-  operationId: 'memory-list',
-  tags: ['memory'],
-  summary: 'List memories',
-  request: {
-    query: z.object({
-      tags: z.string().optional(),
-      limit: z.string().optional(),
-      offset: z.string().optional(),
-    }),
-  },
-  responses: {
-    200: { description: 'Memory list' },
-  },
-})
-
-app.openapi(listRoute, async (c) => {
-  const { tags: tagsParam, limit: limitParam, offset: offsetParam } = c.req.valid('query')
+app.get('/', async (c) => {
+  const tagsParam = c.req.query('tags')
+  const limitParam = c.req.query('limit')
+  const offsetParam = c.req.query('offset')
   const tags = tagsParam ? tagsParam.split(',').map((t) => t.trim()).filter(Boolean) : undefined
   const limit = limitParam ? parseInt(limitParam, 10) : undefined
   const offset = offsetParam ? parseInt(offsetParam, 10) : undefined
@@ -103,38 +52,9 @@ app.openapi(listRoute, async (c) => {
 })
 
 // PATCH /:id - Update a memory
-const updateRoute = createRoute({
-  method: 'patch',
-  path: '/{id}',
-  operationId: 'memory-update',
-  tags: ['memory'],
-  summary: 'Update a memory',
-  request: {
-    params: z.object({
-      id: z.string(),
-    }),
-    body: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            content: z.string().optional(),
-            tags: z.array(z.string()).nullable().optional(),
-            source: z.string().nullable().optional(),
-          }),
-        },
-      },
-    },
-  },
-  responses: {
-    200: { description: 'Memory updated' },
-    400: { description: 'Validation error' },
-    404: { description: 'Memory not found' },
-  },
-})
-
-app.openapi(updateRoute, async (c) => {
-  const { id } = c.req.valid('param')
-  const body = c.req.valid('json')
+app.patch('/:id', async (c) => {
+  const id = c.req.param('id')
+  const body = await c.req.json<{ content?: string; tags?: string[] | null; source?: string | null }>()
 
   if (body.content !== undefined && !body.content.trim()) {
     return c.json({ error: 'content cannot be empty' }, 400)
@@ -154,25 +74,8 @@ app.openapi(updateRoute, async (c) => {
 })
 
 // DELETE /:id - Delete a memory
-const deleteRoute = createRoute({
-  method: 'delete',
-  path: '/{id}',
-  operationId: 'memory-delete',
-  tags: ['memory'],
-  summary: 'Delete a memory',
-  request: {
-    params: z.object({
-      id: z.string(),
-    }),
-  },
-  responses: {
-    200: { description: 'Memory deleted' },
-    404: { description: 'Memory not found' },
-  },
-})
-
-app.openapi(deleteRoute, async (c) => {
-  const { id } = c.req.valid('param')
+app.delete('/:id', async (c) => {
+  const id = c.req.param('id')
   const deleted = await deleteMemory(id)
 
   if (!deleted) {

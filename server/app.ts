@@ -1,11 +1,9 @@
-import { OpenAPIHono } from '@hono/zod-openapi'
-import { swaggerUI } from '@hono/swagger-ui'
+import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { existsSync } from 'node:fs'
-import { registerStaticRoutes, tagDefinitions } from './openapi-registry'
 
 import healthRoutes from './routes/health'
 import tasksRoutes from './routes/tasks'
@@ -58,7 +56,7 @@ function getDistPath(): string {
 }
 
 export function createApp() {
-  const app = new OpenAPIHono()
+  const app = new Hono()
 
   // Middleware
 
@@ -138,23 +136,6 @@ export function createApp() {
 
   // Unified search across all entities
   app.route('/api/search', searchRoutes)
-
-  // Register static routes that haven't been migrated to OpenAPIHono yet
-  registerStaticRoutes(app)
-
-  // OpenAPI 3.1 spec
-  app.doc31('/openapi.json', {
-    openapi: '3.1.0',
-    info: {
-      title: 'Fulcrum API',
-      description: 'Terminal-first AI agent orchestration',
-      version: '1.0.0',
-    },
-    tags: tagDefinitions,
-  })
-
-  // Swagger UI
-  app.get('/api-docs', swaggerUI({ url: '/openapi.json' }))
 
   // Logging endpoint for frontend to send batched logs to server
   app.post('/api/logs', async (c) => {

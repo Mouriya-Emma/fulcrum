@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { db, chatSessions, chatMessages, artifacts, tasks, projects, repositories, apps, projectRepositories, messagingSessionMappings } from '../db'
 import type { ChatSession, NewChatSession, ChatMessage, NewChatMessage, Artifact, NewArtifact } from '../db/schema'
 import { getSettings } from '../lib/settings'
-import { getClaudeCodePathForSdk } from '../lib/claude-code-path'
+import { getClaudeCodePathForSdk, getCleanEnv } from '../lib/claude-code-path'
 import { getInstanceContext, getAssistantDir, ensureAssistantDir } from '../lib/settings/paths'
 import { log } from '../lib/logger'
 import type { PageContext, AttachmentData } from '../../shared/types'
@@ -285,7 +285,7 @@ export function getMessages(sessionId: string): ChatMessage[] {
  * @param securityTier - 'observer' uses minimal knowledge (no tool capabilities)
  */
 /** @internal Exported for testing */
-export function buildBaselinePrompt(condensed = false, securityTier?: 'observer' | 'trusted'): string {
+export function buildBaselinePrompt(condensed = false, securityTier?: 'observer' | 'trusted', port?: number): string {
   const settings = getSettings()
   const instanceContext = getInstanceContext(settings.assistant.documentsDir)
   const knowledge = securityTier === 'observer'
@@ -295,6 +295,32 @@ export function buildBaselinePrompt(condensed = false, securityTier?: 'observer'
   let baseline = `${instanceContext}
 
 ${knowledge}`
+
+  // Non-observer tiers use mcp2cli to access Fulcrum tools via Bash
+  if (securityTier !== 'observer') {
+    const mcpPort = port ?? settings.server.port
+    baseline += `
+
+## Fulcrum Tool Access (mcp2cli)
+
+Use \`mcp2cli\` via Bash to interact with Fulcrum data. No install needed — runs via \`uvx\`.
+
+\`\`\`bash
+# Discover available tools
+uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" --list
+
+# Get help for a specific tool
+uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> --help
+
+# Call a tool
+uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> [--param value ...]
+
+# Token-efficient output
+uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> --toon
+\`\`\`
+
+Common tools: \`list_tasks\`, \`get_task\`, \`create_task\`, \`move_task\`, \`search\`, \`memory_store\`, \`memory_search\`, \`memory_file_read\`, \`memory_file_update\`, \`send_notification\`, \`list_calendar_events\`, \`list_projects\`.`
+  }
 
   // Inject master memory file content if it exists
   const memoryFileContent = readMemoryFile()
@@ -788,19 +814,22 @@ User message: ${userMessage}`
         resume: resumeSessionId,
         includePartialMessages: true,
         pathToClaudeCodeExecutable: getClaudeCodePathForSdk(),
-        mcpServers: {
-          fulcrum: {
-            type: 'http',
-            url: mcpUrl,
+        env: getCleanEnv(),
+        // Observer tier: restricted MCP tools only (memory, no filesystem)
+        // Trusted tier: claude_code preset (Bash, Read, Write, etc.) — uses mcp2cli for Fulcrum data
+        ...(isObserver && {
+          mcpServers: {
+            fulcrum: {
+              type: 'http' as const,
+              url: mcpUrl,
+            },
           },
-        },
-        // Observer tier: no built-in tools (only MCP memory tools available)
-        // Trusted tier: full claude_code preset
+        }),
         tools: isObserver ? [] : { type: 'preset', preset: 'claude_code' },
         systemPrompt,
         permissionMode: 'bypassPermissions',
         allowDangerouslySkipPermissions: true,
-        settingSources: ['user'],
+        settingSources: [],
         // Ephemeral sessions don't persist to disk — each call is independent
         ...(options.ephemeral && { persistSession: false, maxTurns: 3 }),
         ...(options.outputFormat && { outputFormat: options.outputFormat }),

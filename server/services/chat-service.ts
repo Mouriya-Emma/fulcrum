@@ -1,6 +1,6 @@
 import { query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import { getSettings } from '../lib/settings'
-import { getClaudeCodePathForSdk } from '../lib/claude-code-path'
+import { getClaudeCodePathForSdk, getCleanEnv } from '../lib/claude-code-path'
 import { getInstanceContext, getAssistantDir } from '../lib/settings/paths'
 import { log } from '../lib/logger'
 import { db, tasks, projects, repositories, apps, projectRepositories } from '../db'
@@ -77,11 +77,32 @@ export function endSession(id: string): boolean {
 async function buildSystemPrompt(context?: PageContext): Promise<string> {
   const settings = getSettings()
   const instanceContext = getInstanceContext(settings.assistant.documentsDir)
+  const mcpPort = settings.server.port
   let prompt = instanceContext + '\n\n' + getFullKnowledge() + `
+
+## Fulcrum Tool Access (mcp2cli)
+
+Use \`mcp2cli\` via Bash to interact with Fulcrum data. No install needed — runs via \`uvx\`.
+
+\`\`\`bash
+# Discover available tools
+uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" --list
+
+# Get help for a specific tool
+uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> --help
+
+# Call a tool
+uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> [--param value ...]
+
+# Token-efficient output
+uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> --toon
+\`\`\`
+
+Common tools: \`list_tasks\`, \`get_task\`, \`create_task\`, \`move_task\`, \`search\`, \`memory_store\`, \`memory_search\`, \`memory_file_read\`, \`memory_file_update\`, \`send_notification\`, \`list_calendar_events\`, \`list_projects\`.
 
 ## Guidelines
 
-- Use tools proactively to gather information or complete tasks
+- Use mcp2cli to query or modify Fulcrum data (tasks, projects, memory, calendar, etc.)
 - Present results clearly and concisely
 - If a task requires multiple steps, explain what you're doing
 - For destructive operations (delete, etc.), confirm with the user first unless they're explicit`
@@ -327,9 +348,6 @@ export async function* streamMessage(
     return
   }
 
-  const settings = getSettings()
-  const port = settings.server.port
-
   try {
     log.chat.debug('Starting Claude Agent SDK query', {
       sessionId,
@@ -356,15 +374,11 @@ export async function* streamMessage(
         resume: session.claudeSessionId, // Resume conversation if exists
         includePartialMessages: true, // Stream partial messages
         pathToClaudeCodeExecutable: getClaudeCodePathForSdk(),
-        mcpServers: {
-          fulcrum: {
-            type: 'http',
-            url: `http://localhost:${port}/mcp`,
-          },
-        },
+        env: getCleanEnv(),
         systemPrompt,
         permissionMode: 'bypassPermissions', // Bypass all permissions for seamless chat
         allowDangerouslySkipPermissions: true, // Required for bypassPermissions mode
+        settingSources: [], // SDK isolation — don't load user MCP servers or plugins
       },
     })
 

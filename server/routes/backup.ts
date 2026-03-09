@@ -1,11 +1,11 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import { Hono } from 'hono'
 import * as fs from 'fs'
 import * as path from 'path'
 import { getFulcrumDir, getDatabasePath } from '../lib/settings'
 import { initFnoxConfig } from '../lib/settings/fnox'
 import { log } from '../lib/logger'
 
-const app = new OpenAPIHono()
+const app = new Hono()
 
 // Backup directory structure:
 // ~/.fulcrum/backups/
@@ -52,18 +52,7 @@ interface BackupInfo {
 }
 
 // GET /api/backup - List all backups
-const listRoute = createRoute({
-  method: 'get',
-  path: '/',
-  operationId: 'backup-list',
-  tags: ['backup'],
-  summary: 'List backups',
-  responses: {
-    200: { description: 'Backup list' },
-  },
-})
-
-app.openapi(listRoute, (c) => {
+app.get('/', (c) => {
   ensureBackupsDir()
   const backupsDir = getBackupsDir()
 
@@ -98,31 +87,7 @@ app.openapi(listRoute, (c) => {
 })
 
 // POST /api/backup - Create a new backup
-const createBackupRoute = createRoute({
-  method: 'post',
-  path: '/',
-  operationId: 'backup-create',
-  tags: ['backup'],
-  summary: 'Create backup',
-  request: {
-    body: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            description: z.string().optional(),
-          }),
-        },
-      },
-      required: false,
-    },
-  },
-  responses: {
-    200: { description: 'Backup created' },
-    500: { description: 'Backup failed' },
-  },
-})
-
-app.openapi(createBackupRoute, async (c) => {
+app.post('/', async (c) => {
   try {
     const body = await c.req.json<{ description?: string }>().catch(() => ({}))
 
@@ -198,26 +163,8 @@ app.openapi(createBackupRoute, async (c) => {
 })
 
 // GET /api/backup/:name - Get details of a specific backup
-const getRoute = createRoute({
-  method: 'get',
-  path: '/{name}',
-  operationId: 'backup-get',
-  tags: ['backup'],
-  summary: 'Get backup details',
-  request: {
-    params: z.object({
-      name: z.string(),
-    }),
-  },
-  responses: {
-    200: { description: 'Backup details' },
-    404: { description: 'Backup not found' },
-    500: { description: 'Invalid backup manifest' },
-  },
-})
-
-app.openapi(getRoute, (c) => {
-  const { name } = c.req.valid('param')
+app.get('/:name', (c) => {
+  const name = c.req.param('name')
   const backupPath = path.join(getBackupsDir(), name)
   const manifestPath = path.join(backupPath, 'manifest.json')
 
@@ -238,37 +185,8 @@ app.openapi(getRoute, (c) => {
 })
 
 // POST /api/backup/:name/restore - Restore from a specific backup
-const restoreRoute = createRoute({
-  method: 'post',
-  path: '/{name}/restore',
-  operationId: 'backup-restore',
-  tags: ['backup'],
-  summary: 'Restore backup',
-  request: {
-    params: z.object({
-      name: z.string(),
-    }),
-    body: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            database: z.boolean().optional(),
-            config: z.boolean().optional(),
-          }),
-        },
-      },
-      required: false,
-    },
-  },
-  responses: {
-    200: { description: 'Backup restored' },
-    404: { description: 'Backup not found' },
-    500: { description: 'Restore failed' },
-  },
-})
-
-app.openapi(restoreRoute, async (c) => {
-  const { name } = c.req.valid('param')
+app.post('/:name/restore', async (c) => {
+  const name = c.req.param('name')
   const backupPath = path.join(getBackupsDir(), name)
   const manifestPath = path.join(backupPath, 'manifest.json')
 
@@ -397,26 +315,8 @@ app.openapi(restoreRoute, async (c) => {
 })
 
 // DELETE /api/backup/:name - Delete a backup
-const deleteRoute = createRoute({
-  method: 'delete',
-  path: '/{name}',
-  operationId: 'backup-delete',
-  tags: ['backup'],
-  summary: 'Delete backup',
-  request: {
-    params: z.object({
-      name: z.string(),
-    }),
-  },
-  responses: {
-    200: { description: 'Backup deleted' },
-    404: { description: 'Backup not found' },
-    500: { description: 'Delete failed' },
-  },
-})
-
-app.openapi(deleteRoute, (c) => {
-  const { name } = c.req.valid('param')
+app.delete('/:name', (c) => {
+  const name = c.req.param('name')
   const backupPath = path.join(getBackupsDir(), name)
 
   if (!fs.existsSync(backupPath)) {

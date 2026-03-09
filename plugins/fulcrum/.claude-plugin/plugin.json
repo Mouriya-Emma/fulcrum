@@ -5,7 +5,6 @@
   "author": {
     "name": "Fulcrum"
   },
-  "mcpServers": "./.mcp.json",
   "skills": "./skills/",
   "commands": "./commands/"
 }
