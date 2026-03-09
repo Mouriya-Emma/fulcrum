@@ -14,8 +14,6 @@ import PLUGIN_JSON from '../../../plugins/fulcrum/.claude-plugin/plugin.json' wi
 // @ts-expect-error - Bun text import
 import HOOKS_JSON from '../../../plugins/fulcrum/hooks/hooks.json' with { type: 'text' }
 // @ts-expect-error - Bun text import
-import MCP_JSON from '../../../plugins/fulcrum/.mcp.json' with { type: 'text' }
-// @ts-expect-error - Bun text import
 import CMD_PR from '../../../plugins/fulcrum/commands/pr.md' with { type: 'text' }
 // @ts-expect-error - Bun text import
 import CMD_TASK_INFO from '../../../plugins/fulcrum/commands/task-info.md' with { type: 'text' }
@@ -35,7 +33,6 @@ const PLUGIN_FILES: Array<{ path: string; content: string }> = [
   { path: '.claude-plugin/marketplace.json', content: MARKETPLACE_JSON },
   { path: '.claude-plugin/plugin.json', content: PLUGIN_JSON },
   { path: 'hooks/hooks.json', content: HOOKS_JSON },
-  { path: '.mcp.json', content: MCP_JSON },
   { path: 'commands/pr.md', content: CMD_PR },
   { path: 'commands/task-info.md', content: CMD_TASK_INFO },
   { path: 'commands/notify.md', content: CMD_NOTIFY },
