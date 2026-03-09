@@ -41,14 +41,18 @@ import {
   executeCopyRule,
 } from '../services/caldav'
 import { getSettings } from '../lib/settings'
+import { createLogger } from '../lib/logger'
 import { getUserTimezone, toUserTimezone, fromUserTimezone } from '../services/caldav/timezone'
-import type { CaldavEvent } from '../db'
+import { db, caldavCalendars, type CaldavEvent } from '../db'
+import { isNotNull } from 'drizzle-orm'
+import { googleCalendarManager } from '../services/google/google-calendar-manager'
 
 // Google OAuth constants
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_CALDAV_SCOPE = 'https://www.googleapis.com/auth/calendar'
 
+const logger = createLogger('CalDAV:Routes')
 const caldavRoutes = new Hono()
 
 /** Convert event dates from UTC (DB) to user's configured timezone. */
@@ -555,10 +559,11 @@ caldavRoutes.get('/calendars', (c) => {
 })
 
 // GET /api/caldav/events
-caldavRoutes.get('/events', (c) => {
+caldavRoutes.get('/events', async (c) => {
   const calendarId = c.req.query('calendarId')
   const from = c.req.query('from')
   const to = c.req.query('to')
+  const source = c.req.query('source')
   const limitStr = c.req.query('limit')
   const limit = limitStr ? parseInt(limitStr, 10) : undefined
   const tz = getUserTimezone()
@@ -566,6 +571,45 @@ caldavRoutes.get('/events', (c) => {
   // Convert user-local from/to to UTC for DB query
   const utcFrom = from ? fromUserTimezone(from, tz) : undefined
   const utcTo = to ? fromUserTimezone(to, tz) : undefined
+
+  if (source === 'live' && from && to) {
+    // Get non-Google events from local DB
+    const allDbEvents = listEvents({ calendarId: calendarId ?? undefined, from: utcFrom, to: utcTo, limit })
+
+    // Find Google-backed calendar IDs to exclude from DB results
+    const googleCalendars = db
+      .select()
+      .from(caldavCalendars)
+      .where(isNotNull(caldavCalendars.googleAccountId))
+      .all()
+    const googleCalendarIds = new Set(googleCalendars.map((c) => c.id))
+    const nonGoogleEvents = allDbEvents.filter((e) => !googleCalendarIds.has(e.calendarId))
+
+    // Fetch Google events live, grouped by account
+    const accountIds = [...new Set(googleCalendars.map((c) => c.googleAccountId!).filter(Boolean))]
+    const liveEvents: CaldavEvent[] = []
+
+    for (const accountId of accountIds) {
+      try {
+        const events = await googleCalendarManager.fetchEventsLive(accountId, utcFrom!, utcTo!)
+        liveEvents.push(...(events as CaldavEvent[]))
+      } catch (err) {
+        // Fall back to DB events for this account on error
+        logger.error('Live Google Calendar fetch failed, falling back to DB', {
+          accountId,
+          error: err instanceof Error ? err.message : String(err),
+        })
+        const fallbackEvents = allDbEvents.filter(
+          (e) => googleCalendarIds.has(e.calendarId) &&
+            googleCalendars.find((c) => c.id === e.calendarId)?.googleAccountId === accountId
+        )
+        liveEvents.push(...fallbackEvents)
+      }
+    }
+
+    const merged = [...nonGoogleEvents, ...liveEvents]
+    return c.json(merged.map((e) => localizeEvent(e, tz)))
+  }
 
   const events = listEvents({ calendarId: calendarId ?? undefined, from: utcFrom, to: utcTo, limit })
   return c.json(events.map(e => localizeEvent(e, tz)))

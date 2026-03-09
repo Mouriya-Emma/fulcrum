@@ -414,7 +414,7 @@ export function useCaldavEvents(from?: string, to?: string) {
     queryKey: ['caldav', 'events', from, to],
     queryFn: () =>
       fetchJSON<CaldavEvent[]>(
-        `${API_BASE}/api/caldav/events?from=${from}&to=${to}`
+        `${API_BASE}/api/caldav/events?from=${from}&to=${to}&source=live`
       ),
     enabled: !!from && !!to,
   })

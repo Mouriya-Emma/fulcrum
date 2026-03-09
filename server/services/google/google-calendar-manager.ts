@@ -257,7 +257,8 @@ class GoogleCalendarManager {
         calendarId: googleCalendarId,
         timeMin: timeMin.toISOString(),
         timeMax: timeMax.toISOString(),
-        singleEvents: false,
+        singleEvents: true,
+        orderBy: 'startTime',
         maxResults: 2500,
         pageToken,
       })
@@ -270,32 +271,13 @@ class GoogleCalendarManager {
         const remoteUrl = `google-event://${googleCalendarId}/${event.id}`
         seenUrls.add(remoteUrl)
 
-        const allDay = !!event.start?.date
-        const dtstart = allDay ? event.start?.date : event.start?.dateTime
-        const dtend = allDay ? event.end?.date : event.end?.dateTime
+        const eventData = this.mapGoogleEvent(event)
 
         const existing = db
           .select()
           .from(caldavEvents)
           .where(eq(caldavEvents.remoteUrl, remoteUrl))
           .get()
-
-        const eventData = {
-          uid: event.iCalUID ?? null,
-          etag: event.etag ?? null,
-          summary: event.summary ?? null,
-          description: event.description ?? null,
-          location: event.location ?? null,
-          dtstart: dtstart ?? null,
-          dtend: dtend ?? null,
-          duration: null,
-          allDay,
-          recurrenceRule: event.recurrence?.join('\n') ?? null,
-          status: event.status ?? null,
-          organizer: event.organizer?.email ?? null,
-          attendees: event.attendees?.map((a) => a.email ?? '').filter(Boolean) ?? null,
-          rawIcal: null, // No iCal for Google API events
-        }
 
         if (existing) {
           db.update(caldavEvents)
@@ -529,6 +511,86 @@ class GoogleCalendarManager {
     })
 
     db.delete(caldavEvents).where(eq(caldavEvents.id, eventDbId)).run()
+  }
+
+  private mapGoogleEvent(event: calendar_v3.Schema$Event) {
+    const allDay = !!event.start?.date
+    const dtstart = allDay ? event.start?.date : event.start?.dateTime
+    const dtend = allDay ? event.end?.date : event.end?.dateTime
+
+    return {
+      uid: event.iCalUID ?? null,
+      etag: event.etag ?? null,
+      summary: event.summary ?? null,
+      description: event.description ?? null,
+      location: event.location ?? null,
+      dtstart: dtstart ?? null,
+      dtend: dtend ?? null,
+      duration: null,
+      allDay,
+      recurrenceRule: event.recurrence?.join('\n') ?? null,
+      status: event.status ?? null,
+      organizer: event.organizer?.email ?? null,
+      attendees: event.attendees?.map((a) => a.email ?? '').filter(Boolean) ?? null,
+      rawIcal: null,
+    }
+  }
+
+  /**
+   * Fetch events directly from Google Calendar API (no DB caching).
+   * Used by the frontend for fresh data.
+   */
+  async fetchEventsLive(
+    accountId: string,
+    timeMin: string,
+    timeMax: string
+  ): Promise<(ReturnType<typeof this.mapGoogleEvent> & { id: string; calendarId: string; remoteUrl: string; createdAt: string; updatedAt: string })[]> {
+    const auth = await getAuthenticatedClient(accountId)
+    const calendar = google.calendar({ version: 'v3', auth })
+
+    // Find enabled Google calendars for this account
+    const calendars = db
+      .select()
+      .from(caldavCalendars)
+      .where(eq(caldavCalendars.googleAccountId, accountId))
+      .all()
+      .filter((c) => c.enabled)
+
+    const results: (ReturnType<typeof this.mapGoogleEvent> & { id: string; calendarId: string; remoteUrl: string; createdAt: string; updatedAt: string })[] = []
+    const now = new Date().toISOString()
+
+    for (const cal of calendars) {
+      const googleCalendarId = this.extractGoogleCalendarId(cal.remoteUrl)
+
+      let pageToken: string | undefined
+      do {
+        const res = await calendar.events.list({
+          calendarId: googleCalendarId,
+          timeMin,
+          timeMax,
+          singleEvents: true,
+          orderBy: 'startTime',
+          maxResults: 2500,
+          pageToken,
+        })
+
+        for (const event of res.data.items ?? []) {
+          if (!event.id) continue
+          results.push({
+            id: `live-${googleCalendarId}-${event.id}`,
+            calendarId: cal.id,
+            remoteUrl: `google-event://${googleCalendarId}/${event.id}`,
+            ...this.mapGoogleEvent(event),
+            createdAt: now,
+            updatedAt: now,
+          })
+        }
+
+        pageToken = res.data.nextPageToken ?? undefined
+      } while (pageToken)
+    }
+
+    return results
   }
 
   private extractGoogleCalendarId(remoteUrl: string): string {
