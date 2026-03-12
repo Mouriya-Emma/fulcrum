@@ -15,7 +15,7 @@ import { useProjects } from '@/hooks/use-projects'
 import { cn } from '@/lib/utils'
 import { fuzzyScore } from '@/lib/fuzzy-search'
 import type { TaskStatus } from '@/types'
-import { getTaskType, type TaskType } from '../../../shared/types'
+import { getTaskType, type TaskType, type TaskPriority } from '../../../shared/types'
 
 const COLUMNS: TaskStatus[] = [
   'TO_DO',
@@ -65,11 +65,12 @@ interface KanbanBoardProps {
   searchQuery?: string
   tagsFilter?: string[]
   taskTypesFilter?: TaskType[]
+  prioritiesFilter?: TaskPriority[]
   showTypeLabels?: boolean
   selectedTaskId?: string // task ID for manual task modal (from URL param)
 }
 
-function KanbanBoardInner({ projectFilter, searchQuery, tagsFilter, taskTypesFilter, showTypeLabels, selectedTaskId }: KanbanBoardProps) {
+function KanbanBoardInner({ projectFilter, searchQuery, tagsFilter, taskTypesFilter, prioritiesFilter, showTypeLabels, selectedTaskId }: KanbanBoardProps) {
   const { t } = useTranslation('common')
   const navigate = useNavigate()
   const { data: allTasks = [], isLoading } = useTasks()
@@ -200,6 +201,13 @@ function KanbanBoardInner({ projectFilter, searchQuery, tagsFilter, taskTypesFil
       )
     }
 
+    // Filter by priority (OR logic - show tasks matching ANY selected priority)
+    if (prioritiesFilter && prioritiesFilter.length > 0) {
+      filtered = filtered.filter((t) =>
+        prioritiesFilter.includes(t.priority ?? 'medium')
+      )
+    }
+
     if (searchQuery?.trim()) {
       // When searching, sort by fuzzy score
       filtered = filtered
@@ -233,7 +241,7 @@ function KanbanBoardInner({ projectFilter, searchQuery, tagsFilter, taskTypesFil
       })
     }
     return filtered
-  }, [allTasks, projectFilter, searchQuery, tagsFilter, taskTypesFilter, projectRepoIds, projectRepoPaths, selectedProjectRepoIds, selectedProjectRepoPaths])
+  }, [allTasks, projectFilter, searchQuery, tagsFilter, taskTypesFilter, prioritiesFilter, projectRepoIds, projectRepoPaths, selectedProjectRepoIds, selectedProjectRepoPaths])
 
   // Task counts for tabs
   const taskCounts = useMemo(() => {
