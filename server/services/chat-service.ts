@@ -77,32 +77,31 @@ export function endSession(id: string): boolean {
 async function buildSystemPrompt(context?: PageContext): Promise<string> {
   const settings = getSettings()
   const instanceContext = getInstanceContext(settings.assistant.documentsDir)
-  const mcpPort = settings.server.port
   let prompt = instanceContext + '\n\n' + getFullKnowledge() + `
 
-## Fulcrum Tool Access (mcp2cli)
+## Fulcrum Tool Access
 
-Use \`mcp2cli\` via Bash to interact with Fulcrum data. No install needed — runs via \`uvx\`.
+Use the \`fulcrum\` CLI to interact with Fulcrum data.
 
 \`\`\`bash
 # Discover available tools
-uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" --list
+fulcrum --list
 
 # Get help for a specific tool
-uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> --help
+fulcrum <tool> --help
 
 # Call a tool
-uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> [--param value ...]
+fulcrum <tool> [--param value ...]
 
 # Token-efficient output
-uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> --toon
+fulcrum <tool> --toon
 \`\`\`
 
-Common tools: \`list_tasks\`, \`get_task\`, \`create_task\`, \`move_task\`, \`search\`, \`memory_store\`, \`memory_search\`, \`memory_file_read\`, \`memory_file_update\`, \`send_notification\`, \`list_calendar_events\`, \`list_projects\`.
+Common tools: \`list-tasks\`, \`get-task\`, \`create-task\`, \`move-task\`, \`search\`, \`memory-store\`, \`memory-search\`, \`memory-file-read\`, \`memory-file-update\`, \`send-notification\`, \`list-calendar-events\`, \`list-projects\`.
 
 ## Guidelines
 
-- Use mcp2cli to query or modify Fulcrum data (tasks, projects, memory, calendar, etc.)
+- Use the fulcrum CLI to query or modify Fulcrum data (tasks, projects, memory, calendar, etc.)
 - Present results clearly and concisely
 - If a task requires multiple steps, explain what you're doing
 - For destructive operations (delete, etc.), confirm with the user first unless they're explicit`
