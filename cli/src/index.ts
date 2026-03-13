@@ -21,7 +21,7 @@ import { boardCommand } from './commands/board'
 import { migrateFromViboraCommand } from './commands/migrate-from-vibora'
 import { updateCommand } from './commands/update'
 
-import { mcpPassthrough } from './passthrough'
+import { mcpPassthrough, showFullHelp } from './passthrough'
 
 import pkg from '../../package.json'
 
@@ -97,9 +97,13 @@ const main = defineCommand({
 // Check if the command should be passed through to MCP tools
 const commandArg = process.argv.slice(2).find((a) => !a.startsWith('-'))
 const hasListFlag = process.argv.includes('--list')
+const hasHelpFlag = process.argv.includes('--help') || process.argv.includes('-h')
 
-if (hasListFlag && !commandArg) {
-  // `fulcrum --list` → list MCP tools
+if (hasHelpFlag && !commandArg) {
+  // `fulcrum --help` → show built-in commands + MCP tools
+  showFullHelp(VERSION).then((code) => process.exit(code))
+} else if (hasListFlag && !commandArg) {
+  // `fulcrum --list` → list MCP tools only
   mcpPassthrough(process.argv.slice(2)).then((code) => process.exit(code))
 } else if (commandArg && !KNOWN_COMMANDS.has(commandArg)) {
   // Unknown command → MCP tool passthrough

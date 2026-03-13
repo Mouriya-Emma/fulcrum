@@ -70,6 +70,66 @@ export async function mcpPassthrough(argv: string[]): Promise<number> {
   return runCommand(cmd)
 }
 
+const BUILTIN_COMMANDS: [string, string][] = [
+  ['current-task', 'Manage the current worktree task'],
+  ['config', 'Manage configuration'],
+  ['opencode', 'OpenCode integration'],
+  ['claude', 'Claude Code integration'],
+  ['board', 'Agent coordination board'],
+  ['notifications', 'Manage notification settings'],
+  ['notify', 'Send a notification'],
+  ['up', 'Start the Fulcrum server'],
+  ['down', 'Stop the Fulcrum server'],
+  ['status', 'Show server status'],
+  ['doctor', 'Check dependencies and system status'],
+  ['dev', 'Developer mode commands'],
+  ['mcp', 'Start MCP server (stdio)'],
+  ['update', 'Check for updates and update Fulcrum'],
+  ['migrate-from-vibora', 'Migrate from legacy ~/.vibora directory'],
+]
+
+/**
+ * Show full help including both built-in commands and MCP tools.
+ */
+export async function showFullHelp(version: string): Promise<number> {
+  console.log(`Fulcrum - Terminal-first AI agent orchestration (v${version})\n`)
+  console.log('USAGE fulcrum <command> [OPTIONS]\n')
+
+  // Built-in commands
+  console.log('COMMANDS\n')
+  const maxLen = Math.max(...BUILTIN_COMMANDS.map(([n]) => n.length))
+  for (const [name, desc] of BUILTIN_COMMANDS) {
+    console.log(`  ${name.padStart(maxLen)}    ${desc}`)
+  }
+
+  // MCP tools
+  console.log('\nMCP TOOLS (pass-through)\n')
+
+  const uvxCheck = spawn(['which', 'uvx'], { stdout: 'pipe', stderr: 'pipe' })
+  if ((await uvxCheck.exited) !== 0) {
+    console.log('  (install uv to access MCP tools: https://docs.astral.sh/uv/)')
+  } else {
+    const proc = spawn(['uvx', 'mcp2cli', '--mcp-stdio', 'fulcrum mcp', '--list'], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    const output = await new Response(proc.stdout).text()
+    if ((await proc.exited) === 0 && output.trim()) {
+      // Skip the "Available tools:" header line from mcp2cli
+      const lines = output.trim().split('\n')
+      const toolLines = lines[0]?.match(/^Available/) ? lines.slice(1) : lines
+      for (const line of toolLines) {
+        if (line.trim()) console.log(line)
+      }
+    } else {
+      console.log('  (unavailable — run fulcrum up first)')
+    }
+  }
+
+  console.log('\nUse fulcrum <command> --help for more information about a command.')
+  return 0
+}
+
 function buildMcpStdio(mcpFlags: string[]): string {
   const parts = ['fulcrum', 'mcp', ...mcpFlags]
   return parts.join(' ')
