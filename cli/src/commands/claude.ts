@@ -88,12 +88,26 @@ async function handleClaudeCommand(action: string | undefined) {
   )
 }
 
+function isMcpServerRegistered(): boolean {
+  const claudeJson = join(homedir(), '.claude.json')
+  if (!existsSync(claudeJson)) return false
+  try {
+    const data = JSON.parse(readFileSync(claudeJson, 'utf-8'))
+    return !!data.mcpServers?.[PLUGIN_NAME]
+  } catch {
+    return false
+  }
+}
+
 // Check if plugin needs to be installed or updated
 export function needsPluginUpdate(): boolean {
   const installedVersion = getInstalledVersion()
   if (!installedVersion) {
     return true // Not installed
   }
+
+  // Trigger update if stale MCP server registration exists (removed in favor of mcp2cli)
+  if (isMcpServerRegistered()) return true
 
   const bundledVersion = getBundledVersion()
   return installedVersion !== bundledVersion
@@ -134,6 +148,10 @@ export async function installClaudePlugin(options: { silent?: boolean } = {}) {
     }
     log('✓ Installed plugin')
 
+    // 4. Remove stale MCP server registration (was added in older versions, now using mcp2cli)
+    runClaude(['mcp', 'remove', PLUGIN_NAME, '--scope', 'user']) // Ignore errors
+    log('✓ Cleaned up MCP server registration')
+
     log('')
     log('Installation complete! Restart Claude Code to apply changes.')
   } catch (err) {
@@ -155,7 +173,11 @@ async function uninstallClaudePlugin() {
     runClaude(['plugin', 'marketplace', 'remove', MARKETPLACE_NAME])
     console.log('✓ Removed marketplace')
 
-    // 3. Clean up plugin files
+    // 3. Remove MCP server registration (ignore errors - might not be registered)
+    runClaude(['mcp', 'remove', PLUGIN_NAME, '--scope', 'user'])
+    console.log('✓ Cleaned up MCP server registration')
+
+    // 4. Clean up plugin files
     if (existsSync(MARKETPLACE_DIR)) {
       rmSync(MARKETPLACE_DIR, { recursive: true })
       console.log('✓ Removed plugin files from ' + MARKETPLACE_DIR)
