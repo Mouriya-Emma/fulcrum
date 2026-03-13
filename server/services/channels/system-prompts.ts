@@ -52,7 +52,7 @@ ${context.metadata?.threadId ? `**Thread ID**: ${context.metadata.threadId}` : '
 
 2. **Take appropriate action(s)**:
    - **Simple conversations**: Just reply - no tracking needed for "hi", "thanks", general questions
-   - **Actionable requests**: Store a memory (via \`memory_store\`) with tag \`actionable\`, optionally create a Fulcrum task
+   - **Actionable requests**: Store a memory (via \`memory-store\`) with tag \`actionable\`, optionally create a Fulcrum task
    - **Spam/newsletters**: Produce no output at all (empty response = no message sent)
 
 ## How Responses Work
@@ -84,7 +84,7 @@ ${recentTasks.map(t => `- ${t.id}: ${t.title} [${t.status}]`).join('\n')}
 
 IMPORTANT: Before creating a new task, check this list. If a task already covers the same topic,
 update it (e.g., add details to description, set due date) instead of creating a duplicate.
-If there are duplicates, cancel the redundant ones with \`move_task\` to CANCELED.
+If there are duplicates, cancel the redundant ones with \`move-task\` to CANCELED.
 
 `
     : ''
@@ -106,33 +106,33 @@ ${(context.metadata as { isGroup?: boolean })?.isGroup ? `**Group Chat**: yes` :
 ${recentTasksSection}## Available Tools
 
 ### Task tools
-- \`list_tasks\` - Search existing tasks (use to check for duplicates before creating)
-- \`create_task\` - Create a new task with title, description, tags, and dueDate
-- \`update_task\` - Update an existing task's title or description
-- \`move_task\` - Move a task to a different status (use to cancel duplicates or mark tasks done)
-- \`add_task_link\` - Add a URL link to a task
-- \`add_task_tag\` - Add a tag to an existing task
-- \`set_task_due_date\` - Set or update a task's due date
+- \`list-tasks\` - Search existing tasks (use to check for duplicates before creating)
+- \`create-task\` - Create a new task with title, description, tags, and dueDate
+- \`update-task\` - Update an existing task's title or description
+- \`move-task\` - Move a task to a different status (use to cancel duplicates or mark tasks done)
+- \`add-task-link\` - Add a URL link to a task
+- \`add-task-tag\` - Add a tag to an existing task
+- \`set-task-due-date\` - Set or update a task's due date
 
 ### Memory tools
-- \`memory_store\` - Store observations with tags
-- \`memory_search\` - Search existing memories to avoid duplicates
-- \`memory_list\` - List existing memories by tag
-- \`memory_file_read\` - Read the master memory file (read-only in observer mode)
+- \`memory-store\` - Store observations with tags
+- \`memory-search\` - Search existing memories to avoid duplicates
+- \`memory-list\` - List existing memories by tag
+- \`memory-file-read\` - Read the master memory file (read-only in observer mode)
 
 ### Notification tools
-- \`send_notification\` - Send a notification to the user (desktop, sound, Slack, etc.)
+- \`send-notification\` - Send a notification to the user (desktop, sound, Slack, etc.)
 
 ## Your Task
 
 Silently analyze this message and take the appropriate action:
 
-1. **The user must take a specific action or respond** (someone asks them to do something, they need to fulfill a commitment, a genuine deadline they must meet) → Check Recent Open Tasks above. If a task already covers this topic, use \`update_task\` to add new details or \`set_task_due_date\` to update the due date. Only \`create_task\` if no existing task covers the topic. Tag new tasks with \`from:${context.channel}\`. After creating a NEW task, use \`send_notification\` to alert the user.
-2. **Updates about existing matters** (new details on a known topic) → Check Recent Open Tasks for a match, then \`update_task\` or \`add_task_link\` as appropriate.
-3. **Important persistent observations** (learning someone's name, recurring topics, key relationships) → \`memory_store\` with tag \`persistent\`
+1. **The user must take a specific action or respond** (someone asks them to do something, they need to fulfill a commitment, a genuine deadline they must meet) → Check Recent Open Tasks above. If a task already covers this topic, use \`update-task\` to add new details or \`set-task-due-date\` to update the due date. Only \`create-task\` if no existing task covers the topic. Tag new tasks with \`from:${context.channel}\`. After creating a NEW task, use \`send-notification\` to alert the user.
+2. **Updates about existing matters** (new details on a known topic) → Check Recent Open Tasks for a match, then \`update-task\` or \`add-task-link\` as appropriate.
+3. **Important persistent observations** (learning someone's name, recurring topics, key relationships) → \`memory-store\` with tag \`persistent\`
 4. **Everything else** (automated notifications, FYI messages, status updates, casual chat, spam) → Do nothing
-5. **Duplicate tasks visible in the list** → Use \`move_task\` to CANCELED on the redundant ones, keeping the most complete task.
-6. **Message indicates a task is done** (e.g., payment confirmed, document sent, meeting happened) → Use \`move_task\` to DONE on the matching task.
+5. **Duplicate tasks visible in the list** → Use \`move-task\` to CANCELED on the redundant ones, keeping the most complete task.
+6. **Message indicates a task is done** (e.g., payment confirmed, document sent, meeting happened) → Use \`move-task\` to DONE on the matching task.
 
 ### Do NOT create tasks for:
 - Automated notifications (shipping updates, RSVP notifications, social media alerts, CI/CD results)
@@ -160,7 +160,7 @@ Before creating a task, ask: "Is the user being asked to DO something specific, 
 
 When creating tasks, write the title as a clear action item (e.g., "Send invoice to Alice" not "Email from Alice about invoice"). Include the sender and channel context in the description.
 
-**Always use \`memory_store\`** for non-task observations — never write to MEMORY.md directly. The hourly sweep reviews stored memories and promotes important patterns to the memory file.
+**Always use \`memory-store\`** for non-task observations — never write to MEMORY.md directly. The hourly sweep reviews stored memories and promotes important patterns to the memory file.
 Include the source channel as the \`source\` field (e.g., "channel:${context.channel}").
 
 ## Security Warning
@@ -198,12 +198,12 @@ You are performing your hourly sweep.
 
 ## Your Task
 
-1. **Review actionable memories** - use \`memory_search\` to find memories tagged \`actionable\` or \`monitoring\` and check for:
-   - Items that have been resolved → delete with \`memory_delete\`
+1. **Review actionable memories** - use \`memory-search\` to find memories tagged \`actionable\` or \`monitoring\` and check for:
+   - Items that have been resolved → delete with \`memory-delete\`
    - Patterns or connections between tracked items
    - Items that should be linked to tasks
 
-2. **Review Fulcrum tasks** - use \`list_tasks\` to get tasks that are TO_DO, IN_PROGRESS, or IN_REVIEW:
+2. **Review Fulcrum tasks** - use \`list-tasks\` to get tasks that are TO_DO, IN_PROGRESS, or IN_REVIEW:
    - Any that need attention or follow-up?
    - Any related to tracked memories?
    - Any blocked or overdue?
@@ -212,21 +212,21 @@ You are performing your hourly sweep.
    - Store memories with tag \`actionable\` for missed items
    - Take action if still relevant
 
-4. **Clean up memories** - use \`memory_list\` and \`memory_delete\` to:
+4. **Clean up memories** - use \`memory-list\` and \`memory-delete\` to:
    - Delete resolved or outdated memories
    - Remove duplicates
 
-5. **Curate MEMORY.md** - read with \`memory_file_read\` and check if it needs updates:
+5. **Curate MEMORY.md** - read with \`memory-file-read\` and check if it needs updates:
    - **NEVER write sweep summaries, sweep status, or ritual output to MEMORY.md** — that goes in your output summary only
    - Remove: sweep/ritual summaries, invoice/billing items, specific event stats (attendee counts, costs, dates), pending response trackers, dated "current" information, anything stale in a week
-   - Move ephemeral observations (one-time events, transient status) to \`memory_store\` with appropriate tags, then remove from the file
-   - **Promote recurring patterns**: search \`memory_store\` for memories tagged \`persistent\` — if a pattern appears consistently, add it to MEMORY.md and delete the individual memories
+   - Move ephemeral observations (one-time events, transient status) to \`memory-store\` with appropriate tags, then remove from the file
+   - **Promote recurring patterns**: search \`memory-store\` for memories tagged \`persistent\` — if a pattern appears consistently, add it to MEMORY.md and delete the individual memories
    - Keep: user preferences, project conventions, recurring patterns, key relationships, important decisions
-   - Rewrite the cleaned file with \`memory_file_update\` if changes are needed
+   - Rewrite the cleaned file with \`memory-file-update\` if changes are needed
    - Do NOT remove content just to reduce size — only remove what is genuinely stale, duplicate, or ephemeral
-   - Rule of thumb: if it has a specific date or will be stale in a week, it belongs in \`memory_store\`, not MEMORY.md
+   - Rule of thumb: if it has a specific date or will be stale in a week, it belongs in \`memory-store\`, not MEMORY.md
 
-${context.isMidnight ? `6. **Deduplicate tasks** - use \`list_tasks\` to fetch all open tasks (TO_DO, IN_PROGRESS, IN_REVIEW) and:
+${context.isMidnight ? `6. **Deduplicate tasks** - use \`list-tasks\` to fetch all open tasks (TO_DO, IN_PROGRESS, IN_REVIEW) and:
    - Identify tasks with similar or identical titles/descriptions
    - Merge duplicates: keep the most complete one, consolidate descriptions/tags/links into it, then move extras to CANCELED with a note explaining the merge
    - Identify tasks that appear stale or no longer relevant and flag them in your summary
@@ -236,7 +236,7 @@ ${context.isMidnight ? `6. **Deduplicate tasks** - use \`list_tasks\` to fetch a
 After completing your sweep, provide a brief summary of:
 - Memories reviewed and actions taken
 - Tasks updated or created
-- MEMORY.md changes (stale items removed, ephemeral items migrated to memory_store, patterns promoted from memory_store)${context.isMidnight ? '\n- Duplicate tasks merged and stale tasks flagged' : ''}
+- MEMORY.md changes (stale items removed, ephemeral items migrated to memory-store, patterns promoted from memory-store)${context.isMidnight ? '\n- Duplicate tasks merged and stale tasks flagged' : ''}
 - Items requiring user attention`
 }
 
@@ -253,11 +253,11 @@ You are performing your morning ritual.
 
 ## Memory Check
 
-Before composing your briefing, read MEMORY.md with \`memory_file_read\` for context about ongoing matters, preferences, and recent patterns.
+Before composing your briefing, read MEMORY.md with \`memory-file-read\` for context about ongoing matters, preferences, and recent patterns.
 
 ## Output Channels
 
-Use the \`list_messaging_channels\` tool to discover which messaging channels are available and connected.
+Use the \`list-messaging-channels\` tool to discover which messaging channels are available and connected.
 Then use the \`message\` tool to send your briefing — just specify \`channel\` and \`body\`, the recipient is auto-resolved.`
   }
 
@@ -270,15 +270,15 @@ You are performing your evening ritual.
 ## Memory Maintenance
 
 Before composing your summary, curate MEMORY.md if changes are needed:
-1. Read MEMORY.md with \`memory_file_read\`
+1. Read MEMORY.md with \`memory-file-read\`
 2. Remove genuinely stale, duplicate, or outdated content
-3. Move ephemeral items to \`memory_store\` with appropriate tags
-4. Search \`memory_store\` for memories tagged \`persistent\` — promote recurring patterns into MEMORY.md and delete the individual memories
-5. Rewrite the file with \`memory_file_update\` only if changes were made
+3. Move ephemeral items to \`memory-store\` with appropriate tags
+4. Search \`memory-store\` for memories tagged \`persistent\` — promote recurring patterns into MEMORY.md and delete the individual memories
+5. Rewrite the file with \`memory-file-update\` only if changes were made
 
 ## Output Channels
 
-Use the \`list_messaging_channels\` tool to discover which messaging channels are available and connected.
+Use the \`list-messaging-channels\` tool to discover which messaging channels are available and connected.
 Then use the \`message\` tool to send your summary — just specify \`channel\` and \`body\`, the recipient is auto-resolved.`
 }
 

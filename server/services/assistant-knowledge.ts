@@ -108,82 +108,82 @@ export function getMcpToolCapabilities(): string {
 You have access to Fulcrum's MCP tools. Use them proactively to help users.
 
 **Task Management:**
-- \`list_tasks\` - List tasks with filtering (status, tags, due dates, search)
-- \`get_task\` - Get full task details
-- \`create_task\` - Create tasks (type: worktree/scratch/manual, with optional time estimate, recurrence rule, recurrence end date)
-- \`update_task\` - Update task metadata (including time estimate, recurrence rule, and end date)
-- \`move_task\` - Change task status (TO_DO, IN_PROGRESS, IN_REVIEW, DONE, CANCELED). Moving a repeating task to DONE auto-creates the next occurrence.
-- \`delete_task\` - Delete a task
-- \`add_task_tag\`, \`remove_task_tag\` - Manage task tags
-- \`set_task_due_date\` - Set or clear due dates
-- \`add_task_dependency\`, \`remove_task_dependency\` - Manage dependencies
-- \`upload_task_attachment\`, \`list_task_attachments\` - File attachments
-- \`add_task_link\`, \`list_task_links\` - URL links
+- \`list-tasks\` - List tasks with filtering (status, tags, due dates, search)
+- \`get-task\` - Get full task details
+- \`create-task\` - Create tasks (type: worktree/scratch/manual, with optional time estimate, recurrence rule, recurrence end date)
+- \`update-task\` - Update task metadata (including time estimate, recurrence rule, and end date)
+- \`move-task\` - Change task status (TO_DO, IN_PROGRESS, IN_REVIEW, DONE, CANCELED). Moving a repeating task to DONE auto-creates the next occurrence.
+- \`delete-task\` - Delete a task
+- \`add-task-tag\`, \`remove-task-tag\` - Manage task tags
+- \`set-task-due-date\` - Set or clear due dates
+- \`add-task-dependency\`, \`remove-task-dependency\` - Manage dependencies
+- \`upload-task-attachment\`, \`list-task-attachments\` - File attachments
+- \`add-task-link\`, \`list-task-links\` - URL links
 
 **Project Management:**
-- \`list_projects\`, \`get_project\`, \`create_project\`, \`update_project\`, \`delete_project\`
-- \`add_project_tag\`, \`remove_project_tag\`
-- \`upload_project_attachment\`, \`list_project_attachments\`
-- \`add_project_link\`, \`list_project_links\`
+- \`list-projects\`, \`get-project\`, \`create-project\`, \`update-project\`, \`delete-project\`
+- \`add-project-tag\`, \`remove-project-tag\`
+- \`upload-project-attachment\`, \`list-project-attachments\`
+- \`add-project-link\`, \`list-project-links\`
 
 **Repository Management:**
-- \`list_repositories\`, \`get_repository\`, \`add_repository\`, \`update_repository\`
-- \`link_repository_to_project\`, \`unlink_repository_from_project\`
+- \`list-repositories\`, \`get-repository\`, \`add-repository\`, \`update-repository\`
+- \`link-repository-to-project\`, \`unlink-repository-from-project\`
 
 **App Deployment:**
-- \`list_apps\`, \`get_app\`, \`create_app\`, \`update_app\`, \`delete_app\`
-- \`deploy_app\`, \`stop_app\`
-- \`get_app_logs\`, \`get_app_status\`
-- \`list_deployments\`
+- \`list-apps\`, \`get-app\`, \`create-app\`, \`update-app\`, \`delete-app\`
+- \`deploy-app\`, \`stop-app\`
+- \`get-app-logs\`, \`get-app-status\`
+- \`list-deployments\`
 
 **Job Scheduling:**
-- \`list_jobs\` - List scheduled jobs (systemd timers / launchd agents)
-- \`get_job\` - Get job details (schedule, command, execution stats, unit files)
-- \`get_job_logs\` - Get job execution logs
-- \`create_job\` - Create a scheduled job (Linux systemd only)
-- \`update_job\` - Update a scheduled job
-- \`delete_job\` - Delete a scheduled job
-- \`enable_job\` - Enable a job's timer
-- \`disable_job\` - Disable a job's timer
-- \`run_job_now\` - Trigger immediate execution
+- \`list-jobs\` - List scheduled jobs (systemd timers / launchd agents)
+- \`get-job\` - Get job details (schedule, command, execution stats, unit files)
+- \`get-job-logs\` - Get job execution logs
+- \`create-job\` - Create a scheduled job (Linux systemd only)
+- \`update-job\` - Update a scheduled job
+- \`delete-job\` - Delete a scheduled job
+- \`enable-job\` - Enable a job's timer
+- \`disable-job\` - Disable a job's timer
+- \`run-job-now\` - Trigger immediate execution
 
 **File Operations:**
-- \`read_file\`, \`write_file\`, \`edit_file\`
-- \`list_directory\`, \`get_file_tree\`
-- \`file_stat\`
+- \`read-file\`, \`write-file\`, \`edit-file\`
+- \`list-directory\`, \`get-file-tree\`
+- \`file-stat\`
 
 **Command Execution:**
-- \`execute_command\` - Run CLI commands with persistent sessions
-- \`list_exec_sessions\`, \`destroy_exec_session\` - Manage sessions
+- \`execute-command\` - Run CLI commands with persistent sessions
+- \`list-exec-sessions\`, \`destroy-exec-session\` - Manage sessions
 
 **Notifications:**
-- \`send_notification\` - Send notifications (Slack, Discord, Pushover, WhatsApp, Telegram, Gmail, desktop, sound)
+- \`send-notification\` - Send notifications (Slack, Discord, Pushover, WhatsApp, Telegram, Gmail, desktop, sound)
 
 **Settings Management:**
-- \`list_settings\` - View all settings with current values
-- \`get_setting\` - Get a specific setting value
-- \`update_setting\` - Change a setting value
-- \`reset_setting\` - Reset a setting to default
-- \`get_notification_settings\` - View notification channel configuration
-- \`update_notification_settings\` - Configure notification channels
+- \`list-settings\` - View all settings with current values
+- \`get-setting\` - Get a specific setting value
+- \`update-setting\` - Change a setting value
+- \`reset-setting\` - Reset a setting to default
+- \`get-notification-settings\` - View notification channel configuration
+- \`update-notification-settings\` - Configure notification channels
 
 **Backup & Restore:**
-- \`list_backups\` - List all available backups
-- \`create_backup\` - Create a backup of database and settings
-- \`get_backup\` - Get details of a specific backup
-- \`restore_backup\` - Restore from a backup (auto-creates pre-restore backup)
-- \`delete_backup\` - Delete a backup to free space
+- \`list-backups\` - List all available backups
+- \`create-backup\` - Create a backup of database and settings
+- \`get-backup\` - Get details of a specific backup
+- \`restore-backup\` - Restore from a backup (auto-creates pre-restore backup)
+- \`delete-backup\` - Delete a backup to free space
 
 **Email Tools:**
-- \`list_emails\` - List stored emails from local database (queries unified channel_messages table)
-- \`get_email\` - Get a specific email by ID
-- \`search_emails\` - Search emails via IMAP
-- \`fetch_emails\` - Fetch specific emails by IMAP UID
+- \`list-emails\` - List stored emails from local database (queries unified channel_messages table)
+- \`get-email\` - Get a specific email by ID
+- \`search-emails\` - Search emails via IMAP
+- \`fetch-emails\` - Fetch specific emails by IMAP UID
 
 **Assistant Tools (Proactive Agent):**
 - \`message\` - Send a message to a channel (whatsapp, discord, telegram, slack, gmail). The \`to\` param is optional — omit it and the recipient auto-resolves to the channel's primary user. Messages are restricted to the user's own accounts only.
-- \`get_last_sweep\` - Check when last sweep ran
-- Use \`memory_store\` with tag \`actionable\` to track things that need attention
+- \`get-last-sweep\` - Check when last sweep ran
+- Use \`memory-store\` with tag \`actionable\` to track things that need attention
 - Use \`search\` with \`memoryTags: ["actionable"]\` to review tracked items
 
 **Unified Search:**
@@ -196,42 +196,42 @@ You have access to Fulcrum's MCP tools. Use them proactively to help users.
   - Results sorted by relevance score with BM25 ranking
 
 **Memory File (Persistent Knowledge):**
-- \`memory_file_read\` - Read the master memory file (MEMORY.md)
-- \`memory_file_update\` - Update the file (whole or by section heading)
+- \`memory-file-read\` - Read the master memory file (MEMORY.md)
+- \`memory-file-update\` - Update the file (whole or by section heading)
 
 **Memory Management:**
-- \`memory_store\` - Store individual knowledge snippets with optional tags
-- \`memory_search\` - Full-text search across memories (FTS5: AND, OR, NOT, "phrases", prefix*)
-- \`memory_list\` - List memories with optional tag filter and pagination
-- \`memory_delete\` - Delete a memory by ID (for cleanup of resolved/stale items)
+- \`memory-store\` - Store individual knowledge snippets with optional tags
+- \`memory-search\` - Full-text search across memories (FTS5: AND, OR, NOT, "phrases", prefix*)
+- \`memory-list\` - List memories with optional tag filter and pagination
+- \`memory-delete\` - Delete a memory by ID (for cleanup of resolved/stale items)
 
 **Google Account & Gmail Tools:**
-- \`list_google_accounts\` - List all Google accounts with calendar/Gmail status
-- \`list_gmail_drafts\` - List Gmail drafts for a Google account
-- \`create_gmail_draft\` - Create a new Gmail draft (to, cc, bcc, subject, body, htmlBody)
-- \`update_gmail_draft\` - Update an existing Gmail draft
-- \`delete_gmail_draft\` - Delete a Gmail draft
+- \`list-google-accounts\` - List all Google accounts with calendar/Gmail status
+- \`list-gmail-drafts\` - List Gmail drafts for a Google account
+- \`create-gmail-draft\` - Create a new Gmail draft (to, cc, bcc, subject, body, htmlBody)
+- \`update-gmail-draft\` - Update an existing Gmail draft
+- \`delete-gmail-draft\` - Delete a Gmail draft
 
 **Calendar Management:**
-- \`list_caldav_accounts\` - List all CalDAV accounts
-- \`create_caldav_account\` - Add a new CalDAV account (basic or Google OAuth)
-- \`delete_caldav_account\` - Remove an account and its calendars
-- \`sync_caldav_account\` - Trigger sync for a specific account
-- \`list_caldav_copy_rules\` - List event copy rules
-- \`create_caldav_copy_rule\` - Create a rule to copy events between calendars
-- \`delete_caldav_copy_rule\` - Remove a copy rule
-- \`execute_caldav_copy_rule\` - Manually run a copy rule
+- \`list-caldav-accounts\` - List all CalDAV accounts
+- \`create-caldav-account\` - Add a new CalDAV account (basic or Google OAuth)
+- \`delete-caldav-account\` - Remove an account and its calendars
+- \`sync-caldav-account\` - Trigger sync for a specific account
+- \`list-caldav-copy-rules\` - List event copy rules
+- \`create-caldav-copy-rule\` - Create a rule to copy events between calendars
+- \`delete-caldav-copy-rule\` - Remove a copy rule
+- \`execute-caldav-copy-rule\` - Manually run a copy rule
 
 **Agent Coordination Board:**
-- \`board_read\` - Read recent messages from the coordination board (filter by time, type, project, tag)
-- \`board_post\` - Post a message (claim resources, share status, warn other agents)
-- \`board_check\` - Check if a specific resource is claimed (e.g., "port:5173")
+- \`board-read\` - Read recent messages from the coordination board (filter by time, type, project, tag)
+- \`board-post\` - Post a message (claim resources, share status, warn other agents)
+- \`board-check\` - Check if a specific resource is claimed (e.g., "port:5173")
 
 **Utilities:**
-- \`list_tags\` - See all tags in use
-- \`delete_tag\` - Delete a tag and all its associations
-- \`get_task_dependency_graph\` - Visualize task dependencies
-- \`is_git_repo\` - Check if a path is a git repository`
+- \`list-tags\` - See all tags in use
+- \`delete-tag\` - Delete a tag and all its associations
+- \`get-task-dependency-graph\` - Visualize task dependencies
+- \`is-git-repo\` - Check if a path is a git repository`
 }
 
 /**
@@ -240,10 +240,10 @@ You have access to Fulcrum's MCP tools. Use them proactively to help users.
 export function getOrchestrationCapabilities(): string {
   return `## Orchestration Capabilities
 
-Beyond the MCP tools, you can use \`execute_command\` to run any CLI command:
+Beyond the MCP tools, you can use \`execute-command\` to run any CLI command:
 
 **Scheduling Jobs:**
-Fulcrum has a built-in Jobs feature (see **Job Scheduling Guide**). Use the job scheduling MCP tools (\`list_jobs\`, \`create_job\`, \`get_job_logs\`, etc.) or direct users to the Jobs UI (/jobs, Cmd+6).
+Fulcrum has a built-in Jobs feature (see **Job Scheduling Guide**). Use the job scheduling MCP tools (\`list-jobs\`, \`create-job\`, \`get-job-logs\`, etc.) or direct users to the Jobs UI (/jobs, Cmd+6).
 
 **Package Management:**
 \`\`\`bash
@@ -310,7 +310,7 @@ export function getProblemSolvingPatterns(): string {
 ### Automation Tasks
 
 **"Schedule a daily job" (e.g., email responder, report generator):**
-See the **Job Scheduling Guide** section for full details. In short: help write the script, then use the \`create_job\` MCP tool to schedule it (or direct the user to the Jobs UI at /jobs).
+See the **Job Scheduling Guide** section for full details. In short: help write the script, then use the \`create-job\` MCP tool to schedule it (or direct the user to the Jobs UI at /jobs).
 
 **"Deploy my app":**
 See the **App Deployment Guide** section for the full step-by-step workflow (create app → configure exposure → deploy → verify).
@@ -387,7 +387,7 @@ export function getAppDeploymentGuide(): string {
 
 **Step 1: Create the app**
 
-Use the \`create_app\` MCP tool:
+Use the \`create-app\` MCP tool:
 \`\`\`
 create_app name="my-app" repositoryId=<id> branch="main"
 \`\`\`
@@ -397,7 +397,7 @@ create_app name="my-app" repositoryId=<id> branch="main"
 
 **Step 2: Configure service exposure**
 
-Use the \`update_app\` MCP tool:
+Use the \`update-app\` MCP tool:
 \`\`\`
 update_app id=<app-id> services=[{serviceName: "web", containerPort: 3000, exposed: true, domain: "myapp.example.com", exposureMethod: "dns"}]
 \`\`\`
@@ -428,8 +428,8 @@ This builds images (if the compose file has \`build\` directives), generates a S
 get_app_status id=<app-id>
 get_app_logs id=<app-id>
 \`\`\`
-- \`get_app_status\` shows container status and replica health (e.g., "1/1")
-- \`get_app_logs\` returns container logs (use \`service\` param to filter, \`tail\` to limit lines)
+- \`get-app-status\` shows container status and replica health (e.g., "1/1")
+- \`get-app-logs\` returns container logs (use \`service\` param to filter, \`tail\` to limit lines)
 
 ### Docker Compose Tips
 
@@ -457,12 +457,12 @@ get_app_logs id=<app-id>
 
 ### Debugging
 
-- **Container logs**: \`get_app_logs id=<id>\` (optionally filter by \`service\`)
+- **Container logs**: \`get-app-logs id=<id>\` (optionally filter by \`service\`)
 - **Generated Swarm compose**: Check \`~/.fulcrum/apps/<id>/swarm-compose.yml\` to see what was actually deployed
 - **Port conflicts**: Detected and reported during deployment — enable \`autoPortAllocation\` to auto-resolve
-- **Replica health**: \`get_app_status\` shows replica counts (e.g., "1/1" means healthy, "0/1" means failing)
+- **Replica health**: \`get-app-status\` shows replica counts (e.g., "1/1" means healthy, "0/1" means failing)
 - **Traefik routing**: Fulcrum checks for route conflicts across all apps before adding new routes
-- **Deployment history**: \`list_deployments\` shows past deployments with status and logs`
+- **Deployment history**: \`list-deployments\` shows past deployments with status and logs`
 }
 
 /**
@@ -535,16 +535,16 @@ Users can also manage jobs at the **/jobs** page (Cmd+6):
 ### Typical Workflow
 
 1. Help the user write the script they want to schedule (create a task with worktree or scratch)
-2. Once the script is ready, use \`create_job\` with the appropriate schedule
-3. Verify it's running: \`get_job\` to check status, \`get_job_logs\` for output
+2. Once the script is ready, use \`create-job\` with the appropriate schedule
+3. Verify it's running: \`get-job\` to check status, \`get-job-logs\` for output
 4. Optionally set up notifications for success/failure
 
 ### Debugging
 
-- **Job not running?** Use \`get_job\` — check \`enabled\` and \`state\` fields
-- **View logs**: \`get_job_logs\` — shows journalctl output with timestamps and priority
-- **Execution stats**: \`get_job\` includes \`lastRunDurationMs\`, \`lastRunCpuTimeMs\`, \`lastResult\` (success/failed)
-- **Unit files**: \`get_job\` includes \`timerContent\` and \`serviceContent\` for inspecting the raw systemd units
+- **Job not running?** Use \`get-job\` — check \`enabled\` and \`state\` fields
+- **View logs**: \`get-job-logs\` — shows journalctl output with timestamps and priority
+- **Execution stats**: \`get-job\` includes \`lastRunDurationMs\`, \`lastRunCpuTimeMs\`, \`lastResult\` (success/failed)
+- **Unit files**: \`get-job\` includes \`timerContent\` and \`serviceContent\` for inspecting the raw systemd units
 - **Persistent timers**: When \`persistent: true\` (default), missed executions run on next boot`
 }
 
@@ -624,7 +624,7 @@ You can read and modify all Fulcrum settings using the settings MCP tools. Setti
 
 ### Notification Settings
 
-Notification settings are managed separately via \`get_notification_settings\` and \`update_notification_settings\`.
+Notification settings are managed separately via \`get-notification-settings\` and \`update-notification-settings\`.
 
 **Global:**
 - \`enabled\` - Master toggle for all notifications
@@ -703,7 +703,7 @@ All Fulcrum configuration is stored in \`~/.fulcrum/.fnox.toml\` using fnox. Thi
 ### Important Notes
 
 - Sensitive values (API tokens, webhooks) are encrypted with fnox and masked when displayed
-- Use \`reset_setting\` to restore any setting to its default
+- Use \`reset-setting\` to restore any setting to its default
 - Changes take effect immediately
 - Some settings (like server.port) require a server restart to take effect`
 }
@@ -750,15 +750,15 @@ Fulcrum is your digital concierge - a personal command center where you track ev
 - Persistent memory across conversations (memory file + ephemeral store)
 
 **Key tools available:**
-- list_tasks, create_task, update_task, move_task
-- list_projects, create_project
-- execute_command (run any CLI command)
-- send_notification
+- list-tasks, create-task, update-task, move-task
+- list-projects, create-project
+- execute-command (run any CLI command)
+- send-notification
 - search (unified FTS5 search across tasks, projects, messages, events, memories, conversations; gmail is opt-in via \`entities: ["gmail"]\`)
-- memory_file_read, memory_file_update (master memory file - always in prompt)
-- memory_store, memory_search, memory_list, memory_delete (persistent knowledge with tags)
+- memory-file-read, memory-file-update (master memory file - always in prompt)
+- memory-store, memory-search, memory-list, memory-delete (persistent knowledge with tags)
 - message (send to WhatsApp/Discord/Telegram/Slack/Gmail - user-only, concierge mode)
-- memory_store with tag \`actionable\` (track things needing attention - concierge mode)
+- memory-store with tag \`actionable\` (track things needing attention - concierge mode)
 - search with memoryTags filter (find tracked items by tag)
 
 **Remember:** When users need external services (email, cloud, APIs), guide them on what credentials to provide - don't say "Fulcrum can't do that."`

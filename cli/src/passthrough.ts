@@ -1,4 +1,4 @@
-import { spawn } from 'bun'
+import { spawn, spawnSync } from 'node:child_process'
 
 /**
  * Passthrough unknown CLI commands to MCP tools via mcp2cli.
@@ -8,8 +8,8 @@ import { spawn } from 'bun'
  */
 export async function mcpPassthrough(argv: string[]): Promise<number> {
   // Check uvx availability
-  const uvxCheck = spawn(['which', 'uvx'], { stdout: 'pipe', stderr: 'pipe' })
-  if ((await uvxCheck.exited) !== 0) {
+  const uvxCheck = spawnSync('which', ['uvx'], { stdio: 'pipe' })
+  if (uvxCheck.status !== 0) {
     console.error(
       'Error: uvx is required for MCP tool passthrough but was not found.\n' +
         'Install uv: https://docs.astral.sh/uv/getting-started/installation/'
@@ -105,16 +105,19 @@ export async function showFullHelp(version: string): Promise<number> {
   // MCP tools
   console.log('\nMCP TOOLS (pass-through)\n')
 
-  const uvxCheck = spawn(['which', 'uvx'], { stdout: 'pipe', stderr: 'pipe' })
-  if ((await uvxCheck.exited) !== 0) {
+  const uvxCheck = spawnSync('which', ['uvx'], { stdio: 'pipe' })
+  if (uvxCheck.status !== 0) {
     console.log('  (install uv to access MCP tools: https://docs.astral.sh/uv/)')
   } else {
-    const proc = spawn(['uvx', 'mcp2cli', '--mcp-stdio', 'fulcrum mcp', '--list'], {
-      stdout: 'pipe',
-      stderr: 'pipe',
+    const proc = spawn('uvx', ['mcp2cli', '--mcp-stdio', 'fulcrum mcp', '--list'], {
+      stdio: ['pipe', 'pipe', 'pipe'],
     })
-    const output = await new Response(proc.stdout).text()
-    if ((await proc.exited) === 0 && output.trim()) {
+    let output = ''
+    proc.stdout!.on('data', (data: Buffer) => { output += data.toString() })
+    const exitCode = await new Promise<number>((resolve) => {
+      proc.on('close', (code) => resolve(code ?? 1))
+    })
+    if (exitCode === 0 && output.trim()) {
       // Skip the "Available tools:" header line from mcp2cli
       const lines = output.trim().split('\n')
       const toolLines = lines[0]?.match(/^Available/) ? lines.slice(1) : lines
@@ -136,10 +139,14 @@ function buildMcpStdio(mcpFlags: string[]): string {
 }
 
 async function runCommand(cmd: string[]): Promise<number> {
-  const proc = spawn(cmd, {
-    stdout: 'inherit',
-    stderr: 'inherit',
-    stdin: 'inherit',
+  return new Promise((resolve) => {
+    const proc = spawn(cmd[0], cmd.slice(1), {
+      stdio: 'inherit',
+    })
+    proc.on('close', (code) => resolve(code ?? 1))
+    proc.on('error', (err) => {
+      console.error(`Failed to execute: ${err.message}`)
+      resolve(1)
+    })
   })
-  return await proc.exited
 }
