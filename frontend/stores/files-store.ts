@@ -5,6 +5,14 @@ import type { FileContent, FileTreeEntry } from '@/types'
 
 const API_BASE = ''
 
+function fileExistsInTree(entries: FileTreeEntry[], path: string): boolean {
+  for (const entry of entries) {
+    if (entry.path === path) return true
+    if (entry.children && fileExistsInTree(entry.children, path)) return true
+  }
+  return false
+}
+
 /**
  * Represents an open file with its content and edit state
  */
@@ -176,6 +184,13 @@ export const FilesStore = types
 
     updateFileTree(entries: FileTreeEntry[]) {
       self.fileTree = entries
+
+      // If the selected file no longer exists in the tree, deselect it
+      if (self.selectedFile && !fileExistsInTree(entries, self.selectedFile)) {
+        self.openFiles.delete(self.selectedFile)
+        self.selectedFile = null
+        self.loadError = null
+      }
     },
 
     // Internal actions for async flows
