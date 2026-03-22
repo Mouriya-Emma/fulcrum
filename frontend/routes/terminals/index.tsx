@@ -9,11 +9,8 @@ import { TabEditDialog } from '@/components/terminal/tab-edit-dialog'
 import { Button } from '@/components/ui/button'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { TaskDaily01Icon, FilterIcon, ComputerTerminal01Icon, FolderLibraryIcon, Loading03Icon } from '@hugeicons/core-free-icons'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
 import { ProjectFilter } from '@/components/tasks/project-filter'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -395,6 +392,27 @@ const TerminalsView = observer(function TerminalsView() {
     const repoIds = new Set(repositories.map(r => r.id))
     return selectedRepoIds.filter(id => repoIds.has(id))
   }, [selectedRepoIds, repositories])
+
+  // Repo filter popover state
+  const [repoFilterOpen, setRepoFilterOpen] = useState(false)
+  const [repoSearchQuery, setRepoSearchQuery] = useState('')
+  const repoSearchInputRef = useRef<HTMLInputElement>(null)
+
+  // Filtered repositories based on search query
+  const filteredRepositories = useMemo(() => {
+    if (!repoSearchQuery) return repositories
+    const query = repoSearchQuery.toLowerCase()
+    return repositories.filter((repo) => repo.displayName.toLowerCase().includes(query))
+  }, [repositories, repoSearchQuery])
+
+  // Auto-focus input when popover opens, reset search when it closes
+  useEffect(() => {
+    if (repoFilterOpen) {
+      setTimeout(() => repoSearchInputRef.current?.focus(), 0)
+    } else {
+      setRepoSearchQuery('')
+    }
+  }, [repoFilterOpen])
 
   // Track which repository is currently loading (single repo at a time)
   const [loadingRepoId, setLoadingRepoId] = useState<string | null>(null)
@@ -851,8 +869,8 @@ const TerminalsView = observer(function TerminalsView() {
           )}
           {/* Repository filter (only when Repo Terminals is active) */}
           {activeTabId === ALL_REPOS_TAB_ID && repositories.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
+            <Popover open={repoFilterOpen} onOpenChange={setRepoFilterOpen}>
+              <PopoverTrigger
                 render={<Button variant="outline" size="sm" className="max-sm:w-auto" />}
               >
                 {loadingRepoId ? (
@@ -865,40 +883,55 @@ const TerminalsView = observer(function TerminalsView() {
                     ? t('selectRepos')
                     : t('reposSelected', { count: validSelectedRepoIds.length })}
                 </span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-64" align="end">
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0" align="end">
+                <div className="border-b px-2 py-1.5">
+                  <Input
+                    ref={repoSearchInputRef}
+                    value={repoSearchQuery}
+                    onChange={(e) => setRepoSearchQuery(e.target.value)}
+                    placeholder={t('searchRepos')}
+                    className="h-7 text-xs border-0 shadow-none focus-visible:ring-0"
+                  />
+                </div>
                 <div className="p-2 space-y-2">
                   <div className="text-sm font-medium mb-2">{t('filterByRepo')}</div>
-                  {repositories.map((repo) => {
-                    const isSelected = selectedRepoIds.includes(repo.id)
-                    const isLoading = loadingRepoId === repo.id
-                    const isDisabled = loadingRepoId !== null || (!isSelected && selectedRepoIds.length >= 6)
-                    return (
-                      <div key={repo.id} className="flex items-center gap-2">
-                        {isLoading ? (
-                          <HugeiconsIcon
-                            icon={Loading03Icon}
-                            size={16}
-                            strokeWidth={2}
-                            className="animate-spin text-muted-foreground"
-                          />
-                        ) : (
-                          <Checkbox
-                            id={`repo-filter-${repo.id}`}
-                            checked={isSelected}
-                            disabled={isDisabled}
-                            onCheckedChange={(checked) => toggleRepoFilter(repo.id, checked === true)}
-                          />
-                        )}
-                        <Label
-                          htmlFor={`repo-filter-${repo.id}`}
-                          className={`text-sm ${isDisabled ? 'text-muted-foreground cursor-not-allowed' : 'cursor-pointer'}`}
-                        >
-                          {repo.displayName}
-                        </Label>
-                      </div>
-                    )
-                  })}
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {filteredRepositories.length === 0 ? (
+                      <div className="text-xs text-muted-foreground py-1">{t('noReposFound')}</div>
+                    ) : (
+                      filteredRepositories.map((repo) => {
+                        const isSelected = selectedRepoIds.includes(repo.id)
+                        const isLoading = loadingRepoId === repo.id
+                        const isDisabled = loadingRepoId !== null || (!isSelected && selectedRepoIds.length >= 6)
+                        return (
+                          <div key={repo.id} className="flex items-center gap-2">
+                            {isLoading ? (
+                              <HugeiconsIcon
+                                icon={Loading03Icon}
+                                size={16}
+                                strokeWidth={2}
+                                className="animate-spin text-muted-foreground"
+                              />
+                            ) : (
+                              <Checkbox
+                                id={`repo-filter-${repo.id}`}
+                                checked={isSelected}
+                                disabled={isDisabled}
+                                onCheckedChange={(checked) => toggleRepoFilter(repo.id, checked === true)}
+                              />
+                            )}
+                            <Label
+                              htmlFor={`repo-filter-${repo.id}`}
+                              className={`text-sm ${isDisabled ? 'text-muted-foreground cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              {repo.displayName}
+                            </Label>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
                   {validSelectedRepoIds.length > 0 && !loadingRepoId && (
                     <Button
                       variant="ghost"
@@ -914,8 +947,8 @@ const TerminalsView = observer(function TerminalsView() {
                     </Button>
                   )}
                 </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </PopoverContent>
+            </Popover>
           )}
           <Button
             variant="outline"

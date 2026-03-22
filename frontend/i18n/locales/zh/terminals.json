@@ -6,6 +6,8 @@
   "selectRepos": "选择仓库",
   "reposSelected": "已选择 {{count}} 个",
   "filterByRepo": "最多选择6个仓库",
+  "searchRepos": "搜索仓库...",
+  "noReposFound": "未找到仓库",
   "clearFilter": "清除选择",
   "emptyRepos": "选择仓库以打开其工作区终端",
   "emptyTasks": "没有进行中的任务",

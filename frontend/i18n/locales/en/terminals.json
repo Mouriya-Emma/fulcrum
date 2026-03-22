@@ -6,6 +6,8 @@
   "selectRepos": "Select repos",
   "reposSelected": "{{count}} selected",
   "filterByRepo": "Select up to 6 repos",
+  "searchRepos": "Search repositories...",
+  "noReposFound": "No repositories found",
   "clearFilter": "Clear selection",
   "emptyRepos": "Select a repository to open its workspace terminal",
   "emptyTasks": "No active tasks",
