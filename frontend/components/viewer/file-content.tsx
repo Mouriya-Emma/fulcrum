@@ -156,8 +156,14 @@ export const FileContent = observer(function FileContent({ onBack }: FileContent
   // Error
   if (loadError) {
     return (
-      <div className="flex h-full items-center justify-center text-destructive text-sm">
-        {loadError}
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-sm">
+        <span className="text-destructive">{loadError}</span>
+        <button
+          onClick={handleBack}
+          className="text-muted-foreground hover:text-foreground underline"
+        >
+          Back to file tree
+        </button>
       </div>
     )
   }
