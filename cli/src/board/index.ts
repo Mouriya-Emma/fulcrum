@@ -10,8 +10,7 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
-import { tmpdir } from 'node:os'
-import { getFulcrumDir } from '../utils/server'
+import { homedir, tmpdir } from 'node:os'
 import type { BoardMessage, PostMessageInput, ReadOptions, MessageType, AgentType } from './types'
 import { DEFAULT_TTLS } from './types'
 
@@ -19,12 +18,21 @@ import { DEFAULT_TTLS } from './types'
 // Path helpers
 // ============================================================================
 
+/** Always resolve to the global ~/.fulcrum directory, bypassing CWD-based resolution.
+ *  The board is for cross-worktree coordination and must use a single shared directory. */
+function getGlobalFulcrumDir(): string {
+  if (process.env.FULCRUM_DIR) {
+    return process.env.FULCRUM_DIR.replace(/^~/, homedir())
+  }
+  return join(homedir(), '.fulcrum')
+}
+
 export function getBoardDir(): string {
-  return join(getFulcrumDir(), 'board', 'messages')
+  return join(getGlobalFulcrumDir(), 'board', 'messages')
 }
 
 export function getRefsDir(): string {
-  return join(getFulcrumDir(), 'board', 'refs')
+  return join(getGlobalFulcrumDir(), 'board', 'refs')
 }
 
 export function ensureBoardDirs(): void {
