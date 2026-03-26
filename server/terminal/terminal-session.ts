@@ -122,6 +122,7 @@ export class TerminalSession {
           // Explicitly unset - bun-pty merges with process.env, doesn't replace
           NODE_ENV: '',
           PORT: '',
+          FNOX_AGE_KEY_FILE: '',
           // Inject Fulcrum URL so CLI tools (like the plugin) can find the server
           // This is critical when running on non-default ports (e.g. dev mode on 8888)
           // Use localhost to support both IPv4 and IPv6 (Bun defaults to IPv6 on macOS)
@@ -212,6 +213,7 @@ export class TerminalSession {
           // Explicitly unset - bun-pty merges with process.env, doesn't replace
           NODE_ENV: '',
           PORT: '',
+          FNOX_AGE_KEY_FILE: '',
         },
       })
 
