@@ -14,8 +14,6 @@ Use the Fulcrum CLI when:
 - **Linking URLs** — Attach relevant URLs (design docs, specs, external resources) to the task
 - **Sending notifications** — Alert the user when work is complete or needs attention
 - **Server management** — Start, stop, and check server status
-- **API access** — Query or modify any Fulcrum data via `fulcrum <tool>`
-
 ## CLI Commands
 
 ### current-task (Primary Agent Workflow)
@@ -63,61 +61,6 @@ fulcrum up          # Start Fulcrum server daemon
 fulcrum down        # Stop Fulcrum server
 fulcrum status      # Check if server is running
 fulcrum doctor      # Check all dependencies and versions
-```
-
-## MCP Tool Access
-
-The `fulcrum` CLI passes unknown commands through to MCP tools automatically. No need for `mcp2cli` directly.
-
-### Discovery
-
-```bash
-# List all available tools
-fulcrum --list
-
-# Get help for a specific tool
-fulcrum list-tasks --help
-```
-
-### Calling Tools
-
-```bash
-# Syntax: fulcrum <tool> [--param value ...]
-fulcrum list-tasks --search bug --statuses TO_DO,IN_PROGRESS
-fulcrum create-task --title "Fix bug" --type worktree
-fulcrum get-task --id <task-id>
-fulcrum move-task --id <task-id> --status DONE
-
-# Memory
-fulcrum memory-store --content "Learned X" --tags "project,pattern"
-fulcrum memory-search --query "deployment"
-
-# Search
-fulcrum search --query "authentication" --entities tasks,projects
-
-# Backup
-fulcrum create-backup --description "Before migration"
-fulcrum list-backups
-
-# Calendar
-fulcrum list-calendar-events --from 2026-01-01 --to 2026-01-31
-fulcrum sync-calendars
-```
-
-### Token-Efficient Output
-
-Use `--toon` for compact output optimized for LLM context windows:
-
-```bash
-fulcrum list-tasks --toon
-```
-
-### Advanced: Direct mcp2cli
-
-For advanced use cases, you can call mcp2cli directly:
-
-```bash
-uvx mcp2cli --mcp-stdio "fulcrum mcp" <tool> [--param value ...]
 ```
 
 ## Agent Workflow Patterns
@@ -200,7 +143,5 @@ fulcrum board clean --all                  # Remove ALL messages
 
 1. **Use `current-task` inside worktrees** — It auto-detects which task you're in
 2. **Link PRs immediately** — Run `fulcrum current-task pr <url>` right after creating a PR
-3. **Use `fulcrum --list` to discover tools** — Tools are always up-to-date, no static reference needed
-4. **Use `fulcrum <tool> --help`** to see parameters before calling a tool
-5. **Mark review when done** — `fulcrum current-task review` notifies the user
-6. **Send notifications for blocking issues** — Keep the user informed of progress
+3. **Mark review when done** — `fulcrum current-task review` notifies the user
+4. **Send notifications for blocking issues** — Keep the user informed of progress

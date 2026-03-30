@@ -79,29 +79,9 @@ async function buildSystemPrompt(context?: PageContext): Promise<string> {
   const instanceContext = getInstanceContext(settings.assistant.documentsDir)
   let prompt = instanceContext + '\n\n' + getFullKnowledge() + `
 
-## Fulcrum Tool Access
-
-Use the \`fulcrum\` CLI to interact with Fulcrum data.
-
-\`\`\`bash
-# Discover available tools
-fulcrum --list
-
-# Get help for a specific tool
-fulcrum <tool> --help
-
-# Call a tool
-fulcrum <tool> [--param value ...]
-
-# Token-efficient output
-fulcrum <tool> --toon
-\`\`\`
-
-Common tools: \`list-tasks\`, \`get-task\`, \`create-task\`, \`move-task\`, \`search\`, \`memory-store\`, \`memory-search\`, \`memory-file-read\`, \`memory-file-update\`, \`send-notification\`, \`list-calendar-events\`, \`list-projects\`.
-
 ## Guidelines
 
-- Use the fulcrum CLI to query or modify Fulcrum data (tasks, projects, memory, calendar, etc.)
+- Use tools proactively to gather information or complete tasks
 - Present results clearly and concisely
 - If a task requires multiple steps, explain what you're doing
 - For destructive operations (delete, etc.), confirm with the user first unless they're explicit`
@@ -365,6 +345,8 @@ export async function* streamMessage(
       : userMessage
 
     // Create query with Claude Agent SDK
+    const settings = getSettings()
+    const port = settings.server.port
     const result = query({
       prompt,
       options: {
@@ -374,6 +356,12 @@ export async function* streamMessage(
         includePartialMessages: true, // Stream partial messages
         pathToClaudeCodeExecutable: getClaudeCodePathForSdk(),
         env: getCleanEnv(),
+        mcpServers: {
+          fulcrum: {
+            type: 'http',
+            url: `http://localhost:${port}/mcp`,
+          },
+        },
         systemPrompt,
         permissionMode: 'bypassPermissions', // Bypass all permissions for seamless chat
         allowDangerouslySkipPermissions: true, // Required for bypassPermissions mode

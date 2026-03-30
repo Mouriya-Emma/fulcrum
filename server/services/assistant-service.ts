@@ -285,7 +285,7 @@ export function getMessages(sessionId: string): ChatMessage[] {
  * @param securityTier - 'observer' uses minimal knowledge (no tool capabilities)
  */
 /** @internal Exported for testing */
-export function buildBaselinePrompt(condensed = false, securityTier?: 'observer' | 'trusted', port?: number): string {
+export function buildBaselinePrompt(condensed = false, securityTier?: 'observer' | 'trusted'): string {
   const settings = getSettings()
   const instanceContext = getInstanceContext(settings.assistant.documentsDir)
   const knowledge = securityTier === 'observer'
@@ -295,32 +295,6 @@ export function buildBaselinePrompt(condensed = false, securityTier?: 'observer'
   let baseline = `${instanceContext}
 
 ${knowledge}`
-
-  // Non-observer tiers use mcp2cli to access Fulcrum tools via Bash
-  if (securityTier !== 'observer') {
-    const mcpPort = port ?? settings.server.port
-    baseline += `
-
-## Fulcrum Tool Access (mcp2cli)
-
-Use \`mcp2cli\` via Bash to interact with Fulcrum data. No install needed — runs via \`uvx\`.
-
-\`\`\`bash
-# Discover available tools
-uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" --list
-
-# Get help for a specific tool
-uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> --help
-
-# Call a tool
-uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> [--param value ...]
-
-# Token-efficient output
-uvx mcp2cli --mcp-stdio "fulcrum mcp --port ${mcpPort}" <tool> --toon
-\`\`\`
-
-Common tools: \`list_tasks\`, \`get_task\`, \`create_task\`, \`move_task\`, \`search\`, \`memory_store\`, \`memory_search\`, \`memory_file_read\`, \`memory_file_update\`, \`send_notification\`, \`list_calendar_events\`, \`list_projects\`.`
-  }
 
   // Inject master memory file content if it exists
   const memoryFileContent = readMemoryFile()
@@ -815,16 +789,14 @@ User message: ${userMessage}`
         includePartialMessages: true,
         pathToClaudeCodeExecutable: getClaudeCodePathForSdk(),
         env: getCleanEnv(),
-        // Observer tier: restricted MCP tools only (memory, no filesystem)
-        // Trusted tier: claude_code preset (Bash, Read, Write, etc.) — uses mcp2cli for Fulcrum data
-        ...(isObserver && {
-          mcpServers: {
-            fulcrum: {
-              type: 'http' as const,
-              url: mcpUrl,
-            },
+        // Observer tier: restricted endpoint (/mcp/observer) with memory/notification tools only
+        // Trusted tier: full endpoint (/mcp) with all Fulcrum tools
+        mcpServers: {
+          fulcrum: {
+            type: 'http' as const,
+            url: mcpUrl,
           },
-        }),
+        },
         tools: isObserver ? [] : { type: 'preset', preset: 'claude_code' },
         systemPrompt,
         permissionMode: 'bypassPermissions',

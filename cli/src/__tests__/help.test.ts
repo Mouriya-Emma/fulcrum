@@ -148,7 +148,7 @@ describe('CLI help and version', () => {
   })
 
   describe('unknown command', () => {
-    test('unknown command attempts MCP passthrough', async () => {
+    test('unknown command shows error', async () => {
       const proc = spawn(['bun', 'cli/src/index.ts', 'unknowncommand'], {
         stdout: 'pipe',
         stderr: 'pipe',
@@ -156,9 +156,7 @@ describe('CLI help and version', () => {
 
       const exitCode = await proc.exited
 
-      // Unknown commands now attempt MCP passthrough via mcp2cli.
-      // mcp2cli will fail for nonexistent tools, so exit code is still non-zero,
-      // but we don't crash before reaching the passthrough.
+      // Unknown commands are handled by citty which shows an error
       expect(exitCode).not.toBe(0)
     })
   })
