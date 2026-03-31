@@ -1,4 +1,4 @@
-import type { Client, ClientChannel } from 'ssh2'
+import type { Client as ClientType, ClientChannel } from 'ssh2'
 import { BufferManager } from './buffer-manager'
 import { db, terminals } from '../db'
 import { eq } from 'drizzle-orm'
@@ -40,7 +40,7 @@ export class SSHTerminalSession implements ITerminalSession {
   private status: TerminalStatus = 'running'
   private exitCode?: number
   private stream: ClientChannel | null = null
-  private sshClient: Client | null = null
+  private sshClient: ClientType | null = null
   private buffer: BufferManager
   private onData: (data: string) => void
   private onExit: (exitCode: number, status: TerminalStatus) => void
