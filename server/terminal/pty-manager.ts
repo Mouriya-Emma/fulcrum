@@ -1,12 +1,15 @@
 import { TerminalSession } from './terminal-session'
+import { SSHTerminalSession } from './ssh-terminal-session'
 import { getDtachService, DtachService } from './dtach-service'
 import { destroyTerminalAndBroadcast } from './pty-instance'
-import { db, terminals } from '../db'
-import { eq, ne } from 'drizzle-orm'
+import { db, terminals, hosts } from '../db'
+import { eq, ne, and, isNotNull } from 'drizzle-orm'
 import * as os from 'os'
 import type { TerminalInfo } from '../types'
+import type { ITerminalSession } from './session-interface'
 import { log } from '../lib/logger'
-import { getFulcrumDir } from '../lib/settings'
+import { getFulcrumDir, getSettingByKey } from '../lib/settings'
+import { getSSHConnectionManager } from './ssh-connection-manager'
 
 import type { TerminalStatus } from '../types'
 
@@ -16,7 +19,7 @@ export interface PTYManagerCallbacks {
 }
 
 export class PTYManager {
-  private sessions = new Map<string, TerminalSession>()
+  private sessions = new Map<string, ITerminalSession>()
   private callbacks: PTYManagerCallbacks
 
   constructor(callbacks: PTYManagerCallbacks) {
@@ -50,6 +53,60 @@ export class PTYManager {
     let skippedCount = 0
 
     for (const record of storedTerminals) {
+      // Remote SSH terminals - try to reconnect to remote dtach
+      if (record.hostId) {
+        const host = db.select().from(hosts).where(eq(hosts.id, record.hostId)).get()
+        if (!host) {
+          log.pty.warn('Host not found for remote terminal, marking exited', {
+            terminalId: record.id,
+            hostId: record.hostId,
+          })
+          db.update(terminals)
+            .set({ status: 'exited', updatedAt: new Date().toISOString() })
+            .where(eq(terminals.id, record.id))
+            .run()
+          skippedCount++
+          continue
+        }
+
+        // Create SSH session object (will check remote dtach on attach)
+        const sshConfig = {
+          host: host.hostname,
+          port: host.port,
+          username: host.username,
+          authMethod: host.authMethod as 'key' | 'password',
+          privateKeyPath: host.privateKeyPath ?? undefined,
+        }
+        const fulcrumUrl = host.fulcrumUrl || `http://localhost:${getSettingByKey('port')}`
+
+        const session = new SSHTerminalSession({
+          id: record.id,
+          name: record.name,
+          cols: record.cols,
+          rows: record.rows,
+          cwd: record.cwd,
+          createdAt: new Date(record.createdAt).getTime(),
+          tabId: record.tabId ?? undefined,
+          positionInTab: record.positionInTab ?? 0,
+          hostId: host.id,
+          sshConfig,
+          fulcrumUrl,
+          onData: (data) => this.callbacks.onData(record.id, data),
+          onExit: (exitCode, status) => this.callbacks.onExit(record.id, exitCode, status),
+          onShouldDestroy: () => {
+            queueMicrotask(() => destroyTerminalAndBroadcast(record.id))
+          },
+        })
+        this.sessions.set(record.id, session)
+        log.pty.info('Remote terminal restored (will attach on demand)', {
+          terminalId: record.id,
+          host: host.hostname,
+        })
+        restoredCount++
+        continue
+      }
+
+      // Local terminals - existing dtach logic
       const socketPath = dtach.getSocketPath(record.id)
 
       // Retry socket check a few times with small delays to handle timing issues
@@ -132,7 +189,7 @@ export class PTYManager {
     })
   }
 
-  create(options: {
+  async create(options: {
     name: string
     cols: number
     rows: number
@@ -140,17 +197,79 @@ export class PTYManager {
     tabId?: string
     positionInTab?: number
     taskId?: string
-  }): TerminalInfo {
-    // Check if dtach is available
+    hostId?: string
+  }): Promise<TerminalInfo> {
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+
+    // Remote SSH terminal
+    if (options.hostId) {
+      const host = db.select().from(hosts).where(eq(hosts.id, options.hostId)).get()
+      if (!host) {
+        throw new Error(`Host not found: ${options.hostId}`)
+      }
+
+      const cwd = options.cwd || host.defaultDirectory || `/home/${host.username}`
+      const sshConfig = {
+        host: host.hostname,
+        port: host.port,
+        username: host.username,
+        authMethod: host.authMethod as 'key' | 'password',
+        privateKeyPath: host.privateKeyPath ?? undefined,
+      }
+      const fulcrumUrl = host.fulcrumUrl || `http://localhost:${getSettingByKey('port')}`
+
+      // Persist to database
+      db.insert(terminals)
+        .values({
+          id,
+          name: options.name,
+          cwd,
+          cols: options.cols,
+          rows: options.rows,
+          tmuxSession: '',
+          status: 'running',
+          tabId: options.tabId,
+          positionInTab: options.positionInTab ?? 0,
+          hostId: options.hostId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run()
+
+      const session = new SSHTerminalSession({
+        id,
+        name: options.name,
+        cols: options.cols,
+        rows: options.rows,
+        cwd,
+        createdAt: Date.now(),
+        tabId: options.tabId,
+        positionInTab: options.positionInTab,
+        taskId: options.taskId,
+        hostId: host.id,
+        sshConfig,
+        fulcrumUrl,
+        onData: (data) => this.callbacks.onData(id, data),
+        onExit: (exitCode, status) => this.callbacks.onExit(id, exitCode, status),
+        onShouldDestroy: () => {
+          queueMicrotask(() => destroyTerminalAndBroadcast(id))
+        },
+      })
+
+      this.sessions.set(id, session)
+      await session.start()
+      return session.getInfo()
+    }
+
+    // Local terminal (existing behavior)
     if (!DtachService.isAvailable()) {
       throw new Error('dtach is not installed')
     }
 
-    const id = crypto.randomUUID()
     const cwd = options.cwd || os.homedir()
 
     // Persist to database first
-    const now = new Date().toISOString()
     db.insert(terminals)
       .values({
         id,
@@ -311,6 +430,14 @@ export class PTYManager {
     const session = this.sessions.get(terminalId)
     if (!session) {
       return false
+    }
+
+    // SSH sessions handle agent killing via remote exec
+    if (session instanceof SSHTerminalSession) {
+      session.killAgentInSession().catch((err) => {
+        log.pty.warn('Failed to kill agent in SSH session', { terminalId, error: String(err) })
+      })
+      return true
     }
 
     const dtach = getDtachService()

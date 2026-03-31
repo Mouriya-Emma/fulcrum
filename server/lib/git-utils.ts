@@ -3,6 +3,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { glob } from 'glob'
 import { log } from './logger'
+import { getSSHConnectionManager, type SSHConnectionConfig } from '../terminal/ssh-connection-manager'
 
 /**
  * Check if a string looks like a git URL
@@ -129,6 +130,32 @@ export function createGitWorktree(
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to create worktree' }
+  }
+}
+
+/**
+ * Create a git worktree on a remote host via SSH.
+ */
+export async function createRemoteGitWorktree(
+  sshConfig: SSHConnectionConfig,
+  repoPath: string,
+  worktreePath: string,
+  branch: string,
+  baseBranch: string,
+): Promise<{ success: boolean; error?: string }> {
+  const manager = getSSHConnectionManager()
+  try {
+    const cmd = [
+      `mkdir -p "$(dirname '${worktreePath}')"`,
+      `cd '${repoPath}'`,
+      `git fetch origin '${baseBranch}' 2>/dev/null || true`,
+      `git worktree add -b '${branch}' '${worktreePath}' '${baseBranch}' 2>&1 || git worktree add '${worktreePath}' '${branch}' 2>&1`,
+    ].join(' && ')
+
+    await manager.execCommand(sshConfig, cmd)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create remote worktree' }
   }
 }
 

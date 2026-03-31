@@ -992,6 +992,7 @@ function TaskView() {
               opencodeModel={resolvedOpencodeModel}
               serverPort={serverPort}
               autoFocus={shouldAutoFocus}
+              hostId={task.hostId}
             />
           </TabsContent>
 
@@ -1070,6 +1071,7 @@ function TaskView() {
               opencodeModel={resolvedOpencodeModel}
               serverPort={serverPort}
               autoFocus={shouldAutoFocus}
+              hostId={task.hostId}
             />
           </ResizablePanel>
 

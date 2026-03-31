@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { nanoid } from 'nanoid'
-import { db, tasks, repositories, taskLinks, taskRelationships, taskAttachments, tags, taskTags, draftItems, type Task, type NewTask, type TaskLink } from '../db'
+import { db, tasks, repositories, taskLinks, taskRelationships, taskAttachments, tags, taskTags, draftItems, hosts, type Task, type NewTask, type TaskLink } from '../db'
 import { eq, asc, and, inArray } from 'drizzle-orm'
 import { detectLinkType } from '../lib/link-utils'
 import { execSync } from 'child_process'
@@ -16,7 +16,7 @@ import { broadcast } from '../websocket/terminal-ws'
 import { updateTaskStatus } from '../services/task-status'
 import { reindexTaskFTS } from '../services/search-service'
 import { log } from '../lib/logger'
-import { createGitWorktree, copyFilesToWorktree } from '../lib/git-utils'
+import { createGitWorktree, createRemoteGitWorktree, copyFilesToWorktree } from '../lib/git-utils'
 
 // Helper to delete git worktree
 function deleteGitWorktree(repoPath: string, worktreePath: string): void {
@@ -184,6 +184,7 @@ app.post('/', async (c) => {
         blockedByTaskIds?: string[]
         type?: 'worktree' | 'scratch' | 'draft' | null
         prefix?: string | null
+        hostId?: string | null
       }
     >()
 
@@ -228,6 +229,7 @@ app.post('/', async (c) => {
       recurrenceRule: body.recurrenceRule || null,
       recurrenceEndDate: body.recurrenceEndDate || null,
       recurrenceSourceTaskId: null,
+      hostId: body.hostId || null,
       pinned: body.pinned ?? false,
       createdAt: now,
       updatedAt: now,
@@ -235,18 +237,38 @@ app.post('/', async (c) => {
 
     // Create git worktree if branch and worktreePath are provided (for immediate IN_PROGRESS tasks)
     if (body.branch && body.worktreePath && body.repoPath && body.baseBranch) {
-      const result = createGitWorktree(body.repoPath, body.worktreePath, body.branch, body.baseBranch)
-      if (!result.success) {
-        return c.json({ error: `Failed to create worktree: ${result.error}` }, 500)
-      }
+      // Remote worktree creation via SSH
+      if (body.hostId) {
+        const host = db.select().from(hosts).where(eq(hosts.id, body.hostId)).get()
+        if (!host) {
+          return c.json({ error: `Host not found: ${body.hostId}` }, 400)
+        }
+        const sshConfig = {
+          host: host.hostname,
+          port: host.port,
+          username: host.username,
+          authMethod: host.authMethod as 'key' | 'password',
+          privateKeyPath: host.privateKeyPath ?? undefined,
+        }
+        const result = await createRemoteGitWorktree(sshConfig, body.repoPath, body.worktreePath, body.branch, body.baseBranch)
+        if (!result.success) {
+          return c.json({ error: `Failed to create remote worktree: ${result.error}` }, 500)
+        }
+      } else {
+        // Local worktree creation (existing behavior)
+        const result = createGitWorktree(body.repoPath, body.worktreePath, body.branch, body.baseBranch)
+        if (!result.success) {
+          return c.json({ error: `Failed to create worktree: ${result.error}` }, 500)
+        }
 
-      // Copy files if patterns provided
-      if (body.copyFiles) {
-        try {
-          copyFilesToWorktree(body.repoPath, body.worktreePath, body.copyFiles)
-        } catch (err) {
-          log.api.error('Failed to copy files', { error: String(err) })
-          // Non-fatal: continue with task creation
+        // Copy files if patterns provided (local only)
+        if (body.copyFiles) {
+          try {
+            copyFilesToWorktree(body.repoPath, body.worktreePath, body.copyFiles)
+          } catch (err) {
+            log.api.error('Failed to copy files', { error: String(err) })
+            // Non-fatal: continue with task creation
+          }
         }
       }
     }

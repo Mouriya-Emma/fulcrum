@@ -14,6 +14,7 @@ import uploadsRoutes from './routes/uploads'
 import worktreesRoutes from './routes/worktrees'
 import terminalViewStateRoutes from './routes/terminal-view-state'
 import repositoriesRoutes from './routes/repositories'
+import hostsRoutes from './routes/hosts'
 import copierRoutes from './routes/copier'
 import githubRoutes from './routes/github'
 import { monitoringRoutes } from './routes/monitoring'
@@ -94,6 +95,7 @@ export function createApp() {
   app.route('/api/scratch-dirs', scratchDirsRoutes)
   app.route('/api/terminal-view-state', terminalViewStateRoutes)
   app.route('/api/repositories', repositoriesRoutes)
+  app.route('/api/hosts', hostsRoutes)
   app.route('/api/copier', copierRoutes)
   app.route('/api/github', githubRoutes)
   app.route('/api/monitoring', monitoringRoutes)

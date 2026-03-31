@@ -32,9 +32,10 @@ interface TaskTerminalProps {
   opencodeModel?: string | null
   serverPort?: number
   autoFocus?: boolean
+  hostId?: string | null
 }
 
-export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude', aiMode, description, startupScript, agentOptions, opencodeModel, serverPort = 7777, autoFocus = false }: TaskTerminalProps) {
+export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude', aiMode, description, startupScript, agentOptions, opencodeModel, serverPort = 7777, autoFocus = false, hostId }: TaskTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<AnyTerminal | null>(null)
   const hasFocusedRef = useRef(false)
@@ -284,6 +285,7 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
         rows,
         cwd,
         taskId,
+        hostId: hostId ?? undefined,
         // Include startup info - this is stored in the MST store to survive
         // component unmount/remount (fixes race condition with React strict mode)
         startup: {

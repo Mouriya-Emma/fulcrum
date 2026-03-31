@@ -526,6 +526,13 @@
       "when": 1772535200000,
       "tag": "0074_draft_items_index_and_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "6",
+      "when": 1772621600000,
+      "tag": "0075_add_hosts_and_remote_support",
+      "breakpoints": true
     }
   ]
 }
