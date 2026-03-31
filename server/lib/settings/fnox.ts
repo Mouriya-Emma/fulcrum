@@ -89,6 +89,14 @@ export const FNOX_CONFIG_MAP: Record<string, ConfigEntry> = {
   'channels.telegram.enabled': { fnoxKey: 'FULCRUM_TELEGRAM_ENABLED', provider: 'plain', type: 'boolean' },
   'channels.telegram.botToken': { fnoxKey: 'FULCRUM_TELEGRAM_BOT_TOKEN', provider: 'age', type: 'string' },
 
+  // Channels - Mattermost
+  'channels.mattermost.enabled': { fnoxKey: 'FULCRUM_MATTERMOST_ENABLED', provider: 'plain', type: 'boolean' },
+  'channels.mattermost.serverUrl': { fnoxKey: 'FULCRUM_MATTERMOST_SERVER_URL', provider: 'plain', type: 'string' },
+  'channels.mattermost.botToken': { fnoxKey: 'FULCRUM_MATTERMOST_BOT_TOKEN', provider: 'age', type: 'string' },
+  'channels.mattermost.teamId': { fnoxKey: 'FULCRUM_MATTERMOST_TEAM_ID', provider: 'plain', type: 'string' },
+  'channels.mattermost.channelId': { fnoxKey: 'FULCRUM_MATTERMOST_CHANNEL_ID', provider: 'plain', type: 'string' },
+  'channels.mattermost.commandToken': { fnoxKey: 'FULCRUM_MATTERMOST_COMMAND_TOKEN', provider: 'age', type: 'string' },
+
   // CalDAV
   'caldav.enabled': { fnoxKey: 'FULCRUM_CALDAV_ENABLED', provider: 'plain', type: 'boolean' },
   'caldav.syncIntervalMinutes': { fnoxKey: 'FULCRUM_CALDAV_SYNC_INTERVAL', provider: 'plain', type: 'number' },
@@ -112,6 +120,7 @@ export const FNOX_CONFIG_MAP: Record<string, ConfigEntry> = {
   'notifications.telegram.enabled': { fnoxKey: 'FULCRUM_NOTIF_TELEGRAM_ENABLED', provider: 'plain', type: 'boolean' },
   'notifications.gmail.enabled': { fnoxKey: 'FULCRUM_NOTIF_GMAIL_ENABLED', provider: 'plain', type: 'boolean' },
   'notifications.gmail.googleAccountId': { fnoxKey: 'FULCRUM_NOTIF_GMAIL_ACCOUNT_ID', provider: 'plain', type: 'string' },
+  'notifications.mattermost.enabled': { fnoxKey: 'FULCRUM_NOTIF_MATTERMOST_ENABLED', provider: 'plain', type: 'boolean' },
   'notifications._updatedAt': { fnoxKey: 'FULCRUM_NOTIF_UPDATED_AT', provider: 'plain', type: 'number' },
 
   // z.ai

@@ -121,6 +121,14 @@ export function getSettings(): Settings {
         enabled: (fv('channels.telegram.enabled') as boolean | null) ?? DEFAULT_SETTINGS.channels.telegram.enabled,
         botToken: (fv('channels.telegram.botToken') as string) ?? DEFAULT_SETTINGS.channels.telegram.botToken,
       },
+      mattermost: {
+        enabled: (fv('channels.mattermost.enabled') as boolean | null) ?? DEFAULT_SETTINGS.channels.mattermost.enabled,
+        serverUrl: (fv('channels.mattermost.serverUrl') as string) ?? DEFAULT_SETTINGS.channels.mattermost.serverUrl,
+        botToken: (fv('channels.mattermost.botToken') as string) ?? DEFAULT_SETTINGS.channels.mattermost.botToken,
+        teamId: (fv('channels.mattermost.teamId') as string) ?? DEFAULT_SETTINGS.channels.mattermost.teamId,
+        channelId: (fv('channels.mattermost.channelId') as string) ?? DEFAULT_SETTINGS.channels.mattermost.channelId,
+        commandToken: (fv('channels.mattermost.commandToken') as string) ?? DEFAULT_SETTINGS.channels.mattermost.commandToken,
+      },
     },
     caldav: {
       enabled: (fv('caldav.enabled') as boolean | null) ?? DEFAULT_SETTINGS.caldav.enabled,

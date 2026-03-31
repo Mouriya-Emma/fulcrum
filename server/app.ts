@@ -42,6 +42,7 @@ import memoryFileRoutes from './routes/memory-file'
 import searchRoutes from './routes/search'
 import draftItemsRoutes from './routes/draft-items'
 import scratchDirsRoutes from './routes/scratch-dirs'
+import mattermostRoutes from './routes/mattermost'
 import { writeEntry } from './lib/logger'
 import type { LogEntry } from '../shared/logger'
 
@@ -140,6 +141,9 @@ export function createApp() {
 
   // Unified search across all entities
   app.route('/api/search', searchRoutes)
+
+  // Mattermost integration (slash commands, actions, dialogs)
+  app.route('/api/mattermost', mattermostRoutes)
 
   // Logging endpoint for frontend to send batched logs to server
   app.post('/api/logs', async (c) => {
