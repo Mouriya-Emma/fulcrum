@@ -23,6 +23,7 @@ export interface TerminalInfo {
   createdAt: number
   tabId?: string // Which tab this terminal belongs to (nullable)
   positionInTab?: number // Order within the tab
+  hostId?: string // Remote host ID (nullable - null = local terminal)
 }
 
 /**
@@ -49,6 +50,7 @@ export interface TerminalCreateMessage {
     tabId?: string // Assign to tab on creation
     positionInTab?: number
     taskId?: string
+    hostId?: string // Remote host ID for SSH-based terminals
   } & RequestCorrelation
 }
 

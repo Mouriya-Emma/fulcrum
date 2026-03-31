@@ -33,6 +33,7 @@ export const tasks = sqliteTable('tasks', {
   recurrenceSourceTaskId: text('recurrence_source_task_id'), // FK to parent task (lineage chain)
   type: text('type'), // 'worktree' | 'scratch' | null (null = manual/legacy)
   notes: text('notes'), // Free-form notes/comments
+  hostId: text('host_id'), // FK to hosts (nullable - null = local execution)
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
@@ -113,6 +114,7 @@ export const terminals = sqliteTable('terminals', {
   // Tab association
   tabId: text('tab_id'), // References terminalTabs.id (nullable for orphaned terminals)
   positionInTab: integer('position_in_tab').default(0), // Order within the tab
+  hostId: text('host_id'), // FK to hosts (nullable - null = local terminal)
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
@@ -563,7 +565,26 @@ export type ObserverActionRecord = {
   tags?: string[]
 }
 
+// Remote hosts - SSH hosts for running agents remotely
+export const hosts = sqliteTable('hosts', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(), // Display name (e.g., "dev-server")
+  hostname: text('hostname').notNull(), // SSH hostname or IP
+  port: integer('port').notNull().default(22),
+  username: text('username').notNull(),
+  authMethod: text('auth_method').notNull().default('key'), // 'key' | 'password'
+  privateKeyPath: text('private_key_path'), // Path to SSH private key file
+  defaultDirectory: text('default_directory'), // Default remote cwd for tasks
+  fulcrumUrl: text('fulcrum_url'), // Override FULCRUM_URL for this host (e.g., http://192.168.1.100:7777)
+  status: text('status').notNull().default('unknown'), // 'unknown' | 'connected' | 'error'
+  lastConnectedAt: text('last_connected_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
 // Type inference helpers
+export type Host = typeof hosts.$inferSelect
+export type NewHost = typeof hosts.$inferInsert
 export type Repository = typeof repositories.$inferSelect
 export type NewRepository = typeof repositories.$inferInsert
 export type SystemMetric = typeof systemMetrics.$inferSelect

@@ -132,6 +132,7 @@ export interface Task {
   recurrenceEndDate: string | null
   recurrenceSourceTaskId: string | null
   notes: string | null // Free-form notes/comments
+  hostId: string | null // FK to host (null = local execution)
   createdAt: string
   updatedAt: string
   links?: TaskLink[]
@@ -339,6 +340,26 @@ export interface Repository {
 // Repository with linked projects (returned from GET /api/repositories/:id)
 export interface RepositoryWithProjects extends Repository {
   projects: { id: string; name: string }[]
+}
+
+// Remote host for running agents on remote machines
+export type HostStatus = 'unknown' | 'connected' | 'error'
+export type HostAuthMethod = 'key' | 'password'
+
+export interface Host {
+  id: string
+  name: string
+  hostname: string
+  port: number
+  username: string
+  authMethod: HostAuthMethod
+  privateKeyPath: string | null
+  defaultDirectory: string | null
+  fulcrumUrl: string | null
+  status: HostStatus
+  lastConnectedAt: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 // Copier template types
