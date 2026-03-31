@@ -13,6 +13,6 @@ CREATE TABLE `hosts` (
 	`created_at` text NOT NULL,
 	`updated_at` text NOT NULL
 );
-
-ALTER TABLE `tasks` ADD `host_id` text;
+--> statement-breakpoint
+ALTER TABLE `tasks` ADD `host_id` text;--> statement-breakpoint
 ALTER TABLE `terminals` ADD `host_id` text;

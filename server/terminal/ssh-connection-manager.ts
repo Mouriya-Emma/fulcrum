@@ -1,6 +1,16 @@
-import { Client } from 'ssh2'
+import type { Client as ClientType } from 'ssh2'
 import { readFileSync } from 'fs'
 import { log } from '../lib/logger'
+
+// Lazy-load ssh2 to avoid native module crash in test environments (Bun + libuv)
+let _Client: typeof ClientType | null = null
+function getSSH2Client(): typeof ClientType {
+  if (!_Client) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _Client = require('ssh2').Client
+  }
+  return _Client!
+}
 
 export interface SSHConnectionConfig {
   host: string
@@ -12,7 +22,7 @@ export interface SSHConnectionConfig {
 }
 
 interface PooledConnection {
-  client: Client
+  client: ClientType
   hostKey: string
   createdAt: number
   lastUsedAt: number
@@ -42,7 +52,7 @@ export class SSHConnectionManager {
     this.cleanupInterval = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS)
   }
 
-  async getConnection(config: SSHConnectionConfig): Promise<Client> {
+  async getConnection(config: SSHConnectionConfig): Promise<ClientType> {
     const hostKey = makeHostKey(config)
     const pooled = this.pool.get(hostKey)
 
@@ -89,7 +99,7 @@ export class SSHConnectionManager {
     return client
   }
 
-  releaseConnection(config: SSHConnectionConfig, client: Client): void {
+  releaseConnection(config: SSHConnectionConfig, client: ClientType): void {
     const hostKey = makeHostKey(config)
     const pooled = this.pool.get(hostKey)
     if (!pooled) return
@@ -147,8 +157,9 @@ export class SSHConnectionManager {
     }
   }
 
-  private createConnection(config: SSHConnectionConfig): Promise<Client> {
-    return new Promise<Client>((resolve, reject) => {
+  private createConnection(config: SSHConnectionConfig): Promise<ClientType> {
+    return new Promise<ClientType>((resolve, reject) => {
+      const Client = getSSH2Client()
       const client = new Client()
       const timeout = setTimeout(() => {
         client.end()
