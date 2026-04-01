@@ -532,10 +532,23 @@ const TerminalsView = observer(function TerminalsView() {
   // Filter terminals for the active tab and convert to TerminalInfo for component compatibility
   const visibleTerminals = useMemo(() => {
     if (activeTabId === ALL_TASKS_TAB_ID) {
-      // Show terminals for active tasks, sorted by newest task first, with optional project filter
-      // Exclude task shell terminals (secondary terminals from task detail right panel)
+      // Show one terminal per active task, sorted by newest task first, with optional project filter.
+      // Only show task agent terminals (tabId null) — exclude shell terminals and tab terminals.
+      // Deduplicate by cwd to handle shell terminals whose tabId was previously stripped to null.
+      const seenCwds = new Set<string>()
       return terminals
-        .filter((t) => t.cwd && activeTaskWorktrees.has(t.cwd) && !t.tabId?.startsWith(TASK_SHELL_TAB_PREFIX))
+        .filter((t) => t.cwd && activeTaskWorktrees.has(t.cwd) && !t.tabId)
+        .sort((a, b) => {
+          // Sort non-shell terminals first so dedup keeps the agent terminal
+          const aIsShell = a.name.endsWith('(shell)') ? 1 : 0
+          const bIsShell = b.name.endsWith('(shell)') ? 1 : 0
+          return aIsShell - bIsShell
+        })
+        .filter((t) => {
+          if (seenCwds.has(t.cwd)) return false
+          seenCwds.add(t.cwd)
+          return true
+        })
         .filter((t) => {
           // If no filter selected, show all (default behavior)
           if (!selectedTaskProjectId) return true
