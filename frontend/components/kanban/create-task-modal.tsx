@@ -36,7 +36,7 @@ import {
   ComboboxLabel,
 } from '@/components/ui/combobox'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { TaskAdd01Icon, Folder01Icon, Cancel01Icon, Attachment01Icon, Link01Icon, Add01Icon, Tick01Icon, PinIcon, PinOffIcon } from '@hugeicons/core-free-icons'
+import { TaskAdd01Icon, Folder01Icon, Cancel01Icon, Attachment01Icon, Link01Icon, Add01Icon, Tick01Icon, PinIcon, PinOffIcon, ArrowDown01Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { getTaskTypeCssVar } from '@/lib/task-type-colors'
@@ -141,6 +141,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
   const [projectSearchQuery, setProjectSearchQuery] = useState('')
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
   const [pinned, setPinned] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const tagContainerRef = useRef<HTMLDivElement>(null)
   const projectContainerRef = useRef<HTMLDivElement>(null)
 
@@ -516,6 +517,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
     setSelectedProjectId(null)
     setBlockedByTaskIds([])
     setPinned(false)
+    setShowAdvanced(false)
     setShowTagDropdown(false)
     setProjectSearchQuery('')
     setShowProjectDropdown(false)
@@ -813,38 +815,6 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 </Field>
               )}
 
-              {/* Agent selector - for worktree and scratch tasks */}
-              {(taskType === 'worktree' || taskType === 'scratch') && (
-                <>
-              <Field>
-                <FieldLabel>{t('createModal.fields.agent')}</FieldLabel>
-                <Select value={agent} onValueChange={(value) => setAgent(value as AgentType)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(AGENT_DISPLAY_NAMES) as AgentType[]).map((agentType) => (
-                      <SelectItem key={agentType} value={agentType}>
-                        {AGENT_DISPLAY_NAMES[agentType]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              {agent === 'opencode' && (
-                <Field>
-                  <FieldLabel>{t('createModal.fields.opencodeModel')}</FieldLabel>
-                  <ModelPicker
-                    value={opencodeModel}
-                    onChange={setOpencodeModel}
-                    placeholder={t('createModal.fields.opencodeModelPlaceholder')}
-                  />
-                </Field>
-              )}
-                </>
-              )}
-
               {/* Repository & branch - only for worktree tasks */}
               {taskType === 'worktree' && (
                 <>
@@ -1005,7 +975,29 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                   </ComboboxContent>
                 </Combobox>
               </Field>
+                </>
+              )}
 
+              {/* Advanced section toggle */}
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors -mx-0.5"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+              >
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  size={14}
+                  strokeWidth={2}
+                  className={cn('transition-transform', showAdvanced && 'rotate-180')}
+                />
+                {t('createModal.advanced')}
+              </button>
+
+              {showAdvanced && (
+                <>
+              {/* Branch prefix & name - only for worktree tasks */}
+              {taskType === 'worktree' && (
+                <>
               <Field>
                 <FieldLabel htmlFor="prefix">{t('createModal.fields.prefix')}</FieldLabel>
                 <Input
@@ -1038,6 +1030,38 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                   </FieldDescription>
                 )}
               </Field>
+                </>
+              )}
+
+              {/* Agent selector - for worktree and scratch tasks */}
+              {(taskType === 'worktree' || taskType === 'scratch') && (
+                <>
+              <Field>
+                <FieldLabel>{t('createModal.fields.agent')}</FieldLabel>
+                <Select value={agent} onValueChange={(value) => setAgent(value as AgentType)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(AGENT_DISPLAY_NAMES) as AgentType[]).map((agentType) => (
+                      <SelectItem key={agentType} value={agentType}>
+                        {AGENT_DISPLAY_NAMES[agentType]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              {agent === 'opencode' && (
+                <Field>
+                  <FieldLabel>{t('createModal.fields.opencodeModel')}</FieldLabel>
+                  <ModelPicker
+                    value={opencodeModel}
+                    onChange={setOpencodeModel}
+                    placeholder={t('createModal.fields.opencodeModelPlaceholder')}
+                  />
+                </Field>
+              )}
                 </>
               )}
 
@@ -1298,6 +1322,8 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                   )}
                 </div>
               </Field>
+                </>
+              )}
             </FieldGroup>
 
             <DialogFooter className="mt-4 shrink-0 px-3">

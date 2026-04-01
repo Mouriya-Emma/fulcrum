@@ -118,6 +118,7 @@
     "blockedByPlaceholder": "Search tasks to block this...",
     "noTasksFound": "No tasks found",
     "startImmediately": "Start work immediately",
+    "advanced": "Advanced",
     "pinTask": "Pin task to top",
     "unpinTask": "Unpin task",
     "errors": {

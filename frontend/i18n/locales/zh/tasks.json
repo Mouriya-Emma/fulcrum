@@ -118,6 +118,7 @@
     "blockedByPlaceholder": "搜索阻塞任务...",
     "noTasksFound": "未找到任务",
     "startImmediately": "立即开始工作",
+    "advanced": "高级",
     "pinTask": "置顶任务",
     "unpinTask": "取消置顶",
     "errors": {
