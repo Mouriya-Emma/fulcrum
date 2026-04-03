@@ -801,7 +801,9 @@ User message: ${userMessage}`
         systemPrompt,
         permissionMode: 'bypassPermissions',
         allowDangerouslySkipPermissions: true,
-        settingSources: [],
+        // Observer tier: no user settings (security isolation)
+        // Trusted tier: load user-level MCP servers and plugins from ~/.claude/settings.json
+        settingSources: isObserver ? [] : ['user'],
         // Ephemeral sessions don't persist to disk — each call is independent
         ...(options.ephemeral && { persistSession: false, maxTurns: 3 }),
         ...(options.outputFormat && { outputFormat: options.outputFormat }),
