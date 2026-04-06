@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { db, chatSessions, chatMessages, artifacts, tasks, projects, repositories, apps, projectRepositories, messagingSessionMappings } from '../db'
 import type { ChatSession, NewChatSession, ChatMessage, NewChatMessage, Artifact, NewArtifact } from '../db/schema'
 import { getSettings } from '../lib/settings'
-import { getClaudeCodePathForSdk, getCleanEnv } from '../lib/claude-code-path'
+import { getClaudeCodePathForSdk, getCleanEnv, getUserPluginsForSdk } from '../lib/claude-code-path'
 import { getInstanceContext, getAssistantDir, ensureAssistantDir } from '../lib/settings/paths'
 import { log } from '../lib/logger'
 import type { PageContext, AttachmentData } from '../../shared/types'
@@ -780,6 +780,15 @@ User message: ${userMessage}`
     })
 
     ensureAssistantDir()
+
+    // Resolve user plugins for non-observer sessions.
+    // settingSources: ['user'] loads enabledPlugins from settings.json, but the SDK
+    // can't resolve remote marketplace plugins — only local-directory plugins from
+    // extraKnownMarketplaces work. We read the installed plugin cache and pass all
+    // enabled marketplace plugins as local plugins so the SDK can load them.
+    // Skip fulcrum@fulcrum since it's already loaded via extraKnownMarketplaces.
+    const userPlugins = isObserver ? [] : getUserPluginsForSdk(['fulcrum@fulcrum'])
+
     const result = query({
       prompt: fullPrompt,
       options: {
@@ -798,6 +807,8 @@ User message: ${userMessage}`
           },
         },
         tools: isObserver ? [] : { type: 'preset', preset: 'claude_code' },
+        // Load user marketplace plugins from their local install cache
+        ...(userPlugins.length > 0 && { plugins: userPlugins }),
         systemPrompt,
         permissionMode: 'bypassPermissions',
         allowDangerouslySkipPermissions: true,
