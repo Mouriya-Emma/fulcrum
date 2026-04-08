@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { registerOsc52Handler } from './osc52-handler'
 import { useKeyboardContext } from '@/contexts/keyboard-context'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowDownDoubleIcon } from '@hugeicons/core-free-icons'
+import { ArrowDownDoubleIcon, Eraser01Icon, ReloadIcon } from '@hugeicons/core-free-icons'
 import { MobileTerminalControls } from './mobile-terminal-controls'
 import { useTheme } from 'next-themes'
 import { getTerminalTheme } from './terminal-theme'
@@ -22,9 +22,11 @@ interface TerminalProps {
   setupImagePaste?: (container: HTMLElement, terminalId: string) => () => void
   onSend?: (data: string) => void
   onFocus?: () => void
+  onClear?: () => void
+  onReset?: () => void
 }
 
-export function Terminal({ className, onReady, onResize, onContainerReady, terminalId, setupImagePaste, onSend, onFocus }: TerminalProps) {
+export function Terminal({ className, onReady, onResize, onContainerReady, terminalId, setupImagePaste, onSend, onFocus, onClear, onReset }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -195,12 +197,33 @@ export function Terminal({ className, onReady, onResize, onContainerReady, termi
           ref={containerRef}
           className={cn('h-full w-full max-w-full overflow-hidden p-2 bg-terminal-background touch-none', className)}
         />
-        <button
-          onClick={handleScrollToBottom}
-          className={cn('absolute top-2 right-5 p-1 transition-colors', isDark ? 'text-white/50 hover:text-white/80' : 'text-black/50 hover:text-black/80')}
-        >
-          <HugeiconsIcon icon={ArrowDownDoubleIcon} size={20} strokeWidth={2} />
-        </button>
+        <div className={cn('absolute top-2 right-5 flex items-center gap-1', isDark ? 'text-white/50' : 'text-black/50')}>
+          <button
+            onClick={handleScrollToBottom}
+            className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+            title="Scroll to bottom"
+          >
+            <HugeiconsIcon icon={ArrowDownDoubleIcon} size={20} strokeWidth={2} />
+          </button>
+          {onClear && (
+            <button
+              onClick={onClear}
+              className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+              title="Clear terminal"
+            >
+              <HugeiconsIcon icon={Eraser01Icon} size={20} strokeWidth={2} />
+            </button>
+          )}
+          {onReset && (
+            <button
+              onClick={onReset}
+              className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+              title="Reset terminal"
+            >
+              <HugeiconsIcon icon={ReloadIcon} size={20} strokeWidth={2} />
+            </button>
+          )}
+        </div>
       </div>
       <div className="h-2 shrink-0 bg-terminal-background" />
       {onSend && <MobileTerminalControls onSend={onSend} />}
