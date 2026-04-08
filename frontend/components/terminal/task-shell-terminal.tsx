@@ -45,7 +45,6 @@ export function TaskShellTerminal({ taskId, taskName, cwd, className }: TaskShel
     resizeTerminal,
     setupImagePaste,
     writeToTerminal,
-    clearTerminalBuffer,
     recreateTerminal,
   } = useTerminalWS()
 
@@ -152,10 +151,6 @@ export function TaskShellTerminal({ taskId, taskName, cwd, className }: TaskShel
     }
   }, [terminalId, writeToTerminal])
 
-  const handleClear = useCallback(() => {
-    if (terminalId) clearTerminalBuffer(terminalId)
-  }, [terminalId, clearTerminalBuffer])
-
   const handleReset = useCallback(() => {
     if (terminalId) {
       attachedRef.current = false
@@ -200,7 +195,6 @@ export function TaskShellTerminal({ taskId, taskName, cwd, className }: TaskShel
           terminalId={terminalId ?? undefined}
           setupImagePaste={setupImagePaste}
           onSend={handleMobileSend}
-          onClear={terminalId ? handleClear : undefined}
           onReset={terminalId ? handleReset : undefined}
         />
 

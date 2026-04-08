@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { registerOsc52Handler } from './osc52-handler'
 import { useKeyboardContext } from '@/contexts/keyboard-context'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowDownDoubleIcon, Eraser01Icon, ReloadIcon } from '@hugeicons/core-free-icons'
+import { ArrowDownDoubleIcon, ReloadIcon } from '@hugeicons/core-free-icons'
 import { MobileTerminalControls } from './mobile-terminal-controls'
 import { useTheme } from 'next-themes'
 import { getTerminalTheme } from './terminal-theme'
@@ -22,11 +22,10 @@ interface TerminalProps {
   setupImagePaste?: (container: HTMLElement, terminalId: string) => () => void
   onSend?: (data: string) => void
   onFocus?: () => void
-  onClear?: () => void
   onReset?: () => void
 }
 
-export function Terminal({ className, onReady, onResize, onContainerReady, terminalId, setupImagePaste, onSend, onFocus, onClear, onReset }: TerminalProps) {
+export function Terminal({ className, onReady, onResize, onContainerReady, terminalId, setupImagePaste, onSend, onFocus, onReset }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -205,15 +204,6 @@ export function Terminal({ className, onReady, onResize, onContainerReady, termi
           >
             <HugeiconsIcon icon={ArrowDownDoubleIcon} size={20} strokeWidth={2} />
           </button>
-          {onClear && (
-            <button
-              onClick={onClear}
-              className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
-              title="Clear terminal"
-            >
-              <HugeiconsIcon icon={Eraser01Icon} size={20} strokeWidth={2} />
-            </button>
-          )}
           {onReset && (
             <button
               onClick={onReset}

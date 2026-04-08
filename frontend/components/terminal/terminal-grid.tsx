@@ -84,10 +84,6 @@ const TerminalPane = observer(function TerminalPane({ terminal, taskInfo, repoIn
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  const handleClear = useCallback(() => {
-    store.clearTerminalBuffer(terminal.id)
-  }, [store, terminal.id])
-
   const handleReset = useCallback(() => {
     store.recreateTerminal(terminal.id)
   }, [store, terminal.id])
@@ -178,7 +174,7 @@ const TerminalPane = observer(function TerminalPane({ terminal, taskInfo, repoIn
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
       {renderHeader()}
       <div className="relative min-h-0 min-w-0 flex-1">
-        <Terminal onReady={onReady} onResize={onResize} onContainerReady={onContainerReady} terminalId={terminal.id} setupImagePaste={setupImagePaste} onFocus={onFocus} onClear={handleClear} onReset={handleReset} />
+        <Terminal onReady={onReady} onResize={onResize} onContainerReady={onContainerReady} terminalId={terminal.id} setupImagePaste={setupImagePaste} onFocus={onFocus} onReset={handleReset} />
         {/* Loading overlay - shown while Claude is starting */}
         {isStartingClaude && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-terminal-background/90">

@@ -61,7 +61,6 @@ export function WorkspacePanel({
     connected,
     createTerminal,
     recreateTerminal,
-    clearTerminalBuffer,
     attachXterm,
     resizeTerminal,
     setupImagePaste,
@@ -169,10 +168,6 @@ export function WorkspacePanel({
       writeToTerminal(terminalId, data)
     }
   }, [terminalId, writeToTerminal])
-
-  const handleClear = useCallback(() => {
-    if (terminalId) clearTerminalBuffer(terminalId)
-  }, [terminalId, clearTerminalBuffer])
 
   // Handle terminal recreation (for stale/dead dtach sockets)
   const handleRecreate = useCallback(() => {
@@ -285,7 +280,6 @@ export function WorkspacePanel({
               terminalId={terminalId ?? undefined}
               setupImagePaste={setupImagePaste}
               onSend={handleTerminalSend}
-              onClear={terminalId ? handleClear : undefined}
               onReset={terminalId ? handleRecreate : undefined}
             />
           </div>

@@ -9,7 +9,7 @@ import { registerOsc52Handler } from './osc52-handler'
 import { useTerminalWS } from '@/hooks/use-terminal-ws'
 import { useKeyboardContext } from '@/contexts/keyboard-context'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowDownDoubleIcon, Loading03Icon, Alert02Icon, Cancel01Icon, Eraser01Icon, ReloadIcon } from '@hugeicons/core-free-icons'
+import { ArrowDownDoubleIcon, Loading03Icon, Alert02Icon, Cancel01Icon, ReloadIcon } from '@hugeicons/core-free-icons'
 import { MobileTerminalControls } from './mobile-terminal-controls'
 import { log } from '@/lib/logger'
 import { useTheme } from 'next-themes'
@@ -82,7 +82,6 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
     resizeTerminal,
     setupImagePaste,
     writeToTerminal,
-    clearTerminalBuffer,
     recreateTerminal,
     consumePendingStartup,
     clearStartingUp,
@@ -564,10 +563,6 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
     }
   }, [terminalId])
 
-  const handleClear = useCallback(() => {
-    if (terminalId) clearTerminalBuffer(terminalId)
-  }, [terminalId, clearTerminalBuffer])
-
   const handleReset = useCallback(() => {
     if (terminalId) {
       attachedRef.current = false
@@ -696,22 +691,13 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
             <HugeiconsIcon icon={ArrowDownDoubleIcon} size={20} strokeWidth={2} />
           </button>
           {terminalId && (
-            <>
-              <button
-                onClick={handleClear}
-                className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
-                title="Clear terminal"
-              >
-                <HugeiconsIcon icon={Eraser01Icon} size={20} strokeWidth={2} />
-              </button>
-              <button
-                onClick={handleReset}
-                className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
-                title="Reset terminal"
-              >
-                <HugeiconsIcon icon={ReloadIcon} size={20} strokeWidth={2} />
-              </button>
-            </>
+            <button
+              onClick={handleReset}
+              className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+              title="Reset terminal"
+            >
+              <HugeiconsIcon icon={ReloadIcon} size={20} strokeWidth={2} />
+            </button>
           )}
         </div>
       </div>
