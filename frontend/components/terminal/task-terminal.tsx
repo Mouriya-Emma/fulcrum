@@ -683,13 +683,6 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
         )}
 
         <div className={cn('absolute top-2 right-5 flex items-center gap-1', isDark ? 'text-white/50' : 'text-black/50')}>
-          <button
-            onClick={() => termRef.current?.scrollToBottom()}
-            className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
-            title="Scroll to bottom"
-          >
-            <HugeiconsIcon icon={ArrowDownDoubleIcon} size={20} strokeWidth={2} />
-          </button>
           {terminalId && (
             <button
               onClick={handleReset}
@@ -699,6 +692,13 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
               <HugeiconsIcon icon={ReloadIcon} size={20} strokeWidth={2} />
             </button>
           )}
+          <button
+            onClick={() => termRef.current?.scrollToBottom()}
+            className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+            title="Scroll to bottom"
+          >
+            <HugeiconsIcon icon={ArrowDownDoubleIcon} size={20} strokeWidth={2} />
+          </button>
         </div>
       </div>
 

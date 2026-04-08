@@ -197,13 +197,6 @@ export function Terminal({ className, onReady, onResize, onContainerReady, termi
           className={cn('h-full w-full max-w-full overflow-hidden p-2 bg-terminal-background touch-none', className)}
         />
         <div className={cn('absolute top-2 right-5 flex items-center gap-1', isDark ? 'text-white/50' : 'text-black/50')}>
-          <button
-            onClick={handleScrollToBottom}
-            className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
-            title="Scroll to bottom"
-          >
-            <HugeiconsIcon icon={ArrowDownDoubleIcon} size={20} strokeWidth={2} />
-          </button>
           {onReset && (
             <button
               onClick={onReset}
@@ -213,6 +206,13 @@ export function Terminal({ className, onReady, onResize, onContainerReady, termi
               <HugeiconsIcon icon={ReloadIcon} size={20} strokeWidth={2} />
             </button>
           )}
+          <button
+            onClick={handleScrollToBottom}
+            className={cn('p-1 transition-colors', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+            title="Scroll to bottom"
+          >
+            <HugeiconsIcon icon={ArrowDownDoubleIcon} size={20} strokeWidth={2} />
+          </button>
         </div>
       </div>
       <div className="h-2 shrink-0 bg-terminal-background" />
