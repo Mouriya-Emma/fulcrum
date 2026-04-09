@@ -181,7 +181,7 @@ export function TaskTerminalHeader({
         )}
 
         {/* Right-side actions */}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           {/* Task status badge - visible until very narrow */}
           {showBadge && (
             <DropdownMenu>
@@ -189,7 +189,7 @@ export function TaskTerminalHeader({
                 render={
                   <button
                     type="button"
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[taskStatus]}`}
+                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[taskStatus]}`}
                   />
                 }
               >
