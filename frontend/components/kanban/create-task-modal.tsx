@@ -53,6 +53,7 @@ import { FilesystemBrowser } from '@/components/ui/filesystem-browser'
 import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { ModelPicker } from '@/components/opencode/model-picker'
 import { useUploadAttachment } from '@/hooks/use-task-attachments'
+import { useHosts } from '@/hooks/use-hosts'
 import { DependencySelector } from '@/components/kanban/dependency-selector'
 import { TimeEstimatePicker } from '@/components/task/time-estimate-picker'
 import { PriorityPicker } from '@/components/task/priority-picker'
@@ -141,6 +142,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
   const [projectSearchQuery, setProjectSearchQuery] = useState('')
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
   const [pinned, setPinned] = useState(false)
+  const [selectedHostId, setSelectedHostId] = useState<string | null>(null)
   const tagContainerRef = useRef<HTMLDivElement>(null)
   const projectContainerRef = useRef<HTMLDivElement>(null)
 
@@ -160,6 +162,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
   const { data: defaultStartImmediately } = useStartWorktreeTasksImmediately()
   const { data: repositories } = useRepositories()
   const { data: projects } = useProjects()
+  const { data: remoteHosts = [] } = useHosts()
   const { data: branchData, isLoading: branchesLoading } = useBranches(
     repoPath || null
   )
@@ -439,6 +442,8 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
         blockedByTaskIds: blockedByTaskIds.length > 0 ? blockedByTaskIds : undefined,
         // Pin
         pinned: pinned || undefined,
+        // Remote host
+        hostId: selectedHostId || undefined,
       },
       {
         onSuccess: async (task) => {
@@ -516,6 +521,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
     setSelectedProjectId(null)
     setBlockedByTaskIds([])
     setPinned(false)
+    setSelectedHostId(null)
     setShowTagDropdown(false)
     setProjectSearchQuery('')
     setShowProjectDropdown(false)
@@ -843,6 +849,30 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 </Field>
               )}
                 </>
+              )}
+
+              {/* Remote host - for worktree and scratch tasks */}
+              {(taskType === 'worktree' || taskType === 'scratch') && remoteHosts.length > 0 && (
+                <Field>
+                  <FieldLabel>Remote Host</FieldLabel>
+                  <FieldDescription>Run this agent on a remote machine via SSH</FieldDescription>
+                  <Select
+                    value={selectedHostId ?? '__local__'}
+                    onValueChange={(v) => setSelectedHostId(v === '__local__' ? null : v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__local__">Local (this machine)</SelectItem>
+                      {remoteHosts.filter((h) => h.status === 'connected').map((host) => (
+                        <SelectItem key={host.id} value={host.id}>
+                          {host.name} ({host.username}@{host.hostname})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
               )}
 
               {/* Repository & branch - only for worktree tasks */}

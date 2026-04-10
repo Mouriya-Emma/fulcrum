@@ -1,0 +1,445 @@
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { HugeiconsIcon } from '@hugeicons/react'
+import {
+  Loading03Icon,
+  Tick02Icon,
+  Cancel01Icon,
+  Delete02Icon,
+  Add01Icon,
+  Alert02Icon,
+  TestTube01Icon,
+} from '@hugeicons/core-free-icons'
+import { toast } from 'sonner'
+import {
+  useHosts,
+  useCreateHost,
+  useUpdateHost,
+  useDeleteHost,
+  useTestHostConnection,
+  useCheckHostEnv,
+  type EnvCheckResult,
+} from '@/hooks/use-hosts'
+import type { Host } from '@/types'
+
+function StatusDot({ status }: { status: Host['status'] }) {
+  if (status === 'connected') {
+    return <span className="inline-block h-2 w-2 rounded-full bg-green-500" title="Connected" />
+  }
+  if (status === 'error') {
+    return <span className="inline-block h-2 w-2 rounded-full bg-red-500" title="Error" />
+  }
+  return <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40" title="Unknown" />
+}
+
+function EnvChecks({ result }: { result: EnvCheckResult }) {
+  const required = ['dtach', 'fulcrum']
+  const optional = ['claude', 'opencode']
+
+  return (
+    <div className="mt-2 space-y-1 text-xs">
+      {[...required, ...optional].map((name) => {
+        const check = result.checks[name]
+        if (!check) return null
+        const isRequired = required.includes(name)
+        return (
+          <div key={name} className="flex items-center gap-2">
+            {check.installed ? (
+              <HugeiconsIcon icon={Tick02Icon} size={12} className="text-green-500 shrink-0" />
+            ) : (
+              <HugeiconsIcon
+                icon={isRequired ? Cancel01Icon : Alert02Icon}
+                size={12}
+                className={isRequired ? 'text-red-500 shrink-0' : 'text-muted-foreground shrink-0'}
+              />
+            )}
+            <span className={check.installed ? '' : isRequired ? 'text-red-500' : 'text-muted-foreground'}>
+              {name}
+            </span>
+            {check.version && (
+              <span className="text-muted-foreground truncate">{check.version}</span>
+            )}
+            {!check.installed && isRequired && (
+              <span className="text-red-500">required</span>
+            )}
+          </div>
+        )
+      })}
+      {result.checks['directory'] && (
+        <div className="flex items-center gap-2">
+          {result.checks['directory'].installed ? (
+            <HugeiconsIcon icon={Tick02Icon} size={12} className="text-green-500 shrink-0" />
+          ) : (
+            <HugeiconsIcon icon={Cancel01Icon} size={12} className="text-red-500 shrink-0" />
+          )}
+          <span className={result.checks['directory'].installed ? '' : 'text-red-500'}>
+            directory
+          </span>
+          {result.checks['directory'].error && (
+            <span className="text-red-500 truncate">{result.checks['directory'].error}</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function RemoteHostsSettings() {
+  const { data: hostsList = [], isLoading } = useHosts()
+  const createHost = useCreateHost()
+  const updateHost = useUpdateHost()
+  const deleteHost = useDeleteHost()
+  const testConnection = useTestHostConnection()
+  const checkEnv = useCheckHostEnv()
+
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingHostId, setEditingHostId] = useState<string | null>(null)
+  const [editedName, setEditedName] = useState('')
+
+  // Add form state
+  const [formName, setFormName] = useState('')
+  const [formHostname, setFormHostname] = useState('')
+  const [formPort, setFormPort] = useState('22')
+  const [formUsername, setFormUsername] = useState('')
+  const [formAuthMethod, setFormAuthMethod] = useState<'key' | 'password'>('key')
+  const [formKeyPath, setFormKeyPath] = useState('~/.ssh/id_ed25519')
+  const [formDefaultDir, setFormDefaultDir] = useState('')
+  const [formFulcrumUrl, setFormFulcrumUrl] = useState('')
+
+  // Per-host env check results
+  const [envResults, setEnvResults] = useState<Record<string, EnvCheckResult>>({})
+  const [testingHostId, setTestingHostId] = useState<string | null>(null)
+  const [checkingEnvHostId, setCheckingEnvHostId] = useState<string | null>(null)
+
+  function resetForm() {
+    setFormName('')
+    setFormHostname('')
+    setFormPort('22')
+    setFormUsername('')
+    setFormAuthMethod('key')
+    setFormKeyPath('~/.ssh/id_ed25519')
+    setFormDefaultDir('')
+    setFormFulcrumUrl('')
+    setShowAddForm(false)
+  }
+
+  async function handleAdd() {
+    if (!formName.trim() || !formHostname.trim() || !formUsername.trim()) {
+      toast.error('Name, hostname, and username are required')
+      return
+    }
+
+    try {
+      const host = await createHost.mutateAsync({
+        name: formName.trim(),
+        hostname: formHostname.trim(),
+        port: parseInt(formPort) || 22,
+        username: formUsername.trim(),
+        authMethod: formAuthMethod,
+        privateKeyPath: formAuthMethod === 'key' ? formKeyPath.trim() || undefined : undefined,
+        defaultDirectory: formDefaultDir.trim() || undefined,
+        fulcrumUrl: formFulcrumUrl.trim() || undefined,
+      })
+      toast.success(`Host "${host.name}" added`)
+      resetForm()
+    } catch (err) {
+      toast.error(`Failed to add host: ${err}`)
+    }
+  }
+
+  async function handleTest(id: string) {
+    setTestingHostId(id)
+    try {
+      const result = await testConnection.mutateAsync(id)
+      if (result.success) {
+        toast.success(`Connection OK (${result.latencyMs}ms)`)
+      } else {
+        toast.error(`Connection failed: ${result.error}`)
+      }
+    } catch (err) {
+      toast.error(`Test failed: ${err}`)
+    } finally {
+      setTestingHostId(null)
+    }
+  }
+
+  async function handleCheckEnv(id: string) {
+    setCheckingEnvHostId(id)
+    try {
+      const result = await checkEnv.mutateAsync(id)
+      setEnvResults((prev) => ({ ...prev, [id]: result }))
+      if (result.ready) {
+        toast.success('Environment ready')
+      } else {
+        toast.warning('Environment not ready — some required tools are missing')
+      }
+    } catch (err) {
+      toast.error(`Environment check failed: ${err}`)
+    } finally {
+      setCheckingEnvHostId(null)
+    }
+  }
+
+  async function handleDelete(host: Host) {
+    if (!confirm(`Delete host "${host.name}"? Tasks using this host will fall back to local execution.`)) {
+      return
+    }
+    try {
+      await deleteHost.mutateAsync(host.id)
+      toast.success(`Host "${host.name}" deleted`)
+    } catch (err) {
+      toast.error(`Failed to delete: ${err}`)
+    }
+  }
+
+  function handleStartEdit(host: Host) {
+    setEditingHostId(host.id)
+    setEditedName(host.name)
+  }
+
+  async function handleSaveEdit(id: string) {
+    if (!editedName.trim()) return
+    try {
+      await updateHost.mutateAsync({ id, updates: { name: editedName.trim() } })
+      setEditingHostId(null)
+    } catch (err) {
+      toast.error(`Failed to rename: ${err}`)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <HugeiconsIcon icon={Loading03Icon} size={14} className="animate-spin" />
+        Loading hosts...
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Host list */}
+      {hostsList.map((host) => (
+        <div key={host.id} className="rounded-md border border-border p-3 space-y-2">
+          {/* Header row */}
+          <div className="flex items-center gap-2">
+            <StatusDot status={host.status} />
+            {editingHostId === host.id ? (
+              <Input
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveEdit(host.id)
+                  if (e.key === 'Escape') setEditingHostId(null)
+                }}
+                onBlur={() => handleSaveEdit(host.id)}
+                className="h-6 text-sm font-medium px-1"
+                autoFocus
+              />
+            ) : (
+              <button
+                onClick={() => handleStartEdit(host)}
+                className="text-sm font-medium hover:underline text-left"
+              >
+                {host.name}
+              </button>
+            )}
+            <span className="text-xs text-muted-foreground">
+              {host.username}@{host.hostname}:{host.port}
+            </span>
+            <span className="text-xs rounded bg-muted px-1.5 py-0.5">
+              {host.authMethod}
+            </span>
+            <div className="ml-auto flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 gap-1 px-2 text-xs"
+                onClick={() => handleTest(host.id)}
+                disabled={testingHostId === host.id}
+              >
+                {testingHostId === host.id ? (
+                  <HugeiconsIcon icon={Loading03Icon} size={12} className="animate-spin" />
+                ) : (
+                  <HugeiconsIcon icon={TestTube01Icon} size={12} />
+                )}
+                Test
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 gap-1 px-2 text-xs"
+                onClick={() => handleCheckEnv(host.id)}
+                disabled={checkingEnvHostId === host.id}
+              >
+                {checkingEnvHostId === host.id ? (
+                  <HugeiconsIcon icon={Loading03Icon} size={12} className="animate-spin" />
+                ) : (
+                  <HugeiconsIcon icon={TestTube01Icon} size={12} />
+                )}
+                Check Env
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-1.5 text-destructive hover:text-destructive"
+                onClick={() => handleDelete(host)}
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={12} />
+              </Button>
+            </div>
+          </div>
+
+          {/* Details row */}
+          {(host.defaultDirectory || host.fulcrumUrl) && (
+            <div className="flex gap-4 text-xs text-muted-foreground pl-4">
+              {host.defaultDirectory && <span>Dir: {host.defaultDirectory}</span>}
+              {host.fulcrumUrl && <span>URL: {host.fulcrumUrl}</span>}
+            </div>
+          )}
+
+          {/* Env check results */}
+          {envResults[host.id] && (
+            <div className="pl-4">
+              <EnvChecks result={envResults[host.id]} />
+            </div>
+          )}
+        </div>
+      ))}
+
+      {hostsList.length === 0 && !showAddForm && (
+        <p className="text-sm text-muted-foreground">
+          No remote hosts configured. Add a host to run agents on remote machines via SSH.
+        </p>
+      )}
+
+      {/* Add form */}
+      {showAddForm ? (
+        <div className="rounded-md border border-border p-3 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Name</label>
+              <Input
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="my-server"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Hostname / IP</label>
+              <Input
+                value={formHostname}
+                onChange={(e) => setFormHostname(e.target.value)}
+                placeholder="192.168.1.100"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Username</label>
+              <Input
+                value={formUsername}
+                onChange={(e) => setFormUsername(e.target.value)}
+                placeholder="user"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Port</label>
+              <Input
+                value={formPort}
+                onChange={(e) => setFormPort(e.target.value)}
+                placeholder="22"
+                className="h-8 text-sm"
+                type="number"
+              />
+            </div>
+          </div>
+
+          <Tabs value={formAuthMethod} onValueChange={(v) => setFormAuthMethod(v as 'key' | 'password')}>
+            <TabsList>
+              <TabsTrigger value="key">SSH Key</TabsTrigger>
+              <TabsTrigger value="password">Password</TabsTrigger>
+            </TabsList>
+            <TabsContent value="key" className="mt-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Private Key Path</label>
+                <Input
+                  value={formKeyPath}
+                  onChange={(e) => setFormKeyPath(e.target.value)}
+                  placeholder="~/.ssh/id_ed25519"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </TabsContent>
+            <TabsContent value="password" className="mt-2">
+              <p className="text-xs text-muted-foreground">
+                Password auth is not yet supported. Use SSH key auth.
+              </p>
+            </TabsContent>
+          </Tabs>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Default Directory</label>
+              <Input
+                value={formDefaultDir}
+                onChange={(e) => setFormDefaultDir(e.target.value)}
+                placeholder="/home/user/work (optional)"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Fulcrum URL</label>
+              <Input
+                value={formFulcrumUrl}
+                onChange={(e) => setFormFulcrumUrl(e.target.value)}
+                placeholder="http://your-ip:7777 (optional)"
+                className="h-8 text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                URL the remote agent uses to reach this Fulcrum server
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={handleAdd}
+              disabled={createHost.isPending}
+            >
+              {createHost.isPending ? (
+                <HugeiconsIcon icon={Loading03Icon} size={12} className="animate-spin" />
+              ) : (
+                <HugeiconsIcon icon={Add01Icon} size={12} />
+              )}
+              Add Host
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={resetForm}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1.5 text-xs"
+          onClick={() => setShowAddForm(true)}
+        >
+          <HugeiconsIcon icon={Add01Icon} size={12} />
+          Add Host
+        </Button>
+      )}
+    </div>
+  )
+}

@@ -95,3 +95,18 @@ export function useTestHostConnection() {
     },
   })
 }
+
+export interface EnvCheckResult {
+  checks: Record<string, { installed: boolean; version?: string; error?: string }>
+  ready: boolean
+}
+
+export function useCheckHostEnv() {
+  return useMutation({
+    mutationFn: (id: string) =>
+      fetchJSON<EnvCheckResult>(
+        `${API_BASE}/api/hosts/${id}/check-env`,
+        { method: 'POST' },
+      ),
+  })
+}

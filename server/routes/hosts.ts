@@ -179,4 +179,56 @@ app.post('/:id/test', async (c) => {
   return c.json(result)
 })
 
+// POST /api/hosts/:id/check-env - Check remote environment readiness
+app.post('/:id/check-env', async (c) => {
+  const id = c.req.param('id')
+  const host = db.select().from(hosts).where(eq(hosts.id, id)).get()
+  if (!host) {
+    return c.json({ error: 'Host not found' }, 404)
+  }
+
+  const manager = getSSHConnectionManager()
+  const sshConfig = {
+    host: host.hostname,
+    port: host.port,
+    username: host.username,
+    authMethod: host.authMethod as 'key' | 'password',
+    privateKeyPath: host.privateKeyPath ?? undefined,
+  }
+
+  // Check each tool's availability via SSH
+  const checks: Record<string, { installed: boolean; version?: string; error?: string }> = {}
+
+  const toolChecks = [
+    { name: 'dtach', cmd: 'dtach --version 2>&1 | head -1' },
+    { name: 'fulcrum', cmd: 'fulcrum --version 2>&1 | head -1' },
+    { name: 'claude', cmd: 'claude --version 2>&1 | head -1' },
+    { name: 'opencode', cmd: 'opencode version 2>&1 | head -1' },
+  ]
+
+  for (const tool of toolChecks) {
+    try {
+      const output = await manager.execCommand(sshConfig, `which ${tool.name} >/dev/null 2>&1 && ${tool.cmd}`)
+      checks[tool.name] = { installed: true, version: output.trim() }
+    } catch {
+      checks[tool.name] = { installed: false }
+    }
+  }
+
+  // Check if default directory exists / is writable
+  if (host.defaultDirectory) {
+    try {
+      await manager.execCommand(sshConfig, `test -d '${host.defaultDirectory}' && test -w '${host.defaultDirectory}'`)
+      checks['directory'] = { installed: true }
+    } catch {
+      checks['directory'] = { installed: false, error: `${host.defaultDirectory} not found or not writable` }
+    }
+  }
+
+  const ready = checks['dtach']?.installed && checks['fulcrum']?.installed &&
+    (checks['claude']?.installed || checks['opencode']?.installed)
+
+  return c.json({ checks, ready })
+})
+
 export default app
