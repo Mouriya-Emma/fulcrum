@@ -64,7 +64,7 @@ function timeAgo(dateStr: string | null): string {
 
 function fulcrumUrl(path: string): string {
   const port = getSettings().server.port
-  const host = process.env.FULCRUM_HOST || '192.168.1.100'
+  const host = process.env.FULCRUM_HOST || '192.168.1.215'
   return `http://${host}:${port}${path}`
 }
 

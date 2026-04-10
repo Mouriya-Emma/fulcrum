@@ -70,7 +70,7 @@ function getConfig(): MattermostSettings {
 function getCallbackUrl(path: string): string {
   const port = getSettings().server.port
   // Use hostname that Mattermost can reach (same LAN)
-  const host = process.env.FULCRUM_HOST || '192.168.1.100'
+  const host = process.env.FULCRUM_HOST || '192.168.1.215'
   return `http://${host}:${port}/api/mattermost${path}`
 }
 
