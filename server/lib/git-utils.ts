@@ -171,20 +171,67 @@ export async function createRemoteGitWorktree(
  * Pull latest changes from a remote branch into a worktree.
  * Runs `git pull <remote> <branch>` inside the worktree directory.
  * Best-effort: returns error string on failure but does not throw.
+ * On merge conflict, automatically aborts to leave the worktree clean.
  */
 export function pullLatestInWorktree(
   worktreePath: string,
   remoteBranch?: string,
-): { success: boolean; error?: string } {
+): { success: boolean; error?: string; commitsPulled?: number } {
+  // Skip pull if no remote branch specified — caller should be warned
+  if (remoteBranch !== undefined && !remoteBranch) {
+    return { success: false, error: 'No remote branch specified' }
+  }
+
   try {
-    const args = remoteBranch ? ` ${remoteBranch.replace('/', ' ')}` : ''
+    // Count commits before pull for reporting
+    const headBefore = execSync('git rev-parse HEAD', { cwd: worktreePath, encoding: 'utf-8' }).trim()
+
+    // Build pull args: split "origin/main" into "origin main", handle nested branches like "origin/feature/login"
+    let args = ''
+    if (remoteBranch) {
+      const slashIdx = remoteBranch.indexOf('/')
+      if (slashIdx !== -1) {
+        const remote = remoteBranch.slice(0, slashIdx)
+        const branch = remoteBranch.slice(slashIdx + 1)
+        args = ` ${remote} ${branch}`
+      } else {
+        args = ` ${remoteBranch}`
+      }
+    }
+
     execSync(`git pull${args}`, {
       cwd: worktreePath,
       encoding: 'utf-8',
       timeout: 60_000,
     })
-    return { success: true }
+
+    // Count commits pulled
+    const headAfter = execSync('git rev-parse HEAD', { cwd: worktreePath, encoding: 'utf-8' }).trim()
+    let commitsPulled = 0
+    if (headBefore !== headAfter) {
+      try {
+        const count = execSync(`git rev-list --count ${headBefore}..${headAfter}`, { cwd: worktreePath, encoding: 'utf-8' }).trim()
+        commitsPulled = parseInt(count, 10) || 0
+      } catch {
+        commitsPulled = 1 // at least one if HEAD changed
+      }
+    }
+
+    return { success: true, commitsPulled }
   } catch (err) {
+    // Check if the failure left a merge conflict — abort to keep worktree clean
+    try {
+      // For worktrees, .git is a file pointing to the real git dir; check MERGE_HEAD via git command
+      execSync('git rev-parse MERGE_HEAD', { cwd: worktreePath, encoding: 'utf-8', stdio: 'pipe' })
+      // MERGE_HEAD exists → conflict. Abort the merge to restore clean state.
+      execSync('git merge --abort', { cwd: worktreePath, encoding: 'utf-8' })
+      const msg = 'Pull aborted due to merge conflict — worktree reverted to pre-pull state'
+      log.api.error(msg, { worktreePath, remoteBranch })
+      return { success: false, error: msg }
+    } catch {
+      // No MERGE_HEAD → not a conflict, just a regular pull failure
+    }
+
     const msg = err instanceof Error ? err.message : 'Failed to pull latest'
     log.api.error('Failed to pull latest in worktree', { worktreePath, remoteBranch, error: msg })
     return { success: false, error: msg }

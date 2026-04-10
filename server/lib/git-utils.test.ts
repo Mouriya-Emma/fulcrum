@@ -377,6 +377,107 @@ describe('git-utils', () => {
       execSync(`git worktree remove "${worktreePath}" --force`, { cwd: localPath })
       rmSync(localPath, { recursive: true, force: true })
     })
+
+    test('returns error for empty remoteBranch string', () => {
+      const result = pullLatestInWorktree('/some/path', '')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('No remote branch specified')
+    })
+
+    test('handles nested branch names (origin/feature/login)', () => {
+      remoteRepo = createTestGitRepo()
+      remoteRepo.commit('initial', { 'readme.txt': 'init' })
+
+      const localPath = mkdtempSync(join(tmpdir(), 'fulcrum-pull-nested-'))
+      execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
+      const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
+
+      // Create a nested branch on the remote
+      execSync(`git checkout -b feature/login`, { cwd: remoteRepo.path, encoding: 'utf-8' })
+      remoteRepo.commit('nested feature', { 'login.txt': 'login code' })
+      execSync(`git checkout ${defaultBranch}`, { cwd: remoteRepo.path, encoding: 'utf-8' })
+
+      // Fetch from remote so we know about the nested branch
+      execSync('git fetch origin', { cwd: localPath, encoding: 'utf-8' })
+
+      // Create worktree based on the nested remote branch
+      const worktreePath = join(tmpdir(), `fulcrum-pull-nested-wt-${Date.now()}`)
+      execSync(`git worktree add -b test-nested "${worktreePath}" origin/feature/login`, { cwd: localPath, encoding: 'utf-8' })
+
+      // Pull with nested branch name — should split correctly: origin + feature/login
+      const result = pullLatestInWorktree(worktreePath, 'origin/feature/login')
+
+      expect(result.success).toBe(true)
+      expect(readFileSync(join(worktreePath, 'login.txt'), 'utf-8')).toBe('login code')
+
+      // Cleanup
+      execSync(`git worktree remove "${worktreePath}" --force`, { cwd: localPath })
+      rmSync(localPath, { recursive: true, force: true })
+    })
+
+    test('aborts merge on conflict and leaves worktree clean', () => {
+      remoteRepo = createTestGitRepo()
+      remoteRepo.commit('initial', { 'shared.txt': 'original' })
+
+      const localPath = mkdtempSync(join(tmpdir(), 'fulcrum-pull-conflict-'))
+      execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
+      const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
+
+      // Create worktree
+      const worktreePath = join(tmpdir(), `fulcrum-pull-conflict-wt-${Date.now()}`)
+      execSync(`git worktree add -b conflict-test "${worktreePath}" ${defaultBranch}`, { cwd: localPath, encoding: 'utf-8' })
+
+      // Create divergent history: modify same file in worktree and remote
+      execSync('git config user.name "Test" && git config user.email "test@test.com" && git config pull.rebase false', { cwd: worktreePath, encoding: 'utf-8' })
+      writeFileSync(join(worktreePath, 'shared.txt'), 'local change')
+      execSync('git add -A && git commit -m "local change"', { cwd: worktreePath, encoding: 'utf-8' })
+
+      remoteRepo.commit('remote change', { 'shared.txt': 'remote change' })
+
+      // Pull should fail with conflict, then abort
+      const result = pullLatestInWorktree(worktreePath, `origin/${defaultBranch}`)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('merge conflict')
+
+      // Verify worktree is clean (no conflict markers)
+      const status = execSync('git status --porcelain', { cwd: worktreePath, encoding: 'utf-8' }).trim()
+      expect(status).toBe('')
+
+      // Verify the file has the local version (pre-pull state)
+      const content = readFileSync(join(worktreePath, 'shared.txt'), 'utf-8')
+      expect(content).toBe('local change')
+
+      // Cleanup
+      execSync(`git worktree remove "${worktreePath}" --force`, { cwd: localPath })
+      rmSync(localPath, { recursive: true, force: true })
+    })
+
+    test('returns commitsPulled count on success', () => {
+      remoteRepo = createTestGitRepo()
+      remoteRepo.commit('initial', { 'file.txt': 'v1' })
+
+      const localPath = mkdtempSync(join(tmpdir(), 'fulcrum-pull-count-'))
+      execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
+      const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
+
+      const worktreePath = join(tmpdir(), `fulcrum-pull-count-wt-${Date.now()}`)
+      execSync(`git worktree add -b count-test "${worktreePath}" ${defaultBranch}`, { cwd: localPath, encoding: 'utf-8' })
+
+      // Add 2 commits on remote
+      remoteRepo.commit('second', { 'file.txt': 'v2' })
+      remoteRepo.commit('third', { 'file.txt': 'v3' })
+
+      const result = pullLatestInWorktree(worktreePath, `origin/${defaultBranch}`)
+
+      expect(result.success).toBe(true)
+      expect(result.commitsPulled).toBe(2)
+
+      // Cleanup
+      execSync(`git worktree remove "${worktreePath}" --force`, { cwd: localPath })
+      rmSync(localPath, { recursive: true, force: true })
+    })
   })
 
   describe('copyFilesToWorktree', () => {

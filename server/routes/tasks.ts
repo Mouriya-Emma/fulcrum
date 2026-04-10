@@ -241,6 +241,7 @@ app.post('/', async (c) => {
     }
 
     // Create git worktree if branch and worktreePath are provided (for immediate IN_PROGRESS tasks)
+    const warnings: string[] = []
     if (body.branch && body.worktreePath && body.repoPath && body.baseBranch) {
       // Validate branch name to prevent shell injection
       if (!isValidBranchName(body.branch)) {
@@ -285,7 +286,7 @@ app.post('/', async (c) => {
           const pullResult = pullLatestInWorktree(body.worktreePath, body.pullRemoteBranch || undefined)
           if (!pullResult.success) {
             log.api.error('Failed to pull latest in worktree', { error: pullResult.error })
-            // Non-fatal: worktree is created, just not up-to-date
+            warnings.push(`Pull failed: ${pullResult.error}`)
           }
         }
 
@@ -502,6 +503,9 @@ app.post('/', async (c) => {
     if (response && body.derivedFromTaskId && derivationResult.parentBlocked) {
       ;(response as Record<string, unknown>)._derivationResult = derivationResult
     }
+    if (warnings.length > 0) {
+      ;(response as Record<string, unknown>)._warnings = warnings
+    }
     return c.json(response, 201)
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : 'Failed to create task' }, 400)
@@ -633,11 +637,12 @@ app.post('/:id/initialize-worktree', async (c) => {
     }
 
     // Pull latest from remote if requested
+    const warnings: string[] = []
     if (body.pullToLatest) {
       const pullResult = pullLatestInWorktree(body.worktreePath, body.pullRemoteBranch || undefined)
       if (!pullResult.success) {
         log.api.error('Failed to pull latest during worktree initialization', { error: pullResult.error })
-        // Non-fatal: worktree is created, just not up-to-date
+        warnings.push(`Pull failed: ${pullResult.error}`)
       }
     }
 
@@ -682,7 +687,8 @@ app.post('/:id/initialize-worktree', async (c) => {
 
     const updated = db.select().from(tasks).where(eq(tasks.id, id)).get()
     broadcast({ type: 'task:updated', payload: { taskId: id } })
-    return c.json(updated ? toApiResponse(updated, true) : null)
+    const response = updated ? toApiResponse(updated, true) : null
+    return c.json(warnings.length > 0 ? { ...response, _warnings: warnings } : response)
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : 'Failed to initialize worktree task' }, 400)
   }

@@ -43,7 +43,7 @@ import { getTaskTypeCssVar } from '@/lib/task-type-colors'
 import { Switch } from '@/components/ui/switch'
 import { useCreateTask, useAddTaskLink } from '@/hooks/use-tasks'
 import { useSearchTags } from '@/hooks/use-tags'
-import type { TagWithUsage, RecurrenceRule, TaskPriority } from '@shared/types'
+import type { Task, TagWithUsage, RecurrenceRule, TaskPriority } from '@shared/types'
 import { useBranches, checkIsGitRepo } from '@/hooks/use-filesystem'
 import { useWorktreeBasePath, useScratchBasePath, useDefaultGitReposDir, useDefaultAgent, useOpencodeModel, useDefaultTaskType, useStartWorktreeTasksImmediately } from '@/hooks/use-config'
 import { AGENT_DISPLAY_NAMES, type AgentType } from '@/types'
@@ -337,7 +337,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
     }
     // Find matching remote branch (e.g. main -> origin/main)
     const match = remoteBranches.find((rb) => rb.endsWith(`/${baseBranch}`))
-    setPullRemoteBranch(match || (remoteBranches.length > 0 ? `origin/${baseBranch}` : ''))
+    setPullRemoteBranch(match || (remoteBranches.length > 0 ? remoteBranches[0] : ''))
   }, [baseBranch, branchData?.remoteBranches])
 
   // Close tag dropdown when clicking outside
@@ -468,6 +468,14 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
       },
       {
         onSuccess: async (task) => {
+          // Show warnings from pull-to-latest or other non-fatal operations
+          const taskWithWarnings = task as Task & { _warnings?: string[] }
+          if (taskWithWarnings._warnings?.length) {
+            for (const warning of taskWithWarnings._warnings) {
+              toast.warning(warning)
+            }
+          }
+
           // Upload any pending attachments
           if (pendingFiles.length > 0) {
             for (const file of pendingFiles) {
@@ -543,6 +551,8 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
     setBlockedByTaskIds([])
     setPinned(false)
     setSelectedHostId(null)
+    setPullToLatest(true)
+    setPullRemoteBranch('')
     setShowTagDropdown(false)
     setProjectSearchQuery('')
     setShowProjectDropdown(false)
@@ -1080,7 +1090,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 {pullToLatest && (
                   <Select
                     value={pullRemoteBranch}
-                    onValueChange={setPullRemoteBranch}
+                    onValueChange={(v) => setPullRemoteBranch(v ?? '')}
                     disabled={!repoPath || branchesLoading}
                   >
                     <SelectTrigger className="w-full">
@@ -1093,7 +1103,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {branchData!.remoteBranches!.map((b) => (
+                      {(branchData?.remoteBranches ?? []).map((b) => (
                         <SelectItem key={b} value={b}>
                           {b}
                         </SelectItem>

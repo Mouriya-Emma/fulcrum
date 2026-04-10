@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -68,6 +69,7 @@ interface InitializeWorktreeTaskModalProps {
 }
 
 export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: InitializeWorktreeTaskModalProps) {
+  const { t } = useTranslation('tasks')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [browserOpen, setBrowserOpen] = useState(false)
@@ -216,7 +218,7 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
       return
     }
     const match = remoteBranches.find((rb) => rb.endsWith(`/${baseBranch}`))
-    setPullRemoteBranch(match || (remoteBranches.length > 0 ? `origin/${baseBranch}` : ''))
+    setPullRemoteBranch(match || (remoteBranches.length > 0 ? remoteBranches[0] : ''))
   }, [baseBranch, branchData?.remoteBranches])
 
   const handleRepoSelect = async (path: string) => {
@@ -265,7 +267,7 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
         : (selectedRepo?.opencodeOptions ?? selectedRepoProject?.opencodeOptions)
 
       // Initialize the task as a worktree task by updating it with git fields
-      await fetchJSON<Task>(`/api/tasks/${task.id}/initialize-worktree`, {
+      const result = await fetchJSON<Task & { _warnings?: string[] }>(`/api/tasks/${task.id}/initialize-worktree`, {
         method: 'POST',
         body: JSON.stringify({
           agent,
@@ -284,6 +286,13 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
           pullRemoteBranch: pullToLatest ? (pullRemoteBranch || undefined) : undefined,
         }),
       })
+
+      // Show warnings from pull-to-latest or other non-fatal operations
+      if (result._warnings?.length) {
+        for (const warning of result._warnings) {
+          toast.warning(warning)
+        }
+      }
 
       // Invalidate queries to refresh task data
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -508,7 +517,7 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
               {(branchData?.remoteBranches ?? []).length > 0 && (
               <Field>
                 <div className="flex items-center justify-between">
-                  <FieldLabel>Pull to Latest</FieldLabel>
+                  <FieldLabel>{t('createModal.pullToLatest')}</FieldLabel>
                   <Switch
                     checked={pullToLatest}
                     onCheckedChange={setPullToLatest}
@@ -518,18 +527,18 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
                 {pullToLatest && (
                   <Select
                     value={pullRemoteBranch}
-                    onValueChange={setPullRemoteBranch}
+                    onValueChange={(v) => setPullRemoteBranch(v ?? '')}
                     disabled={!repoPath || branchesLoading}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue>
                         {pullRemoteBranch || (
-                          <span className="text-muted-foreground">Select remote branch</span>
+                          <span className="text-muted-foreground">{t('createModal.selectPullBranch')}</span>
                         )}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {branchData!.remoteBranches!.map((b) => (
+                      {(branchData?.remoteBranches ?? []).map((b) => (
                         <SelectItem key={b} value={b}>
                           {b}
                         </SelectItem>
@@ -538,7 +547,7 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
                   </Select>
                 )}
                 {pullToLatest && (
-                  <FieldDescription>Pull latest changes from remote after creating worktree.</FieldDescription>
+                  <FieldDescription>{t('createModal.pullToLatestHint')}</FieldDescription>
                 )}
               </Field>
               )}
