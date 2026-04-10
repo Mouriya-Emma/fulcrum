@@ -48,6 +48,12 @@ export const CONFIG_KEYS = {
   CALDAV_GOOGLE_CLIENT_ID: 'caldav.googleClientId',
   CALDAV_GOOGLE_CLIENT_SECRET: 'caldav.googleClientSecret',
   CALDAV_OAUTH_TOKENS: 'caldav.oauthTokens',
+  MATTERMOST_ENABLED: 'channels.mattermost.enabled',
+  MATTERMOST_SERVER_URL: 'channels.mattermost.serverUrl',
+  MATTERMOST_BOT_TOKEN: 'channels.mattermost.botToken',
+  MATTERMOST_TEAM_ID: 'channels.mattermost.teamId',
+  MATTERMOST_CHANNEL_ID: 'channels.mattermost.channelId',
+  MATTERMOST_COMMAND_TOKEN: 'channels.mattermost.commandToken',
 } as const
 
 export type ConfigKey = (typeof CONFIG_KEYS)[keyof typeof CONFIG_KEYS]
