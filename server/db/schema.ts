@@ -576,6 +576,7 @@ export const hosts = sqliteTable('hosts', {
   privateKeyPath: text('private_key_path'), // Path to SSH private key file
   defaultDirectory: text('default_directory'), // Default remote cwd for tasks
   fulcrumUrl: text('fulcrum_url'), // Override FULCRUM_URL for this host (e.g., http://192.168.1.100:7777)
+  hostFingerprint: text('host_fingerprint'), // SSH host key fingerprint (TOFU)
   status: text('status').notNull().default('unknown'), // 'unknown' | 'connected' | 'error'
   lastConnectedAt: text('last_connected_at'),
   createdAt: text('created_at').notNull(),

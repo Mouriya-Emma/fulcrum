@@ -1,0 +1,1 @@
+ALTER TABLE `hosts` ADD `host_fingerprint` text;

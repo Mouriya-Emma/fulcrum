@@ -415,3 +415,4 @@ export type ServerMessage =
   | MessagingStatusMessage
   | MessagingQRMessage
   | MessagingDisplayNameMessage
+  | { type: 'hosts:updated'; payload: Record<string, never> }

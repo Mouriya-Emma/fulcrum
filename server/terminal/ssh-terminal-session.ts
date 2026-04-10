@@ -6,8 +6,7 @@ import type { TerminalInfo, TerminalStatus } from '../types'
 import type { ITerminalSession } from './session-interface'
 import { getSSHConnectionManager, type SSHConnectionConfig } from './ssh-connection-manager'
 import { log } from '../lib/logger'
-
-const REMOTE_SOCKETS_DIR = '/tmp/fulcrum-sockets'
+import { shellEscape } from '../lib/shell-escape'
 
 export interface SSHTerminalSessionOptions {
   id: string
@@ -52,6 +51,7 @@ export class SSHTerminalSession implements ITerminalSession {
   private _hostId: string
   private sshConfig: SSHConnectionConfig
   private fulcrumUrl: string
+  private remoteSocketsDir: string
 
   // Input queue for data sent before stream is ready
   private inputQueue: string[] = []
@@ -75,6 +75,7 @@ export class SSHTerminalSession implements ITerminalSession {
     this.fulcrumUrl = options.fulcrumUrl
     this.buffer = new BufferManager()
     this.buffer.setTerminalId(this.id)
+    this.remoteSocketsDir = `/home/${options.sshConfig.username}/.fulcrum/sockets`
     this.onData = options.onData
     this.onExit = options.onExit
     this.onShouldDestroy = options.onShouldDestroy
@@ -111,22 +112,36 @@ export class SSHTerminalSession implements ITerminalSession {
 
     try {
       // Ensure remote sockets directory exists and create dtach session
-      const remoteSocketPath = `${REMOTE_SOCKETS_DIR}/terminal-${this.id}.sock`
+      const remoteSocketPath = `${this.remoteSocketsDir}/terminal-${this.id}.sock`
       const envExports = [
-        `export FULCRUM_URL='${this.fulcrumUrl}'`,
-        ...(this._taskId ? [`export FULCRUM_TASK_ID='${this._taskId}'`] : []),
+        `export FULCRUM_URL=${shellEscape(this.fulcrumUrl)}`,
+        ...(this._taskId ? [`export FULCRUM_TASK_ID=${shellEscape(this._taskId)}`] : []),
         `export TERM=xterm-256color`,
         `export COLORTERM=truecolor`,
       ].join(' && ')
 
       const createCmd = [
-        `mkdir -p ${REMOTE_SOCKETS_DIR}`,
-        `cd '${this.cwd}'`,
-        `${envExports} && dtach -n '${remoteSocketPath}' -z bash -li`,
+        `mkdir -p ${shellEscape(this.remoteSocketsDir)}`,
+        `cd ${shellEscape(this.cwd)}`,
+        `${envExports} && dtach -n ${shellEscape(remoteSocketPath)} -z bash -li`,
       ].join(' && ')
 
       await manager.execCommand(this.sshConfig, createCmd)
       log.terminal.info('Remote dtach session created', { terminalId: this.id, host: this.sshConfig.host })
+
+      // Verify remote agent can reach Fulcrum server
+      if (this.fulcrumUrl) {
+        try {
+          await manager.execCommand(this.sshConfig, `curl -sf --max-time 5 ${shellEscape(this.fulcrumUrl)}/health >/dev/null 2>&1`, 10000)
+          log.terminal.info('Remote FULCRUM_URL reachable', { terminalId: this.id, fulcrumUrl: this.fulcrumUrl })
+        } catch {
+          log.terminal.warn('Remote host cannot reach Fulcrum server', {
+            terminalId: this.id,
+            fulcrumUrl: this.fulcrumUrl,
+            hint: 'Agent CLI commands will not work. Check host fulcrumUrl setting.',
+          })
+        }
+      }
     } catch (err) {
       log.terminal.error('Failed to create remote dtach session', { terminalId: this.id, error: String(err) })
       this.status = 'error'
@@ -143,7 +158,7 @@ export class SSHTerminalSession implements ITerminalSession {
     }
 
     const manager = getSSHConnectionManager()
-    const remoteSocketPath = `${REMOTE_SOCKETS_DIR}/terminal-${this.id}.sock`
+    const remoteSocketPath = `${this.remoteSocketsDir}/terminal-${this.id}.sock`
 
     try {
       // Get a dedicated SSH connection for this terminal stream
@@ -168,7 +183,7 @@ export class SSHTerminalSession implements ITerminalSession {
       this.buffer.loadFromDisk()
 
       // Attach to the remote dtach session
-      this.stream.write(`stty -echoctl && exec dtach -a '${remoteSocketPath}' -z\n`)
+      this.stream.write(`stty -echoctl && exec dtach -a ${shellEscape(remoteSocketPath)} -z\n`)
 
       this.setupStreamHandlers()
       this.flushInputQueue()
@@ -179,6 +194,12 @@ export class SSHTerminalSession implements ITerminalSession {
       })
     } catch (err) {
       log.terminal.error('SSH attach failed', { terminalId: this.id, error: String(err) })
+      // Release SSH connection to prevent pool leak
+      if (this.sshClient) {
+        const manager = getSSHConnectionManager()
+        manager.releaseConnection(this.sshConfig, this.sshClient)
+        this.sshClient = null
+      }
       this.status = 'error'
       this.updateDb({ status: 'error' })
       this.onExit(1, 'error')
@@ -247,10 +268,10 @@ export class SSHTerminalSession implements ITerminalSession {
   }
 
   private async checkRemoteSession(): Promise<boolean> {
-    const remoteSocketPath = `${REMOTE_SOCKETS_DIR}/terminal-${this.id}.sock`
+    const remoteSocketPath = `${this.remoteSocketsDir}/terminal-${this.id}.sock`
     try {
       const manager = getSSHConnectionManager()
-      await manager.execCommand(this.sshConfig, `test -S '${remoteSocketPath}'`)
+      await manager.execCommand(this.sshConfig, `test -S ${shellEscape(remoteSocketPath)}`)
       return true
     } catch {
       return false
@@ -333,12 +354,12 @@ export class SSHTerminalSession implements ITerminalSession {
     }
 
     // Kill remote dtach session
-    const remoteSocketPath = `${REMOTE_SOCKETS_DIR}/terminal-${this.id}.sock`
+    const remoteSocketPath = `${this.remoteSocketsDir}/terminal-${this.id}.sock`
     const manager = getSSHConnectionManager()
     manager.execCommand(this.sshConfig, [
       // Find and kill dtach process using this socket
-      `pkill -f 'dtach.*${remoteSocketPath}' 2>/dev/null || true`,
-      `rm -f '${remoteSocketPath}'`,
+      `pkill -f ${shellEscape('dtach.*' + remoteSocketPath)} 2>/dev/null || true`,
+      `rm -f ${shellEscape(remoteSocketPath)}`,
     ].join(' && ')).catch((err) => {
       log.terminal.warn('Failed to kill remote dtach session', { terminalId: this.id, error: String(err) })
     })
@@ -356,12 +377,12 @@ export class SSHTerminalSession implements ITerminalSession {
 
   // Kill agent processes on remote host
   async killAgentInSession(): Promise<boolean> {
-    const remoteSocketPath = `${REMOTE_SOCKETS_DIR}/terminal-${this.id}.sock`
+    const remoteSocketPath = `${this.remoteSocketsDir}/terminal-${this.id}.sock`
     try {
       const manager = getSSHConnectionManager()
       // Find dtach PID, then find agent children
       await manager.execCommand(this.sshConfig, [
-        `DTACH_PID=$(pgrep -f 'dtach.*${remoteSocketPath}' 2>/dev/null | head -1)`,
+        `DTACH_PID=$(pgrep -f ${shellEscape('dtach.*' + remoteSocketPath)} 2>/dev/null | head -1)`,
         `if [ -n "$DTACH_PID" ]; then`,
         `  for PID in $(pgrep -P $DTACH_PID 2>/dev/null); do`,
         `    CMDLINE=$(cat /proc/$PID/cmdline 2>/dev/null || ps -p $PID -o args= 2>/dev/null)`,

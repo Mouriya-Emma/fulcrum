@@ -356,6 +356,7 @@ export interface Host {
   privateKeyPath: string | null
   defaultDirectory: string | null
   fulcrumUrl: string | null
+  hostFingerprint: string | null
   status: HostStatus
   lastConnectedAt: string | null
   createdAt: string

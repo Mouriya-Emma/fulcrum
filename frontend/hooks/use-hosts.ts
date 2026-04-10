@@ -86,7 +86,7 @@ export function useTestHostConnection() {
 
   return useMutation({
     mutationFn: (id: string) =>
-      fetchJSON<{ success: boolean; error?: string; latencyMs?: number }>(
+      fetchJSON<{ success: boolean; error?: string; latencyMs?: number; fingerprint?: string }>(
         `${API_BASE}/api/hosts/${id}/test`,
         { method: 'POST' },
       ),
