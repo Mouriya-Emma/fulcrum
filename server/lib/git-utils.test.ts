@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from 'bun:test'
-import { isGitUrl, extractRepoNameFromUrl, fetchIfRemoteRef, createGitWorktree, copyFilesToWorktree } from './git-utils'
+import { isGitUrl, extractRepoNameFromUrl, fetchIfRemoteRef, createGitWorktree, copyFilesToWorktree, pullLatestInWorktree } from './git-utils'
 import { createTestGitRepo, type TestGitRepo } from '../__tests__/fixtures/git'
 import { mkdtempSync, existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs'
 import { execSync } from 'child_process'
@@ -281,6 +281,101 @@ describe('git-utils', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toBeDefined()
+    })
+  })
+
+  describe('pullLatestInWorktree', () => {
+    let remoteRepo: TestGitRepo
+
+    afterEach(() => {
+      remoteRepo?.cleanup()
+    })
+
+    test('pulls latest changes from remote into worktree', () => {
+      // Create a "remote" repo with an initial commit
+      remoteRepo = createTestGitRepo()
+      remoteRepo.commit('initial content', { 'file.txt': 'v1' })
+
+      // Clone it to simulate a local repo
+      const localPath = mkdtempSync(join(tmpdir(), 'fulcrum-pull-test-'))
+      execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
+
+      // Create a worktree from the local clone
+      const worktreePath = join(tmpdir(), `fulcrum-pull-wt-${Date.now()}`)
+      const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
+      execSync(`git worktree add -b test-pull "${worktreePath}" ${defaultBranch}`, { cwd: localPath, encoding: 'utf-8' })
+
+      // Add a new commit on the remote
+      remoteRepo.commit('new remote commit', { 'file.txt': 'v2' })
+
+      // Pull latest in the worktree
+      const result = pullLatestInWorktree(worktreePath, `origin/${defaultBranch}`)
+
+      expect(result.success).toBe(true)
+
+      // Verify the worktree has the latest content
+      const content = readFileSync(join(worktreePath, 'file.txt'), 'utf-8')
+      expect(content).toBe('v2')
+
+      // Cleanup
+      execSync(`git worktree remove "${worktreePath}" --force`, { cwd: localPath })
+      rmSync(localPath, { recursive: true, force: true })
+    })
+
+    test('pulls without specifying remote branch (uses tracking branch)', () => {
+      remoteRepo = createTestGitRepo()
+      remoteRepo.commit('initial', { 'data.txt': 'hello' })
+
+      const localPath = mkdtempSync(join(tmpdir(), 'fulcrum-pull-track-'))
+      execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
+
+      // Create worktree on a new branch that tracks the remote default branch
+      const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
+      const worktreePath = join(tmpdir(), `fulcrum-pull-wt2-${Date.now()}`)
+      execSync(`git worktree add -b track-test "${worktreePath}" origin/${defaultBranch}`, { cwd: localPath, encoding: 'utf-8' })
+      // Set upstream tracking so `git pull` (no args) works
+      execSync(`git branch --set-upstream-to=origin/${defaultBranch} track-test`, { cwd: worktreePath, encoding: 'utf-8' })
+
+      // Add new commit on remote
+      remoteRepo.commit('updated', { 'data.txt': 'world' })
+
+      // Pull without specifying remote branch
+      const result = pullLatestInWorktree(worktreePath)
+
+      expect(result.success).toBe(true)
+      expect(readFileSync(join(worktreePath, 'data.txt'), 'utf-8')).toBe('world')
+
+      // Cleanup
+      execSync(`git worktree remove "${worktreePath}" --force`, { cwd: localPath })
+      rmSync(localPath, { recursive: true, force: true })
+    })
+
+    test('returns error for invalid worktree path', () => {
+      const result = pullLatestInWorktree('/nonexistent/path')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBeDefined()
+    })
+
+    test('returns error for invalid remote branch', () => {
+      remoteRepo = createTestGitRepo()
+      remoteRepo.commit('initial', { 'f.txt': 'x' })
+
+      const localPath = mkdtempSync(join(tmpdir(), 'fulcrum-pull-err-'))
+      execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
+
+      const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
+      const worktreePath = join(tmpdir(), `fulcrum-pull-wt3-${Date.now()}`)
+      execSync(`git worktree add -b err-branch "${worktreePath}" ${defaultBranch}`, { cwd: localPath, encoding: 'utf-8' })
+
+      const result = pullLatestInWorktree(worktreePath, 'nonexistent/branch')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBeDefined()
+
+      // Cleanup
+      execSync(`git worktree remove "${worktreePath}" --force`, { cwd: localPath })
+      rmSync(localPath, { recursive: true, force: true })
     })
   })
 

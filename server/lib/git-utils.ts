@@ -168,6 +168,30 @@ export async function createRemoteGitWorktree(
 }
 
 /**
+ * Pull latest changes from a remote branch into a worktree.
+ * Runs `git pull <remote> <branch>` inside the worktree directory.
+ * Best-effort: returns error string on failure but does not throw.
+ */
+export function pullLatestInWorktree(
+  worktreePath: string,
+  remoteBranch?: string,
+): { success: boolean; error?: string } {
+  try {
+    const args = remoteBranch ? ` ${remoteBranch.replace('/', ' ')}` : ''
+    execSync(`git pull${args}`, {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+      timeout: 60_000,
+    })
+    return { success: true }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to pull latest'
+    log.api.error('Failed to pull latest in worktree', { worktreePath, remoteBranch, error: msg })
+    return { success: false, error: msg }
+  }
+}
+
+/**
  * Copy files to worktree based on glob patterns (comma-separated).
  */
 export function copyFilesToWorktree(repoPath: string, worktreePath: string, patterns: string): void {

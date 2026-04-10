@@ -34,6 +34,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Folder01Icon } from '@hugeicons/core-free-icons'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Switch } from '@/components/ui/switch'
 import { useBranches, checkIsGitRepo } from '@/hooks/use-filesystem'
 import { useWorktreeBasePath, useDefaultGitReposDir, useDefaultAgent, useOpencodeModel } from '@/hooks/use-config'
 import { AGENT_DISPLAY_NAMES, type AgentType } from '@/types'
@@ -85,6 +86,8 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
   const [repoError, setRepoError] = useState<string | null>(null)
   const [isValidatingRepo, setIsValidatingRepo] = useState(false)
   const [opencodeModel, setOpencodeModel] = useState<string | null>(null)
+  const [pullToLatest, setPullToLatest] = useState(true)
+  const [pullRemoteBranch, setPullRemoteBranch] = useState('')
 
   const { data: worktreeBasePath } = useWorktreeBasePath()
   const { data: defaultGitReposDir } = useDefaultGitReposDir()
@@ -201,6 +204,21 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
     }
   }, [branchData, repoPath, repositories, selectedRepoId])
 
+  // Auto-set pullRemoteBranch when baseBranch changes
+  useEffect(() => {
+    if (!baseBranch) {
+      setPullRemoteBranch('')
+      return
+    }
+    const remoteBranches = branchData?.remoteBranches ?? []
+    if (baseBranch.includes('/')) {
+      setPullRemoteBranch(baseBranch)
+      return
+    }
+    const match = remoteBranches.find((rb) => rb.endsWith(`/${baseBranch}`))
+    setPullRemoteBranch(match || (remoteBranches.length > 0 ? `origin/${baseBranch}` : ''))
+  }, [baseBranch, branchData?.remoteBranches])
+
   const handleRepoSelect = async (path: string) => {
     setRepoError(null)
     setIsValidatingRepo(true)
@@ -262,6 +280,8 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
           startupScript: [selectedRepoProject?.startupScript, selectedRepo?.startupScript].filter(Boolean).join('\n') || undefined,
           agentOptions: agentOptions || undefined,
           opencodeModel: agent === 'opencode' ? opencodeModel : undefined,
+          pullToLatest,
+          pullRemoteBranch: pullToLatest ? (pullRemoteBranch || undefined) : undefined,
         }),
       })
 
@@ -484,6 +504,44 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
                   </SelectContent>
                 </Select>
               </Field>
+
+              {(branchData?.remoteBranches ?? []).length > 0 && (
+              <Field>
+                <div className="flex items-center justify-between">
+                  <FieldLabel>Pull to Latest</FieldLabel>
+                  <Switch
+                    checked={pullToLatest}
+                    onCheckedChange={setPullToLatest}
+                    size="sm"
+                  />
+                </div>
+                {pullToLatest && (
+                  <Select
+                    value={pullRemoteBranch}
+                    onValueChange={setPullRemoteBranch}
+                    disabled={!repoPath || branchesLoading}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {pullRemoteBranch || (
+                          <span className="text-muted-foreground">Select remote branch</span>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branchData!.remoteBranches!.map((b) => (
+                        <SelectItem key={b} value={b}>
+                          {b}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {pullToLatest && (
+                  <FieldDescription>Pull latest changes from remote after creating worktree.</FieldDescription>
+                )}
+              </Field>
+              )}
 
               <Field>
                 <FieldLabel>Branch Name</FieldLabel>
