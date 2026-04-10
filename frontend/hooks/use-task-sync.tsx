@@ -47,6 +47,9 @@ export function useTaskSync() {
         const message: ServerMessage = JSON.parse(event.data)
         if (message.type === 'task:updated') {
           queryClient.invalidateQueries({ queryKey: ['tasks'] })
+        } else if (message.type === 'draft-items:updated' && 'payload' in message) {
+          const { taskId } = (message as { type: string; payload: { taskId: string } }).payload
+          queryClient.invalidateQueries({ queryKey: ['draft-items', taskId] })
         } else if (message.type === 'notification' && 'payload' in message) {
           const { id, title, message: description, notificationType, taskId, showToast, showDesktop, playSound, isCustomSound } = (message as NotificationMessage).payload
 

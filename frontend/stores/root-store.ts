@@ -196,6 +196,7 @@ export const RootStore = types
       description?: string
       taskName: string
       serverPort?: number
+      taskId?: string
     }>(),
     /**
      * Pending tab creation tempId.
@@ -390,6 +391,7 @@ export const RootStore = types
           description?: string
           taskName: string
           serverPort?: number
+          taskId?: string
         }
       }) {
         const requestId = generateRequestId()

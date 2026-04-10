@@ -295,6 +295,7 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
           description,
           taskName,
           serverPort,
+          taskId,
         },
       })
     } else if (createdTerminalRef.current) {
@@ -405,6 +406,7 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
         description: currentDescription,
         taskName: currentTaskName,
         serverPort: currentServerPort,
+        taskId: currentTaskId,
       } = pendingStartup
 
       // 1. Run startup script first (e.g., mise trust, mkdir .fulcrum, export FULCRUM_DIR)
@@ -418,34 +420,60 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
       }
 
       // 2. Build the agent command using the command builder abstraction
-      const effectivePort = currentServerPort ?? 7777
-      const portFlag = effectivePort !== 7777 ? ` --port=${effectivePort}` : ''
-      const systemPrompt = 'You are working in a Fulcrum task worktree. ' +
-        'Reference the fulcrum skill for complete CLI documentation (attachments, dependencies, notifications, etc.). ' +
-        'Commit after completing each logical unit of work (feature, fix, refactor) to preserve progress. ' +
-        `When you finish working and need user input, run: fulcrum current-task review${portFlag}. ` +
-        `When linking a PR: fulcrum current-task pr <url>${portFlag}. ` +
-        `When linking a URL: fulcrum current-task link <url>${portFlag}. ` +
-        `For notifications: fulcrum notify "Title" "Message"${portFlag}. ` +
-        'Before claiming shared resources (ports, services), check the agent coordination board: fulcrum board read. ' +
-        'Claim resources before using them: fulcrum board post "message" --type claim --tag port:<N>. ' +
-        'Release resources when done: fulcrum board post "message" --type release --tag port:<N>.'
-      const taskInfo = currentDescription ? `${currentTaskName}: ${currentDescription}` : currentTaskName
+      // Fetch upstream drafts (if any) and build the prompt with draft context
+      const buildAndSendAgentCommand = async () => {
+        const effectivePort = currentServerPort ?? 7777
+        const portFlag = effectivePort !== 7777 ? ` --port=${effectivePort}` : ''
+        const systemPrompt = 'You are working in a Fulcrum task worktree. ' +
+          'Reference the fulcrum skill for complete CLI documentation (attachments, dependencies, notifications, etc.). ' +
+          'Commit after completing each logical unit of work (feature, fix, refactor) to preserve progress. ' +
+          `When you finish working and need user input, run: fulcrum current-task review${portFlag}. ` +
+          `When linking a PR: fulcrum current-task pr <url>${portFlag}. ` +
+          `When linking a URL: fulcrum current-task link <url>${portFlag}. ` +
+          `For notifications: fulcrum notify "Title" "Message"${portFlag}. ` +
+          'Before claiming shared resources (ports, services), check the agent coordination board: fulcrum board read. ' +
+          'Claim resources before using them: fulcrum board post "message" --type claim --tag port:<N>. ' +
+          'Release resources when done: fulcrum board post "message" --type release --tag port:<N>.'
 
-      // Use the agent command builder to construct the appropriate CLI command
-      const taskCommand = buildAgentCommand(currentAgent as AgentType, {
-        prompt: taskInfo,
-        systemPrompt,
-        mode: currentAiMode === 'plan' ? 'plan' : 'default',
-        additionalOptions: currentAgentOptions ?? {},
-        opencodeModel: currentOpencodeModel,
-        opencodeDefaultAgent: opencodeDefaultAgentRef.current,
-        opencodePlanAgent: opencodePlanAgentRef.current,
-      })
+        let taskInfo = currentDescription ? `${currentTaskName}: ${currentDescription}` : currentTaskName
 
-      // Wait longer for startup script to complete before sending agent command
-      // 5 seconds should be enough for most scripts (mise trust, mkdir, export, etc.)
-      setTimeout(() => {
+        // Inject upstream draft context into the prompt
+        if (currentTaskId) {
+          try {
+            const res = await fetch(`/api/draft-items/upstream/${currentTaskId}`)
+            if (res.ok) {
+              const drafts = await res.json() as Array<{ title: string; description: string | null; items: Array<{ title: string; completed: boolean; issueUrl: string | null }> }>
+              if (drafts.length > 0) {
+                const draftContext = drafts.map((draft) => {
+                  const lines = [`Draft Plan: "${draft.title}"`]
+                  if (draft.description) lines.push(draft.description)
+                  lines.push('Checklist:')
+                  for (const item of draft.items) {
+                    const check = item.completed ? '[x]' : '[ ]'
+                    const issue = item.issueUrl ? ` (${item.issueUrl})` : ''
+                    lines.push(`- ${check} ${item.title}${issue}`)
+                  }
+                  return lines.join('\n')
+                }).join('\n\n')
+                taskInfo += '\n\n---\n' + draftContext + '\n---'
+              }
+            }
+          } catch {
+            // Non-critical: proceed without draft context
+          }
+        }
+
+        // Use the agent command builder to construct the appropriate CLI command
+        const taskCommand = buildAgentCommand(currentAgent as AgentType, {
+          prompt: taskInfo,
+          systemPrompt,
+          mode: currentAiMode === 'plan' ? 'plan' : 'default',
+          additionalOptions: currentAgentOptions ?? {},
+          opencodeModel: currentOpencodeModel,
+          opencodeDefaultAgent: opencodeDefaultAgentRef.current,
+          opencodePlanAgent: opencodePlanAgentRef.current,
+        })
+
         writeToTerminalRef.current(actualTerminalId, taskCommand + '\r')
         setIsStartingAgent(false)
         // Clear the MST store's isStartingUp flag (for /terminals view)
@@ -465,7 +493,11 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
           setTimeout(focusTerminal, 200)
           setTimeout(focusTerminal, 500)
         }
-      }, currentStartupScript ? 5000 : 100)
+      }
+
+      // Wait longer for startup script to complete before sending agent command
+      // 5 seconds should be enough for most scripts (mise trust, mkdir, export, etc.)
+      setTimeout(() => { buildAndSendAgentCommand() }, currentStartupScript ? 5000 : 100)
     }
 
     const cleanup = attachXtermRef.current(terminalId, termRef.current, { onAttached })

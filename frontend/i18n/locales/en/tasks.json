@@ -13,7 +13,8 @@
     "types": {
       "worktree": "Git",
       "scratch": "Scratch",
-      "manual": "Manual"
+      "manual": "Manual",
+      "draft": "Draft"
     },
     "clear": "Clear filter",
     "showLabels": "Show task type labels"
@@ -39,12 +40,14 @@
     "taskTypes": {
       "worktree": "Git",
       "manual": "Manual",
-      "scratch": "Scratch"
+      "scratch": "Scratch",
+      "draft": "Draft"
     },
     "taskDescriptions": {
       "worktree": "Creates a git worktree and opens an AI coding agent.",
       "manual": "A general task without a git worktree or AI agent.",
-      "scratch": "Creates an isolated directory with an AI coding agent, without a git repository."
+      "scratch": "Creates an isolated directory with an AI coding agent, without a git repository.",
+      "draft": "A planning checklist that feeds context to downstream agent tasks."
     },
     "fields": {
       "title": "Title",

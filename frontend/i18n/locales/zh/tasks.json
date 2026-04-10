@@ -13,7 +13,8 @@
     "types": {
       "worktree": "Git",
       "scratch": "临时",
-      "manual": "手动"
+      "manual": "手动",
+      "draft": "草稿"
     },
     "clear": "清除筛选",
     "showLabels": "显示任务类型标签"
@@ -39,12 +40,14 @@
     "taskTypes": {
       "worktree": "Git",
       "manual": "手动",
-      "scratch": "临时"
+      "scratch": "临时",
+      "draft": "草稿"
     },
     "taskDescriptions": {
       "worktree": "创建 Git 工作树并打开 AI 编程代理。",
       "manual": "无需 Git 工作树或 AI 代理的通用任务。",
-      "scratch": "创建一个带有 AI 编程代理的独立目录，无需 Git 仓库。"
+      "scratch": "创建一个带有 AI 编程代理的独立目录，无需 Git 仓库。",
+      "draft": "规划清单，为下游 Agent 任务注入上下文信息。"
     },
     "fields": {
       "title": "标题",

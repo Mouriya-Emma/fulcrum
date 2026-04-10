@@ -10,7 +10,7 @@ import { useTasks } from '@/hooks/use-tasks'
 import { cn } from '@/lib/utils'
 import { getTaskType, type TaskType } from '../../../shared/types'
 
-const TASK_TYPES: TaskType[] = ['worktree', 'scratch', 'manual']
+const TASK_TYPES: TaskType[] = ['worktree', 'scratch', 'manual', 'draft']
 
 interface TaskTypeFilterProps {
   value: TaskType[]
@@ -24,7 +24,7 @@ export function TaskTypeFilter({ value, onChange }: TaskTypeFilterProps) {
   const { data: tasks = [] } = useTasks()
 
   // Count tasks per type
-  const typeCounts: Record<TaskType, number> = { worktree: 0, scratch: 0, manual: 0 }
+  const typeCounts: Record<TaskType, number> = { worktree: 0, scratch: 0, manual: 0, draft: 0 }
   for (const task of tasks) {
     typeCounts[getTaskType(task)]++
   }

@@ -958,6 +958,41 @@ export const toolRegistry: ToolMetadata[] = [
     keywords: ['board', 'coordination', 'agent', 'check', 'claim', 'resource', 'port', 'conflict'],
     defer_loading: false,
   },
+  {
+    name: 'list_draft_items',
+    description: 'List all checklist items for a draft task',
+    category: 'tasks',
+    keywords: ['draft', 'checklist', 'items', 'list', 'plan'],
+    defer_loading: false,
+  },
+  {
+    name: 'create_draft_item',
+    description: 'Add a new checklist item to a draft task',
+    category: 'tasks',
+    keywords: ['draft', 'checklist', 'item', 'create', 'add', 'plan'],
+    defer_loading: false,
+  },
+  {
+    name: 'update_draft_item',
+    description: 'Update a draft checklist item (mark complete, rename)',
+    category: 'tasks',
+    keywords: ['draft', 'checklist', 'item', 'update', 'complete', 'check'],
+    defer_loading: false,
+  },
+  {
+    name: 'delete_draft_item',
+    description: 'Remove a checklist item from a draft task',
+    category: 'tasks',
+    keywords: ['draft', 'checklist', 'item', 'delete', 'remove'],
+    defer_loading: false,
+  },
+  {
+    name: 'sync_draft_to_issues',
+    description: 'Create GitHub issues for draft items that do not yet have one',
+    category: 'tasks',
+    keywords: ['draft', 'github', 'issue', 'sync', 'create'],
+    defer_loading: false,
+  },
 ]
 
 /**

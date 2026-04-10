@@ -87,6 +87,25 @@ export interface TaskDependency {
   createdAt: string
 }
 
+export interface DraftItemResponse {
+  id: string
+  taskId: string
+  title: string
+  completed: boolean
+  issueUrl: string | null
+  issueNumber: number | null
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UpstreamDraftResponse {
+  id: string
+  title: string
+  description: string | null
+  items: DraftItemResponse[]
+}
+
 export interface DiffQueryOptions {
   staged?: boolean
   ignoreWhitespace?: boolean
@@ -779,6 +798,37 @@ export class FulcrumClient {
     edges: Array<{ id: string; source: string; target: string }>
   }> {
     return this.fetch('/api/task-dependencies/graph')
+  }
+
+  // Draft items
+  async getDraftItems(taskId: string): Promise<DraftItemResponse[]> {
+    return this.fetch(`/api/draft-items/${taskId}`)
+  }
+
+  async createDraftItem(taskId: string, data: { title: string; position?: number }): Promise<DraftItemResponse> {
+    return this.fetch(`/api/draft-items/${taskId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateDraftItem(itemId: string, data: { title?: string; completed?: boolean; position?: number }): Promise<DraftItemResponse> {
+    return this.fetch(`/api/draft-items/${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteDraftItem(itemId: string): Promise<{ success: boolean }> {
+    return this.fetch(`/api/draft-items/${itemId}`, { method: 'DELETE' })
+  }
+
+  async getUpstreamDrafts(taskId: string): Promise<UpstreamDraftResponse[]> {
+    return this.fetch(`/api/draft-items/upstream/${taskId}`)
+  }
+
+  async syncDraftToIssues(taskId: string): Promise<{ created: number; errors: string[] }> {
+    return this.fetch(`/api/draft-items/${taskId}/sync-issues`, { method: 'POST' })
   }
 
   // Projects

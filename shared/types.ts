@@ -42,7 +42,7 @@ export type RecurrenceRule = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quar
 export type TaskPriority = 'high' | 'medium' | 'low'
 
 // Task type discriminator
-export type TaskType = 'worktree' | 'scratch' | 'manual'
+export type TaskType = 'worktree' | 'scratch' | 'manual' | 'draft'
 
 /**
  * Determine the task type from a task object.
@@ -50,6 +50,7 @@ export type TaskType = 'worktree' | 'scratch' | 'manual'
  */
 export function getTaskType(task: { type?: string | null; worktreePath?: string | null; repoPath?: string | null; repositoryId?: string | null } | null | undefined): TaskType {
   if (!task) return 'manual'
+  if (task.type === 'draft') return 'draft'
   if (task.type === 'scratch') return 'scratch'
   if (task.type === 'worktree') return 'worktree'
   // Legacy inference: if it has git-related fields, it's a worktree task
