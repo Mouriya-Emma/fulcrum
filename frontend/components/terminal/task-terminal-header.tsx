@@ -133,6 +133,7 @@ export function TaskTerminalHeader({
     recurrenceEndDate: null,
     recurrenceSourceTaskId: null,
     notes: null,
+    hostId: null,
     createdAt: '',
     updatedAt: '',
   }
