@@ -83,9 +83,9 @@ export function DraftItemsChecklist({ taskId, hasRepo }: DraftItemsChecklistProp
 
   return (
     <div className="space-y-2">
-      {/* Header */}
-      <div className="flex items-center justify-between px-1">
-        <span className="text-sm font-medium text-muted-foreground">
+      {/* Progress + sync */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
           {completedCount}/{items.length} completed
         </span>
         {hasRepo && unsyncedCount > 0 && (

@@ -42,6 +42,7 @@ import { DeleteTaskDialog } from '@/components/delete-task-dialog'
 import { openExternalUrl } from '@/lib/editor-url'
 import { cn } from '@/lib/utils'
 import { PriorityPicker } from '@/components/task/priority-picker'
+import { DraftItemsChecklist } from '@/components/task/draft-items-checklist'
 import type { Task, TaskStatus, RecurrenceRule, TaskPriority } from '@/types'
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -314,6 +315,14 @@ export function TaskContent({ task, onDeleted, compact }: TaskContentProps) {
       {/* Main Content */}
       <div className={`flex-1 overflow-auto ${compact ? 'p-4' : 'p-6'}`}>
         <div className={`${compact ? '' : 'mx-auto max-w-3xl'} ${spaceClass}`}>
+          {/* Draft Checklist — only for draft tasks */}
+          {task.type === 'draft' && (
+            <div className={`rounded-lg border bg-card ${paddingClass}`}>
+              <h2 className={`${headingClass} font-medium text-muted-foreground ${marginClass}`}>Checklist</h2>
+              <DraftItemsChecklist taskId={task.id} hasRepo={!!task.repositoryId} />
+            </div>
+          )}
+
           {/* Description */}
           <div className={`rounded-lg border bg-card ${paddingClass}`}>
             <div className={`flex items-center justify-between ${marginClass}`}>
