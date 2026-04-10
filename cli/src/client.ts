@@ -58,6 +58,8 @@ export interface CreateTaskInput {
   priority?: string | null
   recurrenceRule?: string | null
   recurrenceEndDate?: string | null
+  blockedByTaskIds?: string[]
+  derivedFromTaskId?: string | null
 }
 
 export interface TaskTagsResponse {

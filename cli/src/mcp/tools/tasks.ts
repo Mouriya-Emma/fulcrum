@@ -203,6 +203,9 @@ function registerCreateTask(server: Server, client: Client) {
       recurrenceEndDate: z
         .optional(z.string())
         .describe('Stop recurring after this date (YYYY-MM-DD). Omit for no end date.'),
+      derivedFromTaskId: z
+        .optional(z.string())
+        .describe('Create as a derived task from the given task ID. The parent task and all tasks that depend on it will automatically depend on this new task. Use this when your current task discovers blocking work that must be completed first.'),
     },
     async ({
       title,
@@ -221,6 +224,7 @@ function registerCreateTask(server: Server, client: Client) {
       priority,
       recurrenceRule,
       recurrenceEndDate,
+      derivedFromTaskId,
     }) => {
       try {
         const repoName = repoPath ? basename(repoPath) : null
@@ -244,6 +248,7 @@ function registerCreateTask(server: Server, client: Client) {
           priority: priority ?? null,
           recurrenceRule: recurrenceRule ?? null,
           recurrenceEndDate: recurrenceEndDate ?? null,
+          derivedFromTaskId: derivedFromTaskId ?? null,
         })
 
         if (tags && tags.length > 0) {

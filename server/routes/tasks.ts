@@ -183,6 +183,7 @@ app.post('/', async (c) => {
         opencodeModel?: string | null
         tags?: string[]
         blockedByTaskIds?: string[]
+        derivedFromTaskId?: string | null
         type?: 'worktree' | 'scratch' | 'draft' | null
         prefix?: string | null
         hostId?: string | null
@@ -360,6 +361,83 @@ app.post('/', async (c) => {
             createdAt: now,
           })
           .run()
+      }
+    }
+
+    // Handle derived task: parent depends_on new task + propagate to all tasks that depend on parent
+    if (body.derivedFromTaskId) {
+      const parentTask = db.select().from(tasks).where(eq(tasks.id, body.derivedFromTaskId)).get()
+      if (parentTask) {
+        // Parent task depends_on derived task (parent is blocked by the new task)
+        const existingParentDep = db
+          .select()
+          .from(taskRelationships)
+          .where(
+            and(
+              eq(taskRelationships.taskId, body.derivedFromTaskId),
+              eq(taskRelationships.relatedTaskId, newTask.id),
+              eq(taskRelationships.type, 'depends_on')
+            )
+          )
+          .get()
+        if (!existingParentDep) {
+          db.insert(taskRelationships)
+            .values({
+              id: crypto.randomUUID(),
+              taskId: body.derivedFromTaskId,
+              relatedTaskId: newTask.id,
+              type: 'depends_on',
+              createdAt: now,
+            })
+            .run()
+        }
+
+        // Propagate: all tasks that depend on parent should also depend on the new derived task
+        const dependentsOfParent = db
+          .select()
+          .from(taskRelationships)
+          .where(
+            and(
+              eq(taskRelationships.relatedTaskId, body.derivedFromTaskId),
+              eq(taskRelationships.type, 'depends_on')
+            )
+          )
+          .all()
+
+        for (const dep of dependentsOfParent) {
+          // Skip if it's the new task itself
+          if (dep.taskId === newTask.id) continue
+
+          // Check if this dependency already exists
+          const existingDep = db
+            .select()
+            .from(taskRelationships)
+            .where(
+              and(
+                eq(taskRelationships.taskId, dep.taskId),
+                eq(taskRelationships.relatedTaskId, newTask.id),
+                eq(taskRelationships.type, 'depends_on')
+              )
+            )
+            .get()
+          if (existingDep) continue
+
+          db.insert(taskRelationships)
+            .values({
+              id: crypto.randomUUID(),
+              taskId: dep.taskId,
+              relatedTaskId: newTask.id,
+              type: 'depends_on',
+              createdAt: now,
+            })
+            .run()
+
+          // Broadcast update for the affected task
+          broadcast({ type: 'task:updated', payload: { taskId: dep.taskId } })
+        }
+
+        // Broadcast update for parent task
+        broadcast({ type: 'task:updated', payload: { taskId: body.derivedFromTaskId } })
       }
     }
 
