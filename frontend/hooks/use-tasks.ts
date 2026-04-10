@@ -59,6 +59,8 @@ export function useCreateTask() {
       blockedByTaskIds?: string[]
       // Pin
       pinned?: boolean
+      // Remote host
+      hostId?: string
     }) =>
       fetchJSON<Task>(`${API_BASE}/api/tasks`, {
         method: 'POST',
