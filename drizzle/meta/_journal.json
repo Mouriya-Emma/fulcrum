@@ -519,6 +519,13 @@
       "when": 1772448800000,
       "tag": "0073_add_draft_items",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "6",
+      "when": 1772535200000,
+      "tag": "0074_draft_items_index_and_notes",
+      "breakpoints": true
     }
   ]
 }

@@ -497,7 +497,12 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
 
       // Wait longer for startup script to complete before sending agent command
       // 5 seconds should be enough for most scripts (mise trust, mkdir, export, etc.)
-      setTimeout(() => { buildAndSendAgentCommand() }, currentStartupScript ? 5000 : 100)
+      setTimeout(() => {
+        buildAndSendAgentCommand().catch((err) => {
+          console.error('Failed to start agent:', err)
+          setIsStartingAgent(false)
+        })
+      }, currentStartupScript ? 5000 : 100)
     }
 
     const cleanup = attachXtermRef.current(terminalId, termRef.current, { onAttached })

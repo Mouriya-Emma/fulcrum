@@ -23,7 +23,12 @@ interface NotificationMessage {
   }
 }
 
-type ServerMessage = TaskUpdatedMessage | NotificationMessage | { type: string }
+interface DraftItemsUpdatedMessage {
+  type: 'draft-items:updated'
+  payload: { taskId: string }
+}
+
+type ServerMessage = TaskUpdatedMessage | NotificationMessage | DraftItemsUpdatedMessage | { type: string }
 
 function getWsUrl(): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -47,9 +52,8 @@ export function useTaskSync() {
         const message: ServerMessage = JSON.parse(event.data)
         if (message.type === 'task:updated') {
           queryClient.invalidateQueries({ queryKey: ['tasks'] })
-        } else if (message.type === 'draft-items:updated' && 'payload' in message) {
-          const { taskId } = (message as { type: string; payload: { taskId: string } }).payload
-          queryClient.invalidateQueries({ queryKey: ['draft-items', taskId] })
+        } else if (message.type === 'draft-items:updated') {
+          queryClient.invalidateQueries({ queryKey: ['draft-items', message.payload.taskId] })
         } else if (message.type === 'notification' && 'payload' in message) {
           const { id, title, message: description, notificationType, taskId, showToast, showDesktop, playSound, isCustomSound } = (message as NotificationMessage).payload
 

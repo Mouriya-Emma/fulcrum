@@ -261,14 +261,18 @@ export async function handleCurrentTaskCommand(
     try {
       const upstreamDrafts = await client.getUpstreamDrafts(task.id)
       if (upstreamDrafts.length > 0) {
-        for (const draft of upstreamDrafts) {
-          console.log(`\n=== Upstream Draft: "${draft.title}" ===`)
-          for (const item of draft.items) {
-            const check = item.completed ? '[x]' : '[ ]'
-            const issue = item.issueUrl ? ` (${item.issueUrl})` : ''
-            console.log(`  ${check} ${item.title}${issue}`)
+        if (isJsonOutput()) {
+          output({ task: updatedTask, upstreamDrafts })
+        } else {
+          for (const draft of upstreamDrafts) {
+            console.log(`\n=== Upstream Draft: "${draft.title}" ===`)
+            for (const item of draft.items) {
+              const check = item.completed ? '[x]' : '[ ]'
+              const issue = item.issueUrl ? ` (${item.issueUrl})` : ''
+              console.log(`  ${check} ${item.title}${issue}`)
+            }
+            console.log('=== Update items with: list_draft_items / update_draft_item / create_draft_item MCP tools ===\n')
           }
-          console.log('=== Update items with: list_draft_items / update_draft_item / create_draft_item MCP tools ===\n')
         }
       }
     } catch {

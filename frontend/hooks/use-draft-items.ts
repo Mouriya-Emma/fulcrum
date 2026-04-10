@@ -7,6 +7,7 @@ export interface DraftItem {
   completed: boolean
   issueUrl: string | null
   issueNumber: number | null
+  notes: string | null
   position: number
   createdAt: string
   updatedAt: string
@@ -84,6 +85,24 @@ export function useReorderDraftItems() {
         body: JSON.stringify({ itemIds }),
       })
       if (!res.ok) throw new Error('Failed to reorder draft items')
+      return res.json()
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['draft-items', variables.taskId] })
+    },
+  })
+}
+
+export function useBatchUpdateDraftItems() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ taskId, items }: { taskId: string; items: Array<{ id: string; completed?: boolean }> }) => {
+      const res = await fetch(`/api/draft-items/${taskId}/batch`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      })
+      if (!res.ok) throw new Error('Failed to batch update draft items')
       return res.json()
     },
     onSuccess: (_data, variables) => {

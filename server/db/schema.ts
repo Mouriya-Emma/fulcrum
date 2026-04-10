@@ -77,6 +77,7 @@ export const draftItems = sqliteTable('draft_items', {
   completed: integer('completed', { mode: 'boolean' }).default(false),
   issueUrl: text('issue_url'),
   issueNumber: integer('issue_number'),
+  notes: text('notes'),
   position: integer('position').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

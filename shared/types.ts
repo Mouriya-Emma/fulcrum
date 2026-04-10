@@ -119,7 +119,7 @@ export interface Task {
   aiMode: 'default' | 'plan' | null
   agentOptions: Record<string, string> | null
   opencodeModel: string | null
-  type: string | null // 'worktree' | 'scratch' | null (null = manual/legacy)
+  type: 'worktree' | 'scratch' | 'draft' | null // null = manual/legacy
   pinned: boolean
   // Generalized task management fields
   projectId: string | null // FK to project (null = orphan/inbox)

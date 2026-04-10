@@ -94,6 +94,7 @@ export interface DraftItemResponse {
   completed: boolean
   issueUrl: string | null
   issueNumber: number | null
+  notes: string | null
   position: number
   createdAt: string
   updatedAt: string
@@ -812,7 +813,7 @@ export class FulcrumClient {
     })
   }
 
-  async updateDraftItem(itemId: string, data: { title?: string; completed?: boolean; position?: number }): Promise<DraftItemResponse> {
+  async updateDraftItem(itemId: string, data: { title?: string; completed?: boolean; position?: number; notes?: string | null }): Promise<DraftItemResponse> {
     return this.fetch(`/api/draft-items/${itemId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -825,6 +826,20 @@ export class FulcrumClient {
 
   async getUpstreamDrafts(taskId: string): Promise<UpstreamDraftResponse[]> {
     return this.fetch(`/api/draft-items/upstream/${taskId}`)
+  }
+
+  async reorderDraftItems(taskId: string, itemIds: string[]): Promise<DraftItemResponse[]> {
+    return this.fetch(`/api/draft-items/${taskId}/reorder`, {
+      method: 'POST',
+      body: JSON.stringify({ itemIds }),
+    })
+  }
+
+  async batchUpdateDraftItems(taskId: string, items: Array<{ id: string; title?: string; completed?: boolean }>): Promise<DraftItemResponse[]> {
+    return this.fetch(`/api/draft-items/${taskId}/batch`, {
+      method: 'PATCH',
+      body: JSON.stringify({ items }),
+    })
   }
 
   async syncDraftToIssues(taskId: string): Promise<{ created: number; errors: string[] }> {
