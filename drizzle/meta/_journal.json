@@ -533,6 +533,13 @@
       "when": 1772621600000,
       "tag": "0075_add_hosts_and_remote_support",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "6",
+      "when": 1772535200000,
+      "tag": "0074_add_host_fingerprint",
+      "breakpoints": true
     }
   ]
 }

@@ -623,8 +623,13 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
         </div>
       )}
       {terminalStatus === 'exited' && (
-        <div className="shrink-0 px-2 py-1 bg-muted text-muted-foreground text-xs">
-          Terminal exited (code: {currentTerminal?.exitCode})
+        <div className="shrink-0 px-2 py-1 bg-muted text-muted-foreground text-xs flex items-center gap-2">
+          <span>Terminal exited (code: {currentTerminal?.exitCode})</span>
+          {hostId && (
+            <span className="text-muted-foreground/70">
+              — SSH session disconnected
+            </span>
+          )}
         </div>
       )}
 

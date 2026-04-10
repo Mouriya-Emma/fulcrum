@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Loading03Icon,
@@ -103,7 +103,7 @@ export function RemoteHostsSettings() {
   const [formHostname, setFormHostname] = useState('')
   const [formPort, setFormPort] = useState('22')
   const [formUsername, setFormUsername] = useState('')
-  const [formAuthMethod, setFormAuthMethod] = useState<'key' | 'password'>('key')
+
   const [formKeyPath, setFormKeyPath] = useState('~/.ssh/id_ed25519')
   const [formDefaultDir, setFormDefaultDir] = useState('')
   const [formFulcrumUrl, setFormFulcrumUrl] = useState('')
@@ -118,7 +118,7 @@ export function RemoteHostsSettings() {
     setFormHostname('')
     setFormPort('22')
     setFormUsername('')
-    setFormAuthMethod('key')
+
     setFormKeyPath('~/.ssh/id_ed25519')
     setFormDefaultDir('')
     setFormFulcrumUrl('')
@@ -137,8 +137,8 @@ export function RemoteHostsSettings() {
         hostname: formHostname.trim(),
         port: parseInt(formPort) || 22,
         username: formUsername.trim(),
-        authMethod: formAuthMethod,
-        privateKeyPath: formAuthMethod === 'key' ? formKeyPath.trim() || undefined : undefined,
+        authMethod: 'key' as const,
+        privateKeyPath: formKeyPath.trim() || undefined,
         defaultDirectory: formDefaultDir.trim() || undefined,
         fulcrumUrl: formFulcrumUrl.trim() || undefined,
       })
@@ -358,28 +358,15 @@ export function RemoteHostsSettings() {
             </div>
           </div>
 
-          <Tabs value={formAuthMethod} onValueChange={(v) => setFormAuthMethod(v as 'key' | 'password')}>
-            <TabsList>
-              <TabsTrigger value="key">SSH Key</TabsTrigger>
-              <TabsTrigger value="password">Password</TabsTrigger>
-            </TabsList>
-            <TabsContent value="key" className="mt-2">
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Private Key Path</label>
-                <Input
-                  value={formKeyPath}
-                  onChange={(e) => setFormKeyPath(e.target.value)}
-                  placeholder="~/.ssh/id_ed25519"
-                  className="h-8 text-sm"
-                />
-              </div>
-            </TabsContent>
-            <TabsContent value="password" className="mt-2">
-              <p className="text-xs text-muted-foreground">
-                Password auth is not yet supported. Use SSH key auth.
-              </p>
-            </TabsContent>
-          </Tabs>
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Private Key Path</label>
+            <Input
+              value={formKeyPath}
+              onChange={(e) => setFormKeyPath(e.target.value)}
+              placeholder="~/.ssh/id_ed25519"
+              className="h-8 text-sm"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">

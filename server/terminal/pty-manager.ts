@@ -76,8 +76,13 @@ export class PTYManager {
           username: host.username,
           authMethod: host.authMethod as 'key' | 'password',
           privateKeyPath: host.privateKeyPath ?? undefined,
+          hostFingerprint: host.hostFingerprint ?? undefined,
         }
-        const fulcrumUrl = host.fulcrumUrl || `http://localhost:${getSettingByKey('port')}`
+        const fulcrumUrl = host.fulcrumUrl
+        if (!fulcrumUrl) {
+          log.pty.warn('Host has no fulcrumUrl configured, remote agent CLI will not work', { hostId: host.id, hostName: host.name })
+        }
+        const effectiveFulcrumUrl = fulcrumUrl || `http://localhost:${getSettingByKey('port')}`
 
         const session = new SSHTerminalSession({
           id: record.id,
@@ -90,7 +95,7 @@ export class PTYManager {
           positionInTab: record.positionInTab ?? 0,
           hostId: host.id,
           sshConfig,
-          fulcrumUrl,
+          fulcrumUrl: effectiveFulcrumUrl,
           onData: (data) => this.callbacks.onData(record.id, data),
           onExit: (exitCode, status) => this.callbacks.onExit(record.id, exitCode, status),
           onShouldDestroy: () => {
@@ -98,6 +103,20 @@ export class PTYManager {
           },
         })
         this.sessions.set(record.id, session)
+
+        // Background health check for remote terminals
+        const manager = getSSHConnectionManager()
+        queueMicrotask(async () => {
+          try {
+            const remoteSocketPath = `/home/${sshConfig.username}/.fulcrum/sockets/terminal-${record.id}.sock`
+            await manager.execCommand(sshConfig, `test -S '${remoteSocketPath}'`, 10000)
+          } catch {
+            log.pty.warn('Remote dtach session not found, marking exited', { terminalId: record.id })
+            db.update(terminals).set({ status: 'exited', updatedAt: new Date().toISOString() }).where(eq(terminals.id, record.id)).run()
+            this.sessions.delete(record.id)
+          }
+        })
+
         log.pty.info('Remote terminal restored (will attach on demand)', {
           terminalId: record.id,
           host: host.hostname,
@@ -216,8 +235,13 @@ export class PTYManager {
         username: host.username,
         authMethod: host.authMethod as 'key' | 'password',
         privateKeyPath: host.privateKeyPath ?? undefined,
+        hostFingerprint: host.hostFingerprint ?? undefined,
       }
-      const fulcrumUrl = host.fulcrumUrl || `http://localhost:${getSettingByKey('port')}`
+      const fulcrumUrl = host.fulcrumUrl
+      if (!fulcrumUrl) {
+        log.pty.warn('Host has no fulcrumUrl configured, remote agent CLI will not work', { hostId: host.id, hostName: host.name })
+      }
+      const effectiveFulcrumUrl = fulcrumUrl || `http://localhost:${getSettingByKey('port')}`
 
       // Persist to database
       db.insert(terminals)
@@ -249,7 +273,7 @@ export class PTYManager {
         taskId: options.taskId,
         hostId: host.id,
         sshConfig,
-        fulcrumUrl,
+        fulcrumUrl: effectiveFulcrumUrl,
         onData: (data) => this.callbacks.onData(id, data),
         onExit: (exitCode, status) => this.callbacks.onExit(id, exitCode, status),
         onShouldDestroy: () => {

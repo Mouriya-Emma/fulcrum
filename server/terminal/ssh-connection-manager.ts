@@ -19,6 +19,8 @@ export interface SSHConnectionConfig {
   authMethod: 'key' | 'password'
   privateKeyPath?: string
   password?: string
+  hostFingerprint?: string
+  onFirstConnect?: (fingerprint: string) => void
 }
 
 interface PooledConnection {
@@ -39,9 +41,15 @@ function makeHostKey(config: SSHConnectionConfig): string {
 }
 
 function isHealthy(conn: PooledConnection): boolean {
-  const sock = (conn.client as unknown as { _sock?: { destroyed?: boolean; writable?: boolean } })._sock
-  if (!sock) return false
-  return !sock.destroyed && !!sock.writable
+  // NOTE: Uses ssh2 internal API. If ssh2 changes internals, this will
+  // fall through to the catch and return false (safe default).
+  try {
+    const sock = (conn.client as unknown as { _sock?: { destroyed?: boolean; writable?: boolean } })._sock
+    if (!sock) return false
+    return !sock.destroyed && !!sock.writable
+  } catch {
+    return false
+  }
 }
 
 export class SSHConnectionManager {
@@ -126,12 +134,19 @@ export class SSHConnectionManager {
     }
   }
 
-  async execCommand(config: SSHConnectionConfig, command: string): Promise<string> {
-    const client = await this.getConnection(config)
+  async execCommand(config: SSHConnectionConfig, command: string, timeoutMs = 60000): Promise<string> {
+    // Use a temporary connection (not from pool) to avoid blocking
+    // when all pool slots are occupied by terminal streams
+    const client = await this.createConnection(config)
     try {
       return await new Promise<string>((resolve, reject) => {
+        const execTimeout = setTimeout(() => {
+          reject(new Error(`SSH command timed out after ${timeoutMs}ms`))
+        }, timeoutMs)
+
         client.exec(command, (err, stream) => {
           if (err) {
+            clearTimeout(execTimeout)
             reject(err)
             return
           }
@@ -144,6 +159,7 @@ export class SSHConnectionManager {
             stderr += data.toString()
           })
           stream.on('close', (code: number) => {
+            clearTimeout(execTimeout)
             if (code !== 0) {
               reject(new Error(`Command exited with code ${code}: ${stderr || stdout}`))
             } else {
@@ -153,7 +169,7 @@ export class SSHConnectionManager {
         })
       })
     } finally {
-      this.releaseConnection(config, client)
+      client.end()
     }
   }
 
@@ -186,12 +202,33 @@ export class SSHConnectionManager {
         keepaliveCountMax: 3,
       }
 
+      // TOFU host key verification
+      connectConfig.hostVerifier = (key: Buffer) => {
+        const fingerprint = require('crypto').createHash('sha256').update(key).digest('base64')
+        if (config.hostFingerprint) {
+          if (fingerprint !== config.hostFingerprint) {
+            log.pty.error('SSH host key mismatch! Possible MITM attack', {
+              host: config.host,
+              expected: config.hostFingerprint,
+              got: fingerprint,
+            })
+            return false
+          }
+          return true
+        }
+        // First connection (TOFU) - accept and log
+        log.pty.info('SSH host key fingerprint (TOFU)', { host: config.host, fingerprint })
+        // Store fingerprint via callback if provided
+        config.onFirstConnect?.(fingerprint)
+        return true
+      }
+
       if (config.authMethod === 'key' && config.privateKeyPath) {
         try {
           connectConfig.privateKey = readFileSync(config.privateKeyPath)
         } catch (err) {
           clearTimeout(timeout)
-          reject(new Error(`Failed to read private key: ${config.privateKeyPath}: ${err}`))
+          reject(new Error(`Failed to read private key at: ${config.privateKeyPath}`))
           return
         }
       } else if (config.authMethod === 'password' && config.password) {

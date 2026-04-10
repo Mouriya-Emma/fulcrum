@@ -416,6 +416,7 @@ export type ServerMessage =
   | MessagingQRMessage
   | MessagingDisplayNameMessage
   | DraftItemsUpdatedMessage
+  | { type: 'hosts:updated'; payload: Record<string, never> }
 
 export interface DraftItemsUpdatedMessage {
   type: 'draft-items:updated'

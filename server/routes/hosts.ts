@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { broadcast } from '../websocket/terminal-ws'
 import { getSSHConnectionManager } from '../terminal/ssh-connection-manager'
 import type { Host } from '../../../shared/types'
+import { isValidPath, isValidUrl } from '../lib/shell-escape'
 
 const app = new Hono()
 
@@ -19,6 +20,7 @@ function toApiResponse(row: typeof hosts.$inferSelect): Host {
     privateKeyPath: row.privateKeyPath,
     defaultDirectory: row.defaultDirectory,
     fulcrumUrl: row.fulcrumUrl,
+    hostFingerprint: row.hostFingerprint,
     status: row.status as 'unknown' | 'connected' | 'error',
     lastConnectedAt: row.lastConnectedAt,
     createdAt: row.createdAt,
@@ -59,6 +61,27 @@ app.post('/', async (c) => {
     return c.json({ error: 'name, hostname, and username are required' }, 400)
   }
 
+  // Validate private key path is within ~/.ssh/
+  if (body.privateKeyPath) {
+    const resolved = body.privateKeyPath.replace(/^~/, process.env.HOME || '')
+    if (!resolved.startsWith(process.env.HOME || '') || resolved.includes('..')) {
+      return c.json({ error: 'Private key path must be within home directory' }, 400)
+    }
+    if (!isValidPath(body.privateKeyPath)) {
+      return c.json({ error: 'Private key path contains invalid characters' }, 400)
+    }
+  }
+
+  // Validate defaultDirectory if provided
+  if (body.defaultDirectory && !isValidPath(body.defaultDirectory)) {
+    return c.json({ error: 'Default directory path contains invalid characters' }, 400)
+  }
+
+  // Validate fulcrumUrl if provided
+  if (body.fulcrumUrl && !isValidUrl(body.fulcrumUrl)) {
+    return c.json({ error: 'Invalid Fulcrum URL format' }, 400)
+  }
+
   const now = new Date().toISOString()
   const id = nanoid()
 
@@ -84,7 +107,7 @@ app.post('/', async (c) => {
   //   setFnoxSecret(`FULCRUM_HOST_PWD_${id}`, body.password)
   // }
 
-  broadcast({ type: 'hosts:updated' as never })
+  broadcast({ type: 'hosts:updated', payload: {} })
 
   const created = db.select().from(hosts).where(eq(hosts.id, id)).get()!
   return c.json(toApiResponse(created), 201)
@@ -115,7 +138,7 @@ app.patch('/:id', async (c) => {
     .where(eq(hosts.id, id))
     .run()
 
-  broadcast({ type: 'hosts:updated' as never })
+  broadcast({ type: 'hosts:updated', payload: {} })
 
   const updated = db.select().from(hosts).where(eq(hosts.id, id)).get()!
   return c.json(toApiResponse(updated))
@@ -144,7 +167,7 @@ app.delete('/:id', (c) => {
 
   db.delete(hosts).where(eq(hosts.id, id)).run()
 
-  broadcast({ type: 'hosts:updated' as never })
+  broadcast({ type: 'hosts:updated', payload: {} })
 
   return c.json({ success: true })
 })
@@ -158,25 +181,35 @@ app.post('/:id/test', async (c) => {
   }
 
   const manager = getSSHConnectionManager()
+  let savedFingerprint: string | undefined
   const result = await manager.testConnection({
     host: host.hostname,
     port: host.port,
     username: host.username,
     authMethod: host.authMethod as 'key' | 'password',
     privateKeyPath: host.privateKeyPath ?? undefined,
+    hostFingerprint: host.hostFingerprint ?? undefined,
+    onFirstConnect: (fingerprint) => {
+      savedFingerprint = fingerprint
+    },
   })
 
   const now = new Date().toISOString()
+  const updates: Record<string, unknown> = {
+    status: result.success ? 'connected' : 'error',
+    lastConnectedAt: result.success ? now : host.lastConnectedAt,
+    updatedAt: now,
+  }
+  // Save fingerprint on first successful connection (TOFU)
+  if (result.success && savedFingerprint && !host.hostFingerprint) {
+    updates.hostFingerprint = savedFingerprint
+  }
   db.update(hosts)
-    .set({
-      status: result.success ? 'connected' : 'error',
-      lastConnectedAt: result.success ? now : host.lastConnectedAt,
-      updatedAt: now,
-    })
+    .set(updates)
     .where(eq(hosts.id, id))
     .run()
 
-  return c.json(result)
+  return c.json({ ...result, fingerprint: savedFingerprint || host.hostFingerprint || undefined })
 })
 
 // POST /api/hosts/:id/check-env - Check remote environment readiness
@@ -194,6 +227,7 @@ app.post('/:id/check-env', async (c) => {
     username: host.username,
     authMethod: host.authMethod as 'key' | 'password',
     privateKeyPath: host.privateKeyPath ?? undefined,
+    hostFingerprint: host.hostFingerprint ?? undefined,
   }
 
   // Check each tool's availability via SSH

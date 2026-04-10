@@ -17,6 +17,7 @@ import { updateTaskStatus } from '../services/task-status'
 import { reindexTaskFTS } from '../services/search-service'
 import { log } from '../lib/logger'
 import { createGitWorktree, createRemoteGitWorktree, copyFilesToWorktree } from '../lib/git-utils'
+import { isValidBranchName } from '../lib/shell-escape'
 
 // Helper to delete git worktree
 function deleteGitWorktree(repoPath: string, worktreePath: string): void {
@@ -237,6 +238,11 @@ app.post('/', async (c) => {
 
     // Create git worktree if branch and worktreePath are provided (for immediate IN_PROGRESS tasks)
     if (body.branch && body.worktreePath && body.repoPath && body.baseBranch) {
+      // Validate branch name to prevent shell injection
+      if (!isValidBranchName(body.branch)) {
+        return c.json({ error: 'Invalid branch name: only alphanumeric, /, _, -, . characters allowed' }, 400)
+      }
+
       // Remote worktree creation via SSH
       if (body.hostId) {
         const host = db.select().from(hosts).where(eq(hosts.id, body.hostId)).get()
@@ -249,10 +255,16 @@ app.post('/', async (c) => {
           username: host.username,
           authMethod: host.authMethod as 'key' | 'password',
           privateKeyPath: host.privateKeyPath ?? undefined,
+          hostFingerprint: host.hostFingerprint ?? undefined,
         }
         const result = await createRemoteGitWorktree(sshConfig, body.repoPath, body.worktreePath, body.branch, body.baseBranch)
         if (!result.success) {
           return c.json({ error: `Failed to create remote worktree: ${result.error}` }, 500)
+        }
+
+        // copyFiles not yet supported for remote tasks
+        if (body.copyFiles) {
+          log.api.info('copyFiles skipped for remote task (not yet supported)', { taskId: newTask.id })
         }
       } else {
         // Local worktree creation (existing behavior)
