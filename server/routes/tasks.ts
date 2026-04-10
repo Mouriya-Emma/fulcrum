@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { nanoid } from 'nanoid'
 import { db, tasks, repositories, taskLinks, taskRelationships, taskAttachments, tags, taskTags, draftItems, hosts, type Task, type NewTask, type TaskLink } from '../db'
-import { eq, asc, and, inArray } from 'drizzle-orm'
+import { eq, asc, and, or, inArray } from 'drizzle-orm'
 import { detectLinkType } from '../lib/link-utils'
 import { execSync } from 'child_process'
 import * as fs from 'fs'
@@ -221,6 +221,7 @@ app.post('/', async (c) => {
       agentOptions: body.agentOptions ? JSON.stringify(body.agentOptions) : null,
       opencodeModel: body.opencodeModel || null,
       type: body.type || null,
+      derivedFromTaskId: body.derivedFromTaskId || null,
       // New generalized task fields
       projectId: body.projectId || null,
       repositoryId: body.repositoryId || null,
@@ -329,68 +330,58 @@ app.post('/', async (c) => {
       }
     }
 
-    // Create dependencies if blockedByTaskIds provided
-    if (body.blockedByTaskIds && body.blockedByTaskIds.length > 0) {
-      // Dedupe and filter out self-references and invalid/non-existent tasks
-      const uniqueIds = [...new Set(body.blockedByTaskIds)].filter((id) => id !== newTask.id)
-      for (const dependsOnTaskId of uniqueIds) {
-        // Check if the target task exists
-        const targetTask = db.select().from(tasks).where(eq(tasks.id, dependsOnTaskId)).get()
-        if (!targetTask) continue
+    // Handle dependencies and derivation inside a transaction
+    const derivationResult: { parentBlocked: boolean; propagatedTo: string[] } = { parentBlocked: false, propagatedTo: [] }
+    const affectedTaskIds: string[] = []
 
-        // Check for circular dependency (shouldn't happen with a new task, but be safe)
-        const circularCheck = db
-          .select()
-          .from(taskRelationships)
-          .where(
-            and(
-              eq(taskRelationships.taskId, dependsOnTaskId),
-              eq(taskRelationships.relatedTaskId, newTask.id),
-              eq(taskRelationships.type, 'depends_on')
-            )
-          )
-          .get()
-        if (circularCheck) continue
-
-        db.insert(taskRelationships)
-          .values({
-            id: crypto.randomUUID(),
-            taskId: newTask.id,
-            relatedTaskId: dependsOnTaskId,
-            type: 'depends_on',
-            createdAt: now,
-          })
-          .run()
+    // Validate derivedFromTaskId before any DB writes
+    if (body.derivedFromTaskId) {
+      const parentTask = db.select().from(tasks).where(eq(tasks.id, body.derivedFromTaskId)).get()
+      if (!parentTask) {
+        // Roll back: delete the already-inserted task
+        db.delete(tasks).where(eq(tasks.id, newTask.id)).run()
+        return c.json({ error: 'Parent task not found for derivation' }, 400)
+      }
+      if (parentTask.status === 'DONE' || parentTask.status === 'CANCELED') {
+        db.delete(tasks).where(eq(tasks.id, newTask.id)).run()
+        return c.json({ error: `Cannot derive from a ${parentTask.status} task` }, 400)
       }
     }
 
-    // Handle derived task: parent depends_on new task + propagate to all tasks that depend on parent
-    if (body.derivedFromTaskId) {
-      const parentTask = db.select().from(tasks).where(eq(tasks.id, body.derivedFromTaskId)).get()
-      if (parentTask) {
-        // Parent task depends_on derived task (parent is blocked by the new task)
-        const existingParentDep = db
-          .select()
-          .from(taskRelationships)
-          .where(
-            and(
-              eq(taskRelationships.taskId, body.derivedFromTaskId),
-              eq(taskRelationships.relatedTaskId, newTask.id),
-              eq(taskRelationships.type, 'depends_on')
-            )
-          )
-          .get()
-        if (!existingParentDep) {
+    db.transaction(() => {
+      // Create dependencies if blockedByTaskIds provided
+      if (body.blockedByTaskIds && body.blockedByTaskIds.length > 0) {
+        const uniqueIds = [...new Set(body.blockedByTaskIds)].filter((id) => id !== newTask.id)
+        for (const dependsOnTaskId of uniqueIds) {
+          const targetTask = db.select().from(tasks).where(eq(tasks.id, dependsOnTaskId)).get()
+          if (!targetTask) continue
+
           db.insert(taskRelationships)
             .values({
               id: crypto.randomUUID(),
-              taskId: body.derivedFromTaskId,
-              relatedTaskId: newTask.id,
+              taskId: newTask.id,
+              relatedTaskId: dependsOnTaskId,
               type: 'depends_on',
               createdAt: now,
             })
             .run()
         }
+      }
+
+      // Handle derived task: parent depends_on new task + propagate
+      if (body.derivedFromTaskId) {
+        // Parent task depends_on derived task (parent is blocked by the new task)
+        db.insert(taskRelationships)
+          .values({
+            id: crypto.randomUUID(),
+            taskId: body.derivedFromTaskId,
+            relatedTaskId: newTask.id,
+            type: 'depends_on',
+            createdAt: now,
+          })
+          .run()
+        derivationResult.parentBlocked = true
+        affectedTaskIds.push(body.derivedFromTaskId)
 
         // Propagate: all tasks that depend on parent should also depend on the new derived task
         const dependentsOfParent = db
@@ -403,24 +394,25 @@ app.post('/', async (c) => {
             )
           )
           .all()
+          .filter((dep) => dep.taskId !== newTask.id)
+
+        // Collect IDs to insert, excluding already-existing dependencies
+        const existingDeps = dependentsOfParent.length > 0
+          ? db.select()
+              .from(taskRelationships)
+              .where(
+                and(
+                  inArray(taskRelationships.taskId, dependentsOfParent.map((d) => d.taskId)),
+                  eq(taskRelationships.relatedTaskId, newTask.id),
+                  eq(taskRelationships.type, 'depends_on')
+                )
+              )
+              .all()
+          : []
+        const existingDepTaskIds = new Set(existingDeps.map((d) => d.taskId))
 
         for (const dep of dependentsOfParent) {
-          // Skip if it's the new task itself
-          if (dep.taskId === newTask.id) continue
-
-          // Check if this dependency already exists
-          const existingDep = db
-            .select()
-            .from(taskRelationships)
-            .where(
-              and(
-                eq(taskRelationships.taskId, dep.taskId),
-                eq(taskRelationships.relatedTaskId, newTask.id),
-                eq(taskRelationships.type, 'depends_on')
-              )
-            )
-            .get()
-          if (existingDep) continue
+          if (existingDepTaskIds.has(dep.taskId)) continue
 
           db.insert(taskRelationships)
             .values({
@@ -431,14 +423,41 @@ app.post('/', async (c) => {
               createdAt: now,
             })
             .run()
-
-          // Broadcast update for the affected task
-          broadcast({ type: 'task:updated', payload: { taskId: dep.taskId } })
+          affectedTaskIds.push(dep.taskId)
+          derivationResult.propagatedTo.push(dep.taskId)
         }
-
-        // Broadcast update for parent task
-        broadcast({ type: 'task:updated', payload: { taskId: body.derivedFromTaskId } })
       }
+
+      // Full-graph cycle detection (BFS) after all relationships are established
+      const allRels = db.select().from(taskRelationships).where(eq(taskRelationships.type, 'depends_on')).all()
+      const adj = new Map<string, string[]>()
+      for (const rel of allRels) {
+        if (!adj.has(rel.taskId)) adj.set(rel.taskId, [])
+        adj.get(rel.taskId)!.push(rel.relatedTaskId)
+      }
+      // Check if newTask is part of a cycle
+      const visited = new Set<string>()
+      const stack = [newTask.id]
+      while (stack.length > 0) {
+        const current = stack.pop()!
+        if (current === newTask.id && visited.size > 0) {
+          throw new Error('Circular dependency detected')
+        }
+        if (visited.has(current)) continue
+        visited.add(current)
+        for (const neighbor of adj.get(current) ?? []) {
+          stack.push(neighbor)
+        }
+      }
+    })
+
+    // Broadcast updates for all affected tasks outside transaction
+    for (const taskId of affectedTaskIds) {
+      broadcast({ type: 'task:updated', payload: { taskId } })
+    }
+    // Broadcast for the new derived task itself
+    if (body.derivedFromTaskId) {
+      broadcast({ type: 'task:updated', payload: { taskId: newTask.id } })
     }
 
     // Update lastUsedAt and lastBaseBranch for the repository (if it exists in our database)
@@ -456,7 +475,11 @@ app.post('/', async (c) => {
 
     const created = db.select().from(tasks).where(eq(tasks.id, newTask.id)).get()
     broadcast({ type: 'task:updated', payload: { taskId: newTask.id } })
-    return c.json(created ? toApiResponse(created, true) : null, 201)
+    const response = created ? toApiResponse(created, true) : null
+    if (response && body.derivedFromTaskId && derivationResult.parentBlocked) {
+      ;(response as Record<string, unknown>)._derivationResult = derivationResult
+    }
+    return c.json(response, 201)
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : 'Failed to create task' }, 400)
   }
@@ -517,6 +540,11 @@ app.delete('/bulk', async (c) => {
 
       // Delete associated draft items
       db.delete(draftItems).where(eq(draftItems.taskId, id)).run()
+
+      // Delete associated task relationships (dependencies)
+      db.delete(taskRelationships).where(
+        or(eq(taskRelationships.taskId, id), eq(taskRelationships.relatedTaskId, id))
+      ).run()
 
       db.delete(tasks).where(eq(tasks.id, id)).run()
       broadcast({ type: 'task:updated', payload: { taskId: id } })
@@ -848,6 +876,11 @@ app.delete('/:id', (c) => {
 
   // Delete associated draft items
   db.delete(draftItems).where(eq(draftItems.taskId, id)).run()
+
+  // Delete associated task relationships (dependencies)
+  db.delete(taskRelationships).where(
+    or(eq(taskRelationships.taskId, id), eq(taskRelationships.relatedTaskId, id))
+  ).run()
 
   db.delete(tasks).where(eq(tasks.id, id)).run()
   broadcast({ type: 'task:updated', payload: { taskId: id } })

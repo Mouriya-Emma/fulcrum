@@ -3,15 +3,15 @@ import { createTestGitRepo, type TestGitRepo } from '../__tests__/fixtures/git'
 import { createTestApp } from '../__tests__/fixtures/app'
 import { setupTestEnv, type TestEnv } from '../__tests__/utils/env'
 import { db, tasks, taskRelationships } from '../db'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, or } from 'drizzle-orm'
 
-function insertTask(id: string, title: string, repoPath: string, baseBranch: string) {
+function insertTask(id: string, title: string, repoPath: string, baseBranch: string, status = 'IN_PROGRESS') {
   const now = new Date().toISOString()
   db.insert(tasks)
     .values({
       id,
       title,
-      status: 'IN_PROGRESS',
+      status,
       position: 0,
       repoPath,
       repoName: 'test-repo',
@@ -171,7 +171,7 @@ describe('Derived Tasks', () => {
     expect(depIds).toEqual([derived1.id, derived2.id].sort())
   })
 
-  test('derived task with non-existent parent is created without dependencies', async () => {
+  test('derived task with non-existent parent returns 400', async () => {
     const { post } = createTestApp()
 
     const res = await post('/api/tasks', {
@@ -179,14 +179,10 @@ describe('Derived Tasks', () => {
       derivedFromTaskId: 'non-existent-id',
       status: 'TO_DO',
     })
-    const task = await res.json()
+    const body = await res.json()
 
-    expect(res.status).toBe(201)
-    expect(task.title).toBe('Orphan task')
-
-    // No dependencies should be created
-    const deps = getDependencies(task.id)
-    expect(deps).toHaveLength(0)
+    expect(res.status).toBe(400)
+    expect(body.error).toBe('Parent task not found for derivation')
   })
 
   test('derived task works together with blockedByTaskIds', async () => {
@@ -258,5 +254,132 @@ describe('Derived Tasks', () => {
     expect(task02Deps).toHaveLength(3)
     const task02DepIds = task02Deps.map((d) => d.relatedTaskId).sort()
     expect(task02DepIds).toEqual(['task-01', task03.id, task04.id].sort())
+  })
+
+  test('derive from DONE task returns 400', async () => {
+    const { post } = createTestApp()
+
+    insertTask('done-task', 'Finished work', repo.path, repo.defaultBranch, 'DONE')
+
+    const res = await post('/api/tasks', {
+      title: 'Too late',
+      derivedFromTaskId: 'done-task',
+      status: 'TO_DO',
+    })
+    const body = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(body.error).toBe('Cannot derive from a DONE task')
+  })
+
+  test('derive from CANCELED task returns 400', async () => {
+    const { post } = createTestApp()
+
+    insertTask('canceled-task', 'Canceled work', repo.path, repo.defaultBranch, 'CANCELED')
+
+    const res = await post('/api/tasks', {
+      title: 'Too late',
+      derivedFromTaskId: 'canceled-task',
+      status: 'TO_DO',
+    })
+    const body = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(body.error).toBe('Cannot derive from a CANCELED task')
+  })
+
+  test('derivedFromTaskId + blockedByTaskIds creating cycle is rejected', async () => {
+    const { post } = createTestApp()
+
+    // A depends_on B
+    insertTask('task-a', 'Task A', repo.path, repo.defaultBranch)
+    insertTask('task-b', 'Task B', repo.path, repo.defaultBranch)
+    addDependency('task-a', 'task-b')
+
+    // Try to derive from A with blockedBy B → derived depends_on B, B depends_on... no cycle actually
+    // Real cycle: derive from A, blockedBy the derived itself — but that's self-ref filtered
+    // Actual cycle test: A→B exists. Derive from B with blockedByTaskIds: [A]
+    // This would create: B→derived, A→derived (propagated from B), derived→A (blockedBy)
+    // Check: A→derived→A? No, A→B→derived and derived→A = cycle!
+    const res = await post('/api/tasks', {
+      title: 'Cycle maker',
+      derivedFromTaskId: 'task-b',
+      blockedByTaskIds: ['task-a'],
+      status: 'TO_DO',
+    })
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toContain('Circular dependency')
+  })
+
+  test('derivedFromTaskId is persisted in task record', async () => {
+    const { post, get } = createTestApp()
+
+    insertTask('parent-persist', 'Parent task', repo.path, repo.defaultBranch)
+
+    const res = await post('/api/tasks', {
+      title: 'Derived with lineage',
+      derivedFromTaskId: 'parent-persist',
+      status: 'TO_DO',
+    })
+    const derived = await res.json()
+
+    expect(derived.derivedFromTaskId).toBe('parent-persist')
+
+    // Verify via GET
+    const getRes = await get(`/api/tasks/${derived.id}`)
+    const fetched = await getRes.json()
+    expect(fetched.derivedFromTaskId).toBe('parent-persist')
+  })
+
+  test('create_task response includes _derivationResult', async () => {
+    const { post } = createTestApp()
+
+    insertTask('parent-result', 'Parent', repo.path, repo.defaultBranch)
+    insertTask('upstream-1', 'Upstream', repo.path, repo.defaultBranch)
+    addDependency('upstream-1', 'parent-result')
+
+    const res = await post('/api/tasks', {
+      title: 'Derived with result',
+      derivedFromTaskId: 'parent-result',
+      status: 'TO_DO',
+    })
+    const body = await res.json()
+
+    expect(body._derivationResult).toBeDefined()
+    expect(body._derivationResult.parentBlocked).toBe(true)
+    expect(body._derivationResult.propagatedTo).toContain('upstream-1')
+  })
+
+  test('deleting derived task cleans up relationships', async () => {
+    const { post, delete: del } = createTestApp()
+
+    insertTask('parent-del', 'Parent', repo.path, repo.defaultBranch)
+    insertTask('upstream-del', 'Upstream', repo.path, repo.defaultBranch)
+    addDependency('upstream-del', 'parent-del')
+
+    const res = await post('/api/tasks', {
+      title: 'To be deleted',
+      derivedFromTaskId: 'parent-del',
+      status: 'TO_DO',
+    })
+    const derived = await res.json()
+
+    // Verify relationships exist
+    const relsBefore = db.select().from(taskRelationships)
+      .where(or(eq(taskRelationships.relatedTaskId, derived.id), eq(taskRelationships.taskId, derived.id)))
+      .all()
+    expect(relsBefore.length).toBeGreaterThan(0)
+
+    // Delete derived task
+    const delRes = await del(`/api/tasks/${derived.id}`)
+    expect(delRes.status).toBe(200)
+
+    // Verify relationships are cleaned up
+    const relsAfter = db.select().from(taskRelationships)
+      .where(or(eq(taskRelationships.relatedTaskId, derived.id), eq(taskRelationships.taskId, derived.id)))
+      .all()
+    expect(relsAfter).toHaveLength(0)
   })
 })

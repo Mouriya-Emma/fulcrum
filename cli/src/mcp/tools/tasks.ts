@@ -203,6 +203,9 @@ function registerCreateTask(server: Server, client: Client) {
       recurrenceEndDate: z
         .optional(z.string())
         .describe('Stop recurring after this date (YYYY-MM-DD). Omit for no end date.'),
+      blockedByTaskIds: z
+        .optional(z.array(z.string()))
+        .describe('Task IDs that must be completed before this task can start.'),
       derivedFromTaskId: z
         .optional(z.string())
         .describe('Create as a derived task from the given task ID. The parent task and all tasks that depend on it will automatically depend on this new task. Use this when your current task discovers blocking work that must be completed first.'),
@@ -224,6 +227,7 @@ function registerCreateTask(server: Server, client: Client) {
       priority,
       recurrenceRule,
       recurrenceEndDate,
+      blockedByTaskIds,
       derivedFromTaskId,
     }) => {
       try {
@@ -248,6 +252,7 @@ function registerCreateTask(server: Server, client: Client) {
           priority: priority ?? null,
           recurrenceRule: recurrenceRule ?? null,
           recurrenceEndDate: recurrenceEndDate ?? null,
+          blockedByTaskIds,
           derivedFromTaskId: derivedFromTaskId ?? null,
         })
 

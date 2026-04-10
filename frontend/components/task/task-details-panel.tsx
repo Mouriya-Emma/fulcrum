@@ -20,7 +20,7 @@ import { DependencyManager } from '@/components/task/dependency-manager'
 import { AttachmentsManager } from '@/components/task/attachments-manager'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon } from '@hugeicons/core-free-icons'
-import { useUpdateTask } from '@/hooks/use-tasks'
+import { useUpdateTask, useTasks } from '@/hooks/use-tasks'
 import { useAddTaskTag, useRemoveTaskTag } from '@/hooks/use-tags'
 import { useBranches } from '@/hooks/use-filesystem'
 import { useIsOverdue } from '@/hooks/use-date-utils'
@@ -462,6 +462,9 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
           </p>
         </div>
 
+        {/* Derived from */}
+        {task.derivedFromTaskId && <DerivedFromBadge taskId={task.derivedFromTaskId} />}
+
         {/* Dependencies */}
         <div className="rounded-lg border bg-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Dependencies</h3>
@@ -531,6 +534,20 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Attachments</h3>
           <AttachmentsManager taskId={task.id} />
         </div>
+      </div>
+    </div>
+  )
+}
+
+function DerivedFromBadge({ taskId }: { taskId: string }) {
+  const { data: allTasks = [] } = useTasks()
+  const parentTask = allTasks.find((t) => t.id === taskId)
+
+  return (
+    <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/30 p-3">
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-purple-600 dark:text-purple-400 font-medium">Derived from:</span>
+        <span className="truncate">{parentTask?.title ?? taskId}</span>
       </div>
     </div>
   )

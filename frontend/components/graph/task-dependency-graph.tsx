@@ -383,23 +383,39 @@ export function TaskDependencyGraph({ className, projectFilter, tagsFilter, task
       },
     }))
 
-    const edges: Edge[] = filteredEdges.map((edge) => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      type: 'smoothstep',
-      animated: true,
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 15,
-        height: 15,
-        color: '#6b7280',
-      },
-      style: {
-        stroke: '#6b7280',
-        strokeWidth: 2,
-      },
-    }))
+    // Build set of derived task IDs for edge styling
+    const derivedFromMap = new Map<string, string>()
+    for (const task of graphData.nodes) {
+      if (task.derivedFromTaskId) {
+        derivedFromMap.set(task.id, task.derivedFromTaskId)
+      }
+    }
+
+    const edges: Edge[] = filteredEdges.map((edge) => {
+      // An edge is "derived" if source is a derived task and target is its parent (or propagated)
+      const isDerived = derivedFromMap.get(edge.source) === edge.target ||
+        derivedFromMap.has(edge.source)
+      const edgeColor = isDerived ? '#8b5cf6' : '#6b7280'
+
+      return {
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: 'smoothstep',
+        animated: true,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 15,
+          height: 15,
+          color: edgeColor,
+        },
+        style: {
+          stroke: edgeColor,
+          strokeWidth: 2,
+          strokeDasharray: isDerived ? '5 5' : undefined,
+        },
+      }
+    })
 
     // Apply automatic layout (LR on desktop, TB on mobile)
     const layouted = getLayoutedElements(nodes, edges, direction)

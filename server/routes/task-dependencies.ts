@@ -63,6 +63,7 @@ app.get('/graph', (c) => {
       projectId: t.projectId,
       tags: taskTagsMap.get(t.id) || [],
       dueDate: t.dueDate,
+      derivedFromTaskId: t.derivedFromTaskId ?? null,
     })),
     edges: validEdges.map((d) => ({
       id: d.id,
