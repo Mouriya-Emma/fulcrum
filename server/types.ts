@@ -413,3 +413,9 @@ export type ServerMessage =
   | MessagingStatusMessage
   | MessagingQRMessage
   | MessagingDisplayNameMessage
+  | DraftItemsUpdatedMessage
+
+export interface DraftItemsUpdatedMessage {
+  type: 'draft-items:updated'
+  payload: { taskId: string }
+}

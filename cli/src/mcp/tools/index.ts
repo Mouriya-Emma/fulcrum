@@ -27,6 +27,7 @@ import { registerMessagingTools } from './messaging'
 import { registerSearchTools } from './search'
 import { registerJobTools } from './jobs'
 import { registerBoardTools } from './board'
+import { registerDraftItemTools } from './draft-items'
 
 export function registerTools(server: McpServer, client: FulcrumClient) {
   registerCoreTools(server, client)
@@ -50,6 +51,7 @@ export function registerTools(server: McpServer, client: FulcrumClient) {
   registerSearchTools(server, client)
   registerJobTools(server, client)
   registerBoardTools(server, client)
+  registerDraftItemTools(server, client)
 }
 
 // Re-export types and schemas for external use

@@ -169,8 +169,8 @@ function registerCreateTask(server: Server, client: Client) {
     {
       title: z.string().describe('Task title'),
       type: z
-        .optional(z.enum(['worktree', 'scratch']))
-        .describe('Task type: "worktree" for git worktree tasks (default when repoPath provided), "scratch" for isolated directory without git'),
+        .optional(z.enum(['worktree', 'scratch', 'draft']))
+        .describe('Task type: "worktree" for git worktree tasks (default when repoPath provided), "scratch" for isolated directory without git, "draft" for planning checklist'),
       repoPath: z
         .optional(z.string())
         .describe('Absolute path to the git repository (optional for manual tasks)'),

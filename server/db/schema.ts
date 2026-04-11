@@ -70,6 +70,19 @@ export const taskAttachments = sqliteTable('task_attachments', {
   createdAt: text('created_at').notNull(),
 })
 
+export const draftItems = sqliteTable('draft_items', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id').notNull(),
+  title: text('title').notNull(),
+  completed: integer('completed', { mode: 'boolean' }).default(false),
+  issueUrl: text('issue_url'),
+  issueNumber: integer('issue_number'),
+  notes: text('notes'),
+  position: integer('position').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
 // Project links - arbitrary URL links associated with projects
 export const projectLinks = sqliteTable('project_links', {
   id: text('id').primaryKey(),
@@ -597,6 +610,8 @@ export type ProjectRepository = typeof projectRepositories.$inferSelect
 export type NewProjectRepository = typeof projectRepositories.$inferInsert
 export type TaskAttachment = typeof taskAttachments.$inferSelect
 export type NewTaskAttachment = typeof taskAttachments.$inferInsert
+export type DraftItem = typeof draftItems.$inferSelect
+export type NewDraftItem = typeof draftItems.$inferInsert
 export type ProjectAttachment = typeof projectAttachments.$inferSelect
 export type NewProjectAttachment = typeof projectAttachments.$inferInsert
 export type Tag = typeof tags.$inferSelect

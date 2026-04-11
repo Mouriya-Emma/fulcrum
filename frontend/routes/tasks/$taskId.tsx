@@ -29,6 +29,7 @@ import { BrowserPreview } from '@/components/viewer/browser-preview'
 import { FilesViewer } from '@/components/viewer/files-viewer'
 import { GitStatusBadge } from '@/components/viewer/git-status-badge'
 import { ManualTaskView } from '@/components/task/manual-task-view'
+// DraftTaskView removed — draft tasks use ManualTaskView (both just render TaskContent)
 import { TaskDetailsPanel } from '@/components/task/task-details-panel'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -538,7 +539,7 @@ function TaskView() {
     )
   }
 
-  // Manual task view (not worktree, not scratch)
+  // Draft and manual tasks both use ManualTaskView (TaskContent handles draft checklist internally)
   if (!hasTerminal) {
     return <ManualTaskView task={task} />
   }
