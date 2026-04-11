@@ -97,46 +97,47 @@ export function fetchIfRemoteRef(repoPath: string, baseBranch: string): void {
 
 /**
  * Check the state of the source repo before creating a worktree.
- * Returns warnings about uncommitted changes and unpushed commits.
+ * Returns warnings and whether pull should be skipped.
+ *
+ * - Uncommitted changes: warning only (doesn't affect worktree pull)
+ * - Unpushed commits: SKIP pull — local branch has diverged from remote,
+ *   pulling would force a merge between two divergent histories
  */
 export function checkRepoStateForWorktree(
   repoPath: string,
   baseBranch: string,
   remoteBranch?: string,
-): string[] {
+): { warnings: string[]; skipPull: boolean } {
   const warnings: string[] = []
+  let skipPull = false
 
   try {
-    // Check for uncommitted changes on the base branch
     const status = execSync('git status --porcelain', { cwd: repoPath, encoding: 'utf-8' }).trim()
     if (status) {
       warnings.push('Source repository has uncommitted changes that will not be included in the worktree')
     }
   } catch {
-    // Ignore — can't check, proceed anyway
+    // Ignore
   }
 
   try {
-    // Check if local base branch is ahead of remote (unpushed commits)
-    // Only meaningful if remoteBranch is specified
     if (remoteBranch) {
-      // Ensure we have remote info
       execSync('git fetch --quiet', { cwd: repoPath, encoding: 'utf-8', timeout: 15_000, stdio: 'pipe' })
 
-      const localRef = baseBranch.includes('/') ? baseBranch : baseBranch
-      const ahead = execSync(`git rev-list --count ${remoteBranch}..${localRef}`, {
+      const ahead = execSync(`git rev-list --count ${remoteBranch}..${baseBranch}`, {
         cwd: repoPath, encoding: 'utf-8', stdio: 'pipe',
       }).trim()
       const aheadCount = parseInt(ahead, 10) || 0
       if (aheadCount > 0) {
-        warnings.push(`Base branch "${baseBranch}" has ${aheadCount} unpushed commit${aheadCount > 1 ? 's' : ''} — worktree will include these but pulling from remote may cause conflicts`)
+        skipPull = true
+        warnings.push(`Pull skipped: "${baseBranch}" has ${aheadCount} unpushed commit${aheadCount > 1 ? 's' : ''} not on ${remoteBranch}. Push first, or pull manually after resolving.`)
       }
     }
   } catch {
-    // Ignore — remote might not be reachable
+    // Remote unreachable — don't block, let pull attempt handle the error
   }
 
-  return warnings
+  return { warnings, skipPull }
 }
 
 /**

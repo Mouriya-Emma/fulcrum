@@ -544,7 +544,7 @@ describe('git-utils', () => {
       remoteRepo?.cleanup()
     })
 
-    test('warns about uncommitted changes', () => {
+    test('warns about uncommitted changes but does not skip pull', () => {
       remoteRepo = createTestGitRepo()
       remoteRepo.commit('initial', { 'file.txt': 'v1' })
 
@@ -552,17 +552,17 @@ describe('git-utils', () => {
       execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
       const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
 
-      // Create uncommitted change
       writeFileSync(join(localPath, 'dirty.txt'), 'uncommitted')
 
-      const warnings = checkRepoStateForWorktree(localPath, defaultBranch, `origin/${defaultBranch}`)
+      const result = checkRepoStateForWorktree(localPath, defaultBranch, `origin/${defaultBranch}`)
 
-      expect(warnings.some(w => w.includes('uncommitted'))).toBe(true)
+      expect(result.warnings.some(w => w.includes('uncommitted'))).toBe(true)
+      expect(result.skipPull).toBe(false)
 
       rmSync(localPath, { recursive: true, force: true })
     })
 
-    test('warns about unpushed commits', () => {
+    test('skips pull when base branch has unpushed commits', () => {
       remoteRepo = createTestGitRepo()
       remoteRepo.commit('initial', { 'file.txt': 'v1' })
 
@@ -570,19 +570,19 @@ describe('git-utils', () => {
       execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
       const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
 
-      // Create a local commit that hasn't been pushed
       execSync('git config user.name "Test" && git config user.email "test@test.com"', { cwd: localPath, encoding: 'utf-8' })
       writeFileSync(join(localPath, 'local-only.txt'), 'unpushed content')
       execSync('git add -A && git commit -m "local unpushed commit"', { cwd: localPath, encoding: 'utf-8' })
 
-      const warnings = checkRepoStateForWorktree(localPath, defaultBranch, `origin/${defaultBranch}`)
+      const result = checkRepoStateForWorktree(localPath, defaultBranch, `origin/${defaultBranch}`)
 
-      expect(warnings.some(w => w.includes('unpushed'))).toBe(true)
+      expect(result.skipPull).toBe(true)
+      expect(result.warnings.some(w => w.includes('Pull skipped'))).toBe(true)
 
       rmSync(localPath, { recursive: true, force: true })
     })
 
-    test('returns no warnings for clean repo in sync with remote', () => {
+    test('returns no warnings and skipPull=false for clean repo in sync', () => {
       remoteRepo = createTestGitRepo()
       remoteRepo.commit('initial', { 'file.txt': 'v1' })
 
@@ -590,9 +590,10 @@ describe('git-utils', () => {
       execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
       const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
 
-      const warnings = checkRepoStateForWorktree(localPath, defaultBranch, `origin/${defaultBranch}`)
+      const result = checkRepoStateForWorktree(localPath, defaultBranch, `origin/${defaultBranch}`)
 
-      expect(warnings).toEqual([])
+      expect(result.warnings).toEqual([])
+      expect(result.skipPull).toBe(false)
 
       rmSync(localPath, { recursive: true, force: true })
     })

@@ -250,8 +250,11 @@ app.post('/', async (c) => {
 
       // Check source repo state before worktree creation (local only, skip for remote hosts)
       if (body.pullToLatest && !body.hostId) {
-        const repoWarnings = checkRepoStateForWorktree(body.repoPath, body.baseBranch, body.pullRemoteBranch || undefined)
-        warnings.push(...repoWarnings)
+        const repoState = checkRepoStateForWorktree(body.repoPath, body.baseBranch, body.pullRemoteBranch || undefined)
+        warnings.push(...repoState.warnings)
+        if (repoState.skipPull) {
+          return c.json({ error: repoState.warnings.find(w => w.includes('Pull skipped')) || 'Cannot pull: base branch has unpushed commits' }, 400)
+        }
       }
 
       // Remote worktree creation via SSH
@@ -640,8 +643,11 @@ app.post('/:id/initialize-worktree', async (c) => {
     // Check source repo state before worktree creation
     const warnings: string[] = []
     if (body.pullToLatest) {
-      const repoWarnings = checkRepoStateForWorktree(body.repoPath, body.baseBranch, body.pullRemoteBranch || undefined)
-      warnings.push(...repoWarnings)
+      const repoState = checkRepoStateForWorktree(body.repoPath, body.baseBranch, body.pullRemoteBranch || undefined)
+      warnings.push(...repoState.warnings)
+      if (repoState.skipPull) {
+        return c.json({ error: repoState.warnings.find(w => w.includes('Pull skipped')) || 'Cannot pull: base branch has unpushed commits' }, 400)
+      }
     }
 
     const result = createGitWorktree(body.repoPath, body.worktreePath, body.branch, body.baseBranch)
