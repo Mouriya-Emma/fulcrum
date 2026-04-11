@@ -20,7 +20,7 @@ import { DependencyManager } from '@/components/task/dependency-manager'
 import { AttachmentsManager } from '@/components/task/attachments-manager'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon } from '@hugeicons/core-free-icons'
-import { useUpdateTask, useTasks } from '@/hooks/use-tasks'
+import { useUpdateTask, useTask } from '@/hooks/use-tasks'
 import { useAddTaskTag, useRemoveTaskTag } from '@/hooks/use-tags'
 import { useBranches } from '@/hooks/use-filesystem'
 import { useIsOverdue } from '@/hooks/use-date-utils'
@@ -540,8 +540,7 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
 }
 
 function DerivedFromBadge({ taskId }: { taskId: string }) {
-  const { data: allTasks = [] } = useTasks()
-  const parentTask = allTasks.find((t) => t.id === taskId)
+  const { data: parentTask } = useTask(taskId)
 
   return (
     <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/30 p-3">

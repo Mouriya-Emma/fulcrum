@@ -296,160 +296,166 @@ app.post('/', async (c) => {
       }
     }
 
-    db.insert(tasks).values(newTask).run()
-
-    // Add tags to task_tags join table if provided
-    if (body.tags && body.tags.length > 0) {
-      for (const tagName of body.tags) {
-        const name = tagName.trim().toLowerCase()
-        if (!name) continue
-
-        // Get or create tag
-        let tag = db.select().from(tags).where(eq(tags.name, name)).get()
-        if (!tag) {
-          const tagId = crypto.randomUUID()
-          db.insert(tags)
-            .values({ id: tagId, name, color: null, createdAt: now })
-            .run()
-          tag = db.select().from(tags).where(eq(tags.id, tagId)).get()
-        }
-
-        if (tag) {
-          // Check if already linked (shouldn't happen for new task, but be safe)
-          const existing = db
-            .select()
-            .from(taskTags)
-            .where(and(eq(taskTags.taskId, newTask.id), eq(taskTags.tagId, tag.id)))
-            .get()
-          if (!existing) {
-            db.insert(taskTags)
-              .values({ id: crypto.randomUUID(), taskId: newTask.id, tagId: tag.id, createdAt: now })
-              .run()
-          }
-        }
-      }
-    }
-
-    // Handle dependencies and derivation inside a transaction
-    const derivationResult: { parentBlocked: boolean; propagatedTo: string[] } = { parentBlocked: false, propagatedTo: [] }
-    const affectedTaskIds: string[] = []
-
-    // Validate derivedFromTaskId before any DB writes
+    // Validate derivedFromTaskId before any DB/filesystem writes
     if (body.derivedFromTaskId) {
       const parentTask = db.select().from(tasks).where(eq(tasks.id, body.derivedFromTaskId)).get()
       if (!parentTask) {
-        // Roll back: delete the already-inserted task
-        db.delete(tasks).where(eq(tasks.id, newTask.id)).run()
         return c.json({ error: 'Parent task not found for derivation' }, 400)
       }
       if (parentTask.status === 'DONE' || parentTask.status === 'CANCELED') {
-        db.delete(tasks).where(eq(tasks.id, newTask.id)).run()
         return c.json({ error: `Cannot derive from a ${parentTask.status} task` }, 400)
       }
     }
 
-    db.transaction(() => {
-      // Create dependencies if blockedByTaskIds provided
-      if (body.blockedByTaskIds && body.blockedByTaskIds.length > 0) {
-        const uniqueIds = [...new Set(body.blockedByTaskIds)].filter((id) => id !== newTask.id)
-        for (const dependsOnTaskId of uniqueIds) {
-          const targetTask = db.select().from(tasks).where(eq(tasks.id, dependsOnTaskId)).get()
-          if (!targetTask) continue
+    // All DB writes in a single transaction: task insert + tags + dependencies + derivation
+    const derivationResult: { parentBlocked: boolean; propagatedTo: string[] } = { parentBlocked: false, propagatedTo: [] }
+    const affectedTaskIds: string[] = []
 
-          db.insert(taskRelationships)
-            .values({
-              id: crypto.randomUUID(),
-              taskId: newTask.id,
-              relatedTaskId: dependsOnTaskId,
-              type: 'depends_on',
-              createdAt: now,
-            })
-            .run()
+    try {
+      db.transaction(() => {
+        db.insert(tasks).values(newTask).run()
+
+        // Add tags to task_tags join table if provided
+        if (body.tags && body.tags.length > 0) {
+          for (const tagName of body.tags) {
+            const name = tagName.trim().toLowerCase()
+            if (!name) continue
+
+            let tag = db.select().from(tags).where(eq(tags.name, name)).get()
+            if (!tag) {
+              const tagId = crypto.randomUUID()
+              db.insert(tags)
+                .values({ id: tagId, name, color: null, createdAt: now })
+                .run()
+              tag = db.select().from(tags).where(eq(tags.id, tagId)).get()
+            }
+
+            if (tag) {
+              const existing = db
+                .select()
+                .from(taskTags)
+                .where(and(eq(taskTags.taskId, newTask.id), eq(taskTags.tagId, tag.id)))
+                .get()
+              if (!existing) {
+                db.insert(taskTags)
+                  .values({ id: crypto.randomUUID(), taskId: newTask.id, tagId: tag.id, createdAt: now })
+                  .run()
+              }
+            }
+          }
         }
-      }
 
-      // Handle derived task: parent depends_on new task + propagate
-      if (body.derivedFromTaskId) {
-        // Parent task depends_on derived task (parent is blocked by the new task)
-        db.insert(taskRelationships)
-          .values({
-            id: crypto.randomUUID(),
-            taskId: body.derivedFromTaskId,
-            relatedTaskId: newTask.id,
-            type: 'depends_on',
-            createdAt: now,
-          })
-          .run()
-        derivationResult.parentBlocked = true
-        affectedTaskIds.push(body.derivedFromTaskId)
+        // Create dependencies if blockedByTaskIds provided
+        if (body.blockedByTaskIds && body.blockedByTaskIds.length > 0) {
+          const uniqueIds = [...new Set(body.blockedByTaskIds)].filter((id) => id !== newTask.id)
+          for (const dependsOnTaskId of uniqueIds) {
+            const targetTask = db.select().from(tasks).where(eq(tasks.id, dependsOnTaskId)).get()
+            if (!targetTask) continue
 
-        // Propagate: all tasks that depend on parent should also depend on the new derived task
-        const dependentsOfParent = db
-          .select()
-          .from(taskRelationships)
-          .where(
-            and(
-              eq(taskRelationships.relatedTaskId, body.derivedFromTaskId),
-              eq(taskRelationships.type, 'depends_on')
-            )
-          )
-          .all()
-          .filter((dep) => dep.taskId !== newTask.id)
+            db.insert(taskRelationships)
+              .values({
+                id: crypto.randomUUID(),
+                taskId: newTask.id,
+                relatedTaskId: dependsOnTaskId,
+                type: 'depends_on',
+                createdAt: now,
+              })
+              .run()
+          }
+        }
 
-        // Collect IDs to insert, excluding already-existing dependencies
-        const existingDeps = dependentsOfParent.length > 0
-          ? db.select()
-              .from(taskRelationships)
-              .where(
-                and(
-                  inArray(taskRelationships.taskId, dependentsOfParent.map((d) => d.taskId)),
-                  eq(taskRelationships.relatedTaskId, newTask.id),
-                  eq(taskRelationships.type, 'depends_on')
-                )
-              )
-              .all()
-          : []
-        const existingDepTaskIds = new Set(existingDeps.map((d) => d.taskId))
-
-        for (const dep of dependentsOfParent) {
-          if (existingDepTaskIds.has(dep.taskId)) continue
-
+        // Handle derived task: parent depends_on new task + propagate
+        if (body.derivedFromTaskId) {
           db.insert(taskRelationships)
             .values({
               id: crypto.randomUUID(),
-              taskId: dep.taskId,
+              taskId: body.derivedFromTaskId,
               relatedTaskId: newTask.id,
               type: 'depends_on',
               createdAt: now,
             })
             .run()
-          affectedTaskIds.push(dep.taskId)
-          derivationResult.propagatedTo.push(dep.taskId)
-        }
-      }
+          derivationResult.parentBlocked = true
+          affectedTaskIds.push(body.derivedFromTaskId)
 
-      // Full-graph cycle detection (BFS) after all relationships are established
-      const allRels = db.select().from(taskRelationships).where(eq(taskRelationships.type, 'depends_on')).all()
-      const adj = new Map<string, string[]>()
-      for (const rel of allRels) {
-        if (!adj.has(rel.taskId)) adj.set(rel.taskId, [])
-        adj.get(rel.taskId)!.push(rel.relatedTaskId)
-      }
-      // Check if newTask is part of a cycle
-      const visited = new Set<string>()
-      const stack = [newTask.id]
-      while (stack.length > 0) {
-        const current = stack.pop()!
-        if (current === newTask.id && visited.size > 0) {
-          throw new Error('Circular dependency detected')
+          // Propagate: all tasks that depend on parent should also depend on the new derived task
+          const dependentsOfParent = db
+            .select()
+            .from(taskRelationships)
+            .where(
+              and(
+                eq(taskRelationships.relatedTaskId, body.derivedFromTaskId),
+                eq(taskRelationships.type, 'depends_on')
+              )
+            )
+            .all()
+            .filter((dep) => dep.taskId !== newTask.id)
+
+          const existingDeps = dependentsOfParent.length > 0
+            ? db.select()
+                .from(taskRelationships)
+                .where(
+                  and(
+                    inArray(taskRelationships.taskId, dependentsOfParent.map((d) => d.taskId)),
+                    eq(taskRelationships.relatedTaskId, newTask.id),
+                    eq(taskRelationships.type, 'depends_on')
+                  )
+                )
+                .all()
+            : []
+          const existingDepTaskIds = new Set(existingDeps.map((d) => d.taskId))
+
+          for (const dep of dependentsOfParent) {
+            if (existingDepTaskIds.has(dep.taskId)) continue
+
+            db.insert(taskRelationships)
+              .values({
+                id: crypto.randomUUID(),
+                taskId: dep.taskId,
+                relatedTaskId: newTask.id,
+                type: 'depends_on',
+                createdAt: now,
+              })
+              .run()
+            affectedTaskIds.push(dep.taskId)
+            derivationResult.propagatedTo.push(dep.taskId)
+          }
         }
-        if (visited.has(current)) continue
-        visited.add(current)
-        for (const neighbor of adj.get(current) ?? []) {
-          stack.push(neighbor)
+
+        // Full-graph cycle detection (BFS) after all relationships are established
+        const allRels = db.select().from(taskRelationships).where(eq(taskRelationships.type, 'depends_on')).all()
+        const adj = new Map<string, string[]>()
+        for (const rel of allRels) {
+          if (!adj.has(rel.taskId)) adj.set(rel.taskId, [])
+          adj.get(rel.taskId)!.push(rel.relatedTaskId)
         }
+        const visited = new Set<string>()
+        const stack = [newTask.id]
+        while (stack.length > 0) {
+          const current = stack.pop()!
+          if (current === newTask.id && visited.size > 0) {
+            throw new Error('Circular dependency detected')
+          }
+          if (visited.has(current)) continue
+          visited.add(current)
+          for (const neighbor of adj.get(current) ?? []) {
+            stack.push(neighbor)
+          }
+        }
+      })
+    } catch (txErr) {
+      // Transaction rolled back — clean up filesystem artifacts
+      if (newTask.worktreePath) {
+        try {
+          if (newTask.repoPath) {
+            deleteGitWorktree(newTask.repoPath, newTask.worktreePath)
+          } else if (newTask.type === 'scratch') {
+            fs.rmSync(newTask.worktreePath, { recursive: true, force: true })
+          }
+        } catch { /* best-effort cleanup */ }
       }
-    })
+      return c.json({ error: txErr instanceof Error ? txErr.message : 'Failed to create task' }, 400)
+    }
 
     // Broadcast updates for all affected tasks outside transaction
     for (const taskId of affectedTaskIds) {
