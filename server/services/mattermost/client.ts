@@ -68,9 +68,9 @@ function getConfig(): MattermostSettings {
 }
 
 function getCallbackUrl(path: string): string {
-  const port = getSettings().server.port
-  // Use hostname that Mattermost can reach (same LAN)
-  const host = process.env.FULCRUM_HOST || '192.168.1.215'
+  const settings = getSettings()
+  const port = settings.server.port
+  const host = process.env.FULCRUM_HOST || settings.editor.host || 'localhost'
   return `http://${host}:${port}/api/mattermost${path}`
 }
 
@@ -148,13 +148,22 @@ export function getDialogsUrl(): string {
   return getCallbackUrl('/dialogs')
 }
 
+/** Get the bot's own user ID (cached after first call) */
+let botUserId: string | null = null
+async function getBotUserId(): Promise<string> {
+  if (botUserId) return botUserId
+  const res = await mmFetch('/users/me')
+  const me = await res.json() as { id: string }
+  botUserId = me.id
+  return botUserId
+}
+
 /** Create a DM channel with a user and post a message */
 export async function postDirectMessage(userId: string, attachment: MattermostAttachment): Promise<{ id: string }> {
-  const config = getConfig()
-  // Create/get DM channel
+  const botId = await getBotUserId()
   const dmRes = await mmFetch('/channels/direct', {
     method: 'POST',
-    body: JSON.stringify([userId, config.botToken ? '' : '']),
+    body: JSON.stringify([userId, botId]),
   })
   const dm = await dmRes.json() as { id: string }
 

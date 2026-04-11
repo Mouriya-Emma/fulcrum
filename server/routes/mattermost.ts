@@ -359,6 +359,22 @@ app.post('/actions', async (c) => {
         }
       }
 
+      case 'rollback_app': {
+        const appId = context.app_id as string
+        const deploymentId = body.context?.selected_option || body.selected_option
+        if (!deploymentId) {
+          return c.json({ ephemeral_text: 'No deployment selected for rollback.' })
+        }
+        try {
+          const port = getSettings().server.port
+          await fetch(`http://localhost:${port}/api/apps/${appId}/rollback/${deploymentId}`, { method: 'POST' })
+          const card = await buildAppDetailCard(appId)
+          return c.json({ update: { props: { attachments: [card] } } })
+        } catch (err) {
+          return c.json({ ephemeral_text: `Rollback failed: ${err}` })
+        }
+      }
+
       case 'monitor': {
         const card = await buildMonitorCard()
         return c.json({ update: { props: { attachments: [card] } } })
@@ -409,6 +425,8 @@ app.post('/dialogs', async (c) => {
 
         const taskType = submission.type === 'manual' ? null : (submission.type || null)
 
+        const defaultAgent = getSettings().agent.defaultAgent || 'claude'
+
         db.insert(tasks).values({
           id: taskId,
           title,
@@ -420,7 +438,7 @@ app.post('/dialogs', async (c) => {
           projectId: submission.project_id || null,
           repositoryId: submission.repository_id || null,
           dueDate: submission.due_date || null,
-          agent: 'claude',
+          agent: defaultAgent,
           createdAt: now,
           updatedAt: now,
         }).run()

@@ -63,8 +63,9 @@ function timeAgo(dateStr: string | null): string {
 }
 
 function fulcrumUrl(path: string): string {
-  const port = getSettings().server.port
-  const host = process.env.FULCRUM_HOST || '192.168.1.215'
+  const settings = getSettings()
+  const port = settings.server.port
+  const host = process.env.FULCRUM_HOST || settings.editor.host || 'localhost'
   return `http://${host}:${port}${path}`
 }
 
@@ -276,7 +277,18 @@ export async function buildTaskDetailCard(taskId: string): Promise<MattermostAtt
     fields.push({ short: true, title: 'Estimate', value: `${task.timeEstimate}h` })
   }
   if (task.agent) {
-    fields.push({ short: true, title: 'Agent', value: task.agent })
+    let agentStatus = task.agent
+    // Check if an agent process is running for this task's worktree
+    if (task.worktreePath && task.status === 'IN_PROGRESS') {
+      try {
+        const { execSync } = await import('child_process')
+        const result = execSync(`pgrep -f "${task.worktreePath}" 2>/dev/null`, { encoding: 'utf-8', timeout: 2000 }).trim()
+        agentStatus = result ? `${task.agent} (running)` : `${task.agent} (idle)`
+      } catch {
+        agentStatus = `${task.agent} (idle)`
+      }
+    }
+    fields.push({ short: true, title: 'Agent', value: agentStatus })
   }
   if (tagStr) {
     fields.push({ short: false, title: 'Tags', value: tagStr })
@@ -524,35 +536,44 @@ export async function buildProjectsCard(): Promise<MattermostAttachment> {
 // --- Search Card ---
 
 export async function buildSearchCard(query: string): Promise<MattermostAttachment> {
-  // Simple search across tasks and projects
-  const q = query.toLowerCase()
-  const allTasks = db.select().from(tasks).all()
-  const allProjects = db.select().from(projects).all()
-
-  const matchedTasks = allTasks.filter(t =>
-    t.title.toLowerCase().includes(q) ||
-    (t.description && t.description.toLowerCase().includes(q))
-  ).slice(0, 5)
-
-  const matchedProjects = allProjects.filter(p =>
-    p.name.toLowerCase().includes(q) ||
-    (p.description && p.description.toLowerCase().includes(q))
-  ).slice(0, 3)
+  const { search } = await import('../search-service')
+  const results = await search({ query, limit: 10 })
 
   const lines: string[] = []
+  const taskActions: MattermostAction[] = []
 
-  if (matchedTasks.length > 0) {
+  // Group results by entity type
+  const byType: Record<string, typeof results> = {}
+  for (const r of results) {
+    if (!byType[r.entityType]) byType[r.entityType] = []
+    byType[r.entityType].push(r)
+  }
+
+  if (byType.task?.length) {
     lines.push('**Tasks:**')
-    for (const t of matchedTasks) {
-      lines.push(`${STATUS_EMOJI[t.status] || ''} #${t.id.slice(0, 6)} ${t.title} · ${t.status}`)
+    for (const r of byType.task) {
+      const status = (r.metadata?.status as string) || ''
+      const emoji = STATUS_EMOJI[status] || '📋'
+      lines.push(`${emoji} #${r.id.slice(0, 6)} ${r.title} · ${status}`)
+      if (taskActions.length < 4) {
+        taskActions.push(actionBtn(`task_${r.id}`, `#${r.id.slice(0, 6)}`, { action: 'task_detail', task_id: r.id }))
+      }
     }
   }
 
-  if (matchedProjects.length > 0) {
+  if (byType.project?.length) {
     lines.push('')
     lines.push('**Projects:**')
-    for (const p of matchedProjects) {
-      lines.push(`📁 ${p.name}`)
+    for (const r of byType.project) {
+      lines.push(`📁 ${r.title}`)
+    }
+  }
+
+  if (byType.memory?.length) {
+    lines.push('')
+    lines.push('**Memories:**')
+    for (const r of byType.memory) {
+      lines.push(`🧠 ${r.title}`)
     }
   }
 
@@ -560,15 +581,11 @@ export async function buildSearchCard(query: string): Promise<MattermostAttachme
     lines.push(`_No results for "${query}"_`)
   }
 
-  const actions: MattermostAction[] = matchedTasks.slice(0, 4).map(t =>
-    actionBtn(`task_${t.id}`, `#${t.id.slice(0, 6)}`, { action: 'task_detail', task_id: t.id })
-  )
-
   return {
     fallback: `Search: ${query}`,
     color: '#6366F1',
-    pretext: `#### 🔍 Search: "${query}"`,
+    pretext: `#### 🔍 Search: "${query}" (${results.length} results)`,
     text: lines.join('\n'),
-    actions,
+    actions: taskActions.length > 0 ? taskActions : undefined,
   }
 }
