@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from 'bun:test'
-import { isGitUrl, extractRepoNameFromUrl, fetchIfRemoteRef, createGitWorktree, copyFilesToWorktree, pullLatestInWorktree } from './git-utils'
+import { isGitUrl, extractRepoNameFromUrl, fetchIfRemoteRef, createGitWorktree, copyFilesToWorktree, pullLatestInWorktree, checkRepoStateForWorktree } from './git-utils'
 import { createTestGitRepo, type TestGitRepo } from '../__tests__/fixtures/git'
 import { mkdtempSync, existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs'
 import { execSync } from 'child_process'
@@ -534,6 +534,67 @@ describe('git-utils', () => {
 
       expect(existsSync(join(worktreePath, 'deep', 'nested', 'file.txt'))).toBe(true)
       expect(readFileSync(join(worktreePath, 'deep', 'nested', 'file.txt'), 'utf-8')).toBe('deep content')
+    })
+  })
+
+  describe('checkRepoStateForWorktree', () => {
+    let remoteRepo: TestGitRepo
+
+    afterEach(() => {
+      remoteRepo?.cleanup()
+    })
+
+    test('warns about uncommitted changes', () => {
+      remoteRepo = createTestGitRepo()
+      remoteRepo.commit('initial', { 'file.txt': 'v1' })
+
+      const localPath = mkdtempSync(join(tmpdir(), 'fulcrum-state-dirty-'))
+      execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
+      const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
+
+      // Create uncommitted change
+      writeFileSync(join(localPath, 'dirty.txt'), 'uncommitted')
+
+      const warnings = checkRepoStateForWorktree(localPath, defaultBranch, `origin/${defaultBranch}`)
+
+      expect(warnings.some(w => w.includes('uncommitted'))).toBe(true)
+
+      rmSync(localPath, { recursive: true, force: true })
+    })
+
+    test('warns about unpushed commits', () => {
+      remoteRepo = createTestGitRepo()
+      remoteRepo.commit('initial', { 'file.txt': 'v1' })
+
+      const localPath = mkdtempSync(join(tmpdir(), 'fulcrum-state-unpushed-'))
+      execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
+      const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
+
+      // Create a local commit that hasn't been pushed
+      execSync('git config user.name "Test" && git config user.email "test@test.com"', { cwd: localPath, encoding: 'utf-8' })
+      writeFileSync(join(localPath, 'local-only.txt'), 'unpushed content')
+      execSync('git add -A && git commit -m "local unpushed commit"', { cwd: localPath, encoding: 'utf-8' })
+
+      const warnings = checkRepoStateForWorktree(localPath, defaultBranch, `origin/${defaultBranch}`)
+
+      expect(warnings.some(w => w.includes('unpushed'))).toBe(true)
+
+      rmSync(localPath, { recursive: true, force: true })
+    })
+
+    test('returns no warnings for clean repo in sync with remote', () => {
+      remoteRepo = createTestGitRepo()
+      remoteRepo.commit('initial', { 'file.txt': 'v1' })
+
+      const localPath = mkdtempSync(join(tmpdir(), 'fulcrum-state-clean-'))
+      execSync(`git clone "${remoteRepo.path}" "${localPath}"`, { encoding: 'utf-8' })
+      const defaultBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: localPath, encoding: 'utf-8' }).trim()
+
+      const warnings = checkRepoStateForWorktree(localPath, defaultBranch, `origin/${defaultBranch}`)
+
+      expect(warnings).toEqual([])
+
+      rmSync(localPath, { recursive: true, force: true })
     })
   })
 })

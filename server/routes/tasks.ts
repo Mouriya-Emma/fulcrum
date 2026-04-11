@@ -16,7 +16,7 @@ import { broadcast } from '../websocket/terminal-ws'
 import { updateTaskStatus } from '../services/task-status'
 import { reindexTaskFTS } from '../services/search-service'
 import { log } from '../lib/logger'
-import { createGitWorktree, createRemoteGitWorktree, copyFilesToWorktree, pullLatestInWorktree } from '../lib/git-utils'
+import { createGitWorktree, createRemoteGitWorktree, copyFilesToWorktree, pullLatestInWorktree, checkRepoStateForWorktree } from '../lib/git-utils'
 import { isValidBranchName } from '../lib/shell-escape'
 
 // Helper to delete git worktree
@@ -246,6 +246,12 @@ app.post('/', async (c) => {
       // Validate branch name to prevent shell injection
       if (!isValidBranchName(body.branch)) {
         return c.json({ error: 'Invalid branch name: only alphanumeric, /, _, -, . characters allowed' }, 400)
+      }
+
+      // Check source repo state before worktree creation (local only, skip for remote hosts)
+      if (body.pullToLatest && !body.hostId) {
+        const repoWarnings = checkRepoStateForWorktree(body.repoPath, body.baseBranch, body.pullRemoteBranch || undefined)
+        warnings.push(...repoWarnings)
       }
 
       // Remote worktree creation via SSH
@@ -631,13 +637,19 @@ app.post('/:id/initialize-worktree', async (c) => {
     }
 
     // Create git worktree
+    // Check source repo state before worktree creation
+    const warnings: string[] = []
+    if (body.pullToLatest) {
+      const repoWarnings = checkRepoStateForWorktree(body.repoPath, body.baseBranch, body.pullRemoteBranch || undefined)
+      warnings.push(...repoWarnings)
+    }
+
     const result = createGitWorktree(body.repoPath, body.worktreePath, body.branch, body.baseBranch)
     if (!result.success) {
       return c.json({ error: `Failed to create worktree: ${result.error}` }, 500)
     }
 
     // Pull latest from remote if requested
-    const warnings: string[] = []
     if (body.pullToLatest) {
       const pullResult = pullLatestInWorktree(body.worktreePath, body.pullRemoteBranch || undefined)
       if (!pullResult.success) {
