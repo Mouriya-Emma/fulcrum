@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { getTaskTypeCssVar } from '@/lib/task-type-colors'
 import { Switch } from '@/components/ui/switch'
+import { PullToLatestField } from '@/components/shared/pull-to-latest-field'
 import { useCreateTask, useAddTaskLink } from '@/hooks/use-tasks'
 import { useSearchTags } from '@/hooks/use-tags'
 import type { Task, TagWithUsage, RecurrenceRule, TaskPriority } from '@shared/types'
@@ -1078,56 +1079,17 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 </Combobox>
               </Field>
 
-              {(branchData?.remoteBranches ?? []).length > 0 && (
-              <Field>
-                <div className="flex items-center justify-between">
-                  <FieldLabel>{t('createModal.pullToLatest')}</FieldLabel>
-                  <Switch
-                    checked={pullToLatest}
-                    onCheckedChange={setPullToLatest}
-                    size="sm"
-                  />
-                </div>
-                {pullToLatest && (branchData?.unpushedCommits ?? 0) > 0 && (
-                  <p className="text-sm text-destructive">
-                    {t('createModal.pullToLatestBlockedByUnpushed', { count: branchData!.unpushedCommits, branch: baseBranch })}
-                  </p>
-                )}
-                {pullToLatest && !(branchData?.unpushedCommits) && (
-                  <Select
-                    value={pullRemoteBranch}
-                    onValueChange={(v) => setPullRemoteBranch(v ?? '')}
-                    disabled={!repoPath || branchesLoading}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue>
-                        {pullRemoteBranch || (
-                          <span className="text-muted-foreground">
-                            {t('createModal.selectPullBranch')}
-                          </span>
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(branchData?.remoteBranches ?? []).map((b) => (
-                        <SelectItem key={b} value={b}>
-                          {b}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {pullToLatest && !(branchData?.unpushedCommits) && (
-                  <FieldDescription>{t('createModal.pullToLatestHint')}</FieldDescription>
-                )}
-              </Field>
-              )}
-
-              {(branchData?.uncommittedFiles ?? 0) > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {t('createModal.uncommittedFilesNotice', { count: branchData!.uncommittedFiles })}
-                </p>
-              )}
+              <PullToLatestField
+                pullToLatest={pullToLatest}
+                onPullToLatestChange={setPullToLatest}
+                pullRemoteBranch={pullRemoteBranch}
+                onPullRemoteBranchChange={setPullRemoteBranch}
+                remoteBranches={branchData?.remoteBranches ?? []}
+                unpushedCommits={branchData?.unpushedCommits ?? 0}
+                uncommittedFiles={branchData?.uncommittedFiles ?? 0}
+                baseBranch={baseBranch}
+                disabled={!repoPath || branchesLoading}
+              />
 
               <Field>
                 <FieldLabel htmlFor="prefix">{t('createModal.fields.prefix')}</FieldLabel>
