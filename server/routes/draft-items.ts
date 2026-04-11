@@ -144,6 +144,28 @@ app.post('/:taskId/reorder', async (c) => {
   return c.json(items)
 })
 
+// GET /api/draft-items/:taskId/downstream - Get tasks that depend on this draft
+app.get('/:taskId/downstream', (c) => {
+  const taskId = c.req.param('taskId')
+
+  const downstreamRels = db
+    .select()
+    .from(taskRelationships)
+    .where(eq(taskRelationships.relatedTaskId, taskId))
+    .all()
+
+  if (downstreamRels.length === 0) return c.json([])
+
+  const downstreamTaskIds = downstreamRels.map((r) => r.taskId)
+  const downstreamTasks = db
+    .select({ id: tasks.id, title: tasks.title, status: tasks.status, type: tasks.type })
+    .from(tasks)
+    .where(inArray(tasks.id, downstreamTaskIds))
+    .all()
+
+  return c.json(downstreamTasks)
+})
+
 // GET /api/draft-items/upstream/:taskId - Get upstream draft tasks with their items
 // Used for prompt injection and review hook
 app.get('/upstream/:taskId', (c) => {
@@ -298,7 +320,11 @@ app.post('/:taskId/sync-issues', async (c) => {
         },
         body: JSON.stringify({
           title: item.title,
-          body: `From draft task: **${task.title}**\n\nCreated via Fulcrum draft checklist sync.`,
+          body: [
+            `From draft task: **${task.title}**`,
+            item.notes ? `\n> ${item.notes}` : '',
+            '\nCreated via Fulcrum draft checklist sync.',
+          ].filter(Boolean).join('\n'),
         }),
       })
 

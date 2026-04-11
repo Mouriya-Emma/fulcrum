@@ -828,6 +828,10 @@ export class FulcrumClient {
     return this.fetch(`/api/draft-items/upstream/${taskId}`)
   }
 
+  async getDownstreamTasks(taskId: string): Promise<Array<{ id: string; title: string; status: string; type: string | null }>> {
+    return this.fetch(`/api/draft-items/${taskId}/downstream`)
+  }
+
   async reorderDraftItems(taskId: string, itemIds: string[]): Promise<DraftItemResponse[]> {
     return this.fetch(`/api/draft-items/${taskId}/reorder`, {
       method: 'POST',

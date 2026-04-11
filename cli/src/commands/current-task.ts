@@ -250,33 +250,33 @@ export async function handleCurrentTaskCommand(
 
   const task = await findCurrentTask(client, pathOverride)
   const updatedTask = await client.moveTask(task.id, newStatus)
-  if (isJsonOutput()) {
-    output(updatedTask)
-  } else {
-    console.log(`Moved task to ${newStatus}: ${updatedTask.title}`)
-  }
 
   // When moving to IN_REVIEW, check for upstream draft tasks and display their checklist
+  let upstreamDrafts: Awaited<ReturnType<typeof client.getUpstreamDrafts>> = []
   if (newStatus === 'IN_REVIEW') {
     try {
-      const upstreamDrafts = await client.getUpstreamDrafts(task.id)
-      if (upstreamDrafts.length > 0) {
-        if (isJsonOutput()) {
-          output({ task: updatedTask, upstreamDrafts })
-        } else {
-          for (const draft of upstreamDrafts) {
-            console.log(`\n=== Upstream Draft: "${draft.title}" ===`)
-            for (const item of draft.items) {
-              const check = item.completed ? '[x]' : '[ ]'
-              const issue = item.issueUrl ? ` (${item.issueUrl})` : ''
-              console.log(`  ${check} ${item.title}${issue}`)
-            }
-            console.log('=== Update items with: list_draft_items / update_draft_item / create_draft_item MCP tools ===\n')
-          }
-        }
-      }
+      upstreamDrafts = await client.getUpstreamDrafts(task.id)
     } catch {
       // Non-critical: don't fail the status change if draft fetch fails
+    }
+  }
+
+  if (isJsonOutput()) {
+    if (upstreamDrafts.length > 0) {
+      output({ task: updatedTask, upstreamDrafts })
+    } else {
+      output(updatedTask)
+    }
+  } else {
+    console.log(`Moved task to ${newStatus}: ${updatedTask.title}`)
+    for (const draft of upstreamDrafts) {
+      console.log(`\n=== Upstream Draft: "${draft.title}" ===`)
+      for (const item of draft.items) {
+        const check = item.completed ? '[x]' : '[ ]'
+        const issue = item.issueUrl ? ` (${item.issueUrl})` : ''
+        console.log(`  ${check} ${item.title}${issue}`)
+      }
+      console.log('=== Update items with: list_draft_items / update_draft_item / create_draft_item MCP tools ===\n')
     }
   }
 }

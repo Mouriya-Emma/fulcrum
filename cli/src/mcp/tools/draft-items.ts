@@ -14,8 +14,11 @@ export const registerDraftItemTools: ToolRegistrar = (server, client) => {
     },
     async ({ taskId }) => {
       try {
-        const items = await client.getDraftItems(taskId)
-        return formatSuccess(items)
+        const [items, downstreamTasks] = await Promise.all([
+          client.getDraftItems(taskId),
+          client.getDownstreamTasks(taskId),
+        ])
+        return formatSuccess({ items, downstreamTasks })
       } catch (err) {
         return handleToolError(err)
       }

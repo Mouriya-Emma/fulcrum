@@ -111,6 +111,25 @@ export function useBatchUpdateDraftItems() {
   })
 }
 
+export interface DownstreamTask {
+  id: string
+  title: string
+  status: string
+  type: string | null
+}
+
+export function useDownstreamTasks(taskId: string) {
+  return useQuery<DownstreamTask[]>({
+    queryKey: ['draft-downstream', taskId],
+    queryFn: async () => {
+      const res = await fetch(`/api/draft-items/${taskId}/downstream`)
+      if (!res.ok) return []
+      return res.json()
+    },
+    enabled: !!taskId,
+  })
+}
+
 export function useSyncDraftToIssues() {
   const queryClient = useQueryClient()
   return useMutation({

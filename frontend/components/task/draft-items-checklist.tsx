@@ -12,6 +12,7 @@ import {
   useReorderDraftItems,
   useSyncDraftToIssues,
   useBatchUpdateDraftItems,
+  useDownstreamTasks,
   type DraftItem,
 } from '@/hooks/use-draft-items'
 import { cn } from '@/lib/utils'
@@ -30,6 +31,7 @@ export function DraftItemsChecklist({ taskId, hasRepo }: DraftItemsChecklistProp
   const reorderItems = useReorderDraftItems()
   const syncToIssues = useSyncDraftToIssues()
   const batchUpdate = useBatchUpdateDraftItems()
+  const { data: downstreamTasks = [] } = useDownstreamTasks(taskId)
 
   const [newItemTitle, setNewItemTitle] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -258,6 +260,29 @@ export function DraftItemsChecklist({ taskId, hasRepo }: DraftItemsChecklistProp
           {syncToIssues.data.errors.map((err, i) => (
             <div key={i}>{err}</div>
           ))}
+        </div>
+      )}
+
+      {/* Downstream tasks using this draft */}
+      {downstreamTasks.length > 0 && (
+        <div className="pt-2 border-t">
+          <span className="text-xs text-muted-foreground">Used by</span>
+          <div className="mt-1 space-y-0.5">
+            {downstreamTasks.map((t) => (
+              <a key={t.id} href={`/tasks/${t.id}`} className="flex items-center gap-2 text-xs hover:text-primary py-0.5">
+                <span className={cn(
+                  'inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                  t.status === 'IN_PROGRESS' ? 'bg-status-in-progress/20 text-status-in-progress' :
+                  t.status === 'IN_REVIEW' ? 'bg-status-in-review/20 text-status-in-review' :
+                  t.status === 'DONE' ? 'bg-status-done/20 text-status-done' :
+                  'bg-status-todo/20 text-status-todo'
+                )}>
+                  {t.status.replace('_', ' ')}
+                </span>
+                <span>{t.title}</span>
+              </a>
+            ))}
+          </div>
         </div>
       )}
     </div>
