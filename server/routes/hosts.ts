@@ -43,6 +43,30 @@ app.get('/:id', (c) => {
   return c.json(toApiResponse(host))
 })
 
+// Shared validation for host input fields (used by POST and PATCH)
+function validateHostInput(body: {
+  privateKeyPath?: string | null
+  defaultDirectory?: string | null
+  fulcrumUrl?: string | null
+}): { ok: true } | { ok: false; error: string } {
+  if (body.privateKeyPath) {
+    const resolved = body.privateKeyPath.replace(/^~/, process.env.HOME || '')
+    if (!resolved.startsWith(process.env.HOME || '') || resolved.includes('..')) {
+      return { ok: false, error: 'Private key path must be within home directory' }
+    }
+    if (!isValidPath(body.privateKeyPath)) {
+      return { ok: false, error: 'Private key path contains invalid characters' }
+    }
+  }
+  if (body.defaultDirectory && !isValidPath(body.defaultDirectory)) {
+    return { ok: false, error: 'Default directory path contains invalid characters' }
+  }
+  if (body.fulcrumUrl && !isValidUrl(body.fulcrumUrl)) {
+    return { ok: false, error: 'Invalid Fulcrum URL format' }
+  }
+  return { ok: true }
+}
+
 // POST /api/hosts - Create host
 app.post('/', async (c) => {
   const body = await c.req.json<{
@@ -61,25 +85,9 @@ app.post('/', async (c) => {
     return c.json({ error: 'name, hostname, and username are required' }, 400)
   }
 
-  // Validate private key path is within ~/.ssh/
-  if (body.privateKeyPath) {
-    const resolved = body.privateKeyPath.replace(/^~/, process.env.HOME || '')
-    if (!resolved.startsWith(process.env.HOME || '') || resolved.includes('..')) {
-      return c.json({ error: 'Private key path must be within home directory' }, 400)
-    }
-    if (!isValidPath(body.privateKeyPath)) {
-      return c.json({ error: 'Private key path contains invalid characters' }, 400)
-    }
-  }
-
-  // Validate defaultDirectory if provided
-  if (body.defaultDirectory && !isValidPath(body.defaultDirectory)) {
-    return c.json({ error: 'Default directory path contains invalid characters' }, 400)
-  }
-
-  // Validate fulcrumUrl if provided
-  if (body.fulcrumUrl && !isValidUrl(body.fulcrumUrl)) {
-    return c.json({ error: 'Invalid Fulcrum URL format' }, 400)
+  const validation = validateHostInput(body)
+  if (!validation.ok) {
+    return c.json({ error: validation.error }, 400)
   }
 
   const now = new Date().toISOString()
@@ -101,11 +109,6 @@ app.post('/', async (c) => {
       updatedAt: now,
     })
     .run()
-
-  // TODO: store password via fnox if provided
-  // if (body.password && body.authMethod === 'password') {
-  //   setFnoxSecret(`FULCRUM_HOST_PWD_${id}`, body.password)
-  // }
 
   broadcast({ type: 'hosts:updated', payload: {} })
 
@@ -131,6 +134,11 @@ app.patch('/:id', async (c) => {
     defaultDirectory: string | null
     fulcrumUrl: string | null
   }>>()
+
+  const validation = validateHostInput(body)
+  if (!validation.ok) {
+    return c.json({ error: validation.error }, 400)
+  }
 
   const now = new Date().toISOString()
   db.update(hosts)
@@ -251,8 +259,9 @@ app.post('/:id/check-env', async (c) => {
 
   // Check if default directory exists / is writable
   if (host.defaultDirectory) {
+    const { shellEscape } = await import('../lib/shell-escape')
     try {
-      await manager.execCommand(sshConfig, `test -d '${host.defaultDirectory}' && test -w '${host.defaultDirectory}'`)
+      await manager.execCommand(sshConfig, `test -d ${shellEscape(host.defaultDirectory)} && test -w ${shellEscape(host.defaultDirectory)}`)
       checks['directory'] = { installed: true }
     } catch {
       checks['directory'] = { installed: false, error: `${host.defaultDirectory} not found or not writable` }

@@ -17,8 +17,9 @@ export function isValidBranchName(name: string): boolean {
  * Validate a directory path - no shell metacharacters.
  */
 export function isValidPath(p: string): boolean {
-  // Allow ~, alphanumeric, /, -, _, .
-  return /^[~a-zA-Z0-9][a-zA-Z0-9\/_.\-~]*$/.test(p)
+  // Allow ~, /, alphanumeric, -, _, .
+  // Must not contain shell metacharacters: ; & | ` $ ( ) { } < > ! ? * [ ] # "
+  return /^[~\/a-zA-Z0-9][a-zA-Z0-9\/_.\-~]*$/.test(p)
 }
 
 /**
