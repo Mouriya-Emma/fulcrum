@@ -266,6 +266,9 @@ function registerCreateTask(server: Server, client: Client) {
           pullRemoteBranch: pullRemoteBranch ?? (repoPath ? `origin/${effectiveBaseBranch}` : undefined),
         })
 
+        // Extract warnings from API response (e.g. pull-to-latest failures)
+        const warnings = (task as Record<string, unknown>)._warnings as string[] | undefined
+
         if (tags && tags.length > 0) {
           const allTasks = await client.listTasks()
           const existingTags = new Set<string>()
@@ -279,10 +282,11 @@ function registerCreateTask(server: Server, client: Client) {
           return formatSuccess({
             task,
             existingTags: Array.from(existingTags).sort(),
+            ...(warnings?.length ? { warnings } : {}),
           })
         }
 
-        return formatSuccess(task)
+        return formatSuccess(warnings?.length ? { ...task, warnings } : task)
       } catch (err) {
         return handleToolError(err)
       }

@@ -311,7 +311,7 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
         replace: true,
       })
     } catch (error) {
-      toast.error('Failed to initialize worktree task', {
+      toast.error(t('initializeModal.errors.initFailed'), {
         description: error instanceof Error ? error.message : String(error),
       })
     } finally {
@@ -333,9 +333,9 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
         <DialogContent className="sm:max-w-md max-h-[80dvh] flex flex-col overflow-hidden">
           <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
             <DialogHeader className="shrink-0">
-              <DialogTitle>Initialize as Worktree Task</DialogTitle>
+              <DialogTitle>{t('initializeModal.title')}</DialogTitle>
               <DialogDescription>
-                Create a git worktree and start a coding session for "{task.title}"
+                {t('initializeModal.description', { taskTitle: task.title })}
               </DialogDescription>
             </DialogHeader>
 
@@ -553,7 +553,7 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
               )}
 
               <Field>
-                <FieldLabel>Branch Name</FieldLabel>
+                <FieldLabel>{t('initializeModal.branchName')}</FieldLabel>
                 <Input
                   value={branch}
                   onChange={(e) => setBranch(e.target.value)}

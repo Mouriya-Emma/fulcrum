@@ -133,5 +133,13 @@
       "invalidUrl": "Invalid URL",
       "invalidUrlDescription": "Please enter a valid URL including the scheme (e.g., https://)"
     }
+  },
+  "initializeModal": {
+    "title": "Initialize as Worktree Task",
+    "description": "Create a git worktree and start a coding session for \"{{taskTitle}}\"",
+    "branchName": "Branch Name",
+    "errors": {
+      "initFailed": "Failed to initialize worktree task"
+    }
   }
 }
