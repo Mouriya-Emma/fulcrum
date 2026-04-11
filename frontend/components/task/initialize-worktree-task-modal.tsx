@@ -325,7 +325,8 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
     ? `${worktreeBasePath}/${effectiveBranch}`
     : ''
 
-  const canSubmit = !isSubmitting && !!repoPath
+  const pullBlockedByUnpushed = pullToLatest && (branchData?.unpushedCommits ?? 0) > 0
+  const canSubmit = !isSubmitting && !!repoPath && !pullBlockedByUnpushed
 
   return (
     <>
@@ -524,7 +525,12 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
                     size="sm"
                   />
                 </div>
-                {pullToLatest && (
+                {pullToLatest && (branchData?.unpushedCommits ?? 0) > 0 && (
+                  <p className="text-sm text-destructive">
+                    {t('createModal.pullToLatestBlockedByUnpushed', { count: branchData!.unpushedCommits, branch: baseBranch })}
+                  </p>
+                )}
+                {pullToLatest && !(branchData?.unpushedCommits) && (
                   <Select
                     value={pullRemoteBranch}
                     onValueChange={(v) => setPullRemoteBranch(v ?? '')}
@@ -546,10 +552,16 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
                     </SelectContent>
                   </Select>
                 )}
-                {pullToLatest && (
+                {pullToLatest && !(branchData?.unpushedCommits) && (
                   <FieldDescription>{t('createModal.pullToLatestHint')}</FieldDescription>
                 )}
               </Field>
+              )}
+
+              {(branchData?.uncommittedFiles ?? 0) > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {t('createModal.uncommittedFilesNotice', { count: branchData!.uncommittedFiles })}
+                </p>
               )}
 
               <Field>

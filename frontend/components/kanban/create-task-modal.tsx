@@ -634,7 +634,8 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
   }
 
   // Cmd+Enter to submit form when modal is open
-  const canSubmit = !createTask.isPending && !!title.trim() && (taskType === 'manual' || taskType === 'scratch' || taskType === 'draft' || !!repoPath)
+  const pullBlockedByUnpushed = pullToLatest && (branchData?.unpushedCommits ?? 0) > 0 && taskType === 'worktree'
+  const canSubmit = !createTask.isPending && !!title.trim() && (taskType === 'manual' || taskType === 'scratch' || taskType === 'draft' || !!repoPath) && !pullBlockedByUnpushed
   useHotkeys('meta+enter', () => {
     if (formRef.current) {
       formRef.current.requestSubmit()
@@ -1087,7 +1088,12 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                     size="sm"
                   />
                 </div>
-                {pullToLatest && (
+                {pullToLatest && (branchData?.unpushedCommits ?? 0) > 0 && (
+                  <p className="text-sm text-destructive">
+                    {t('createModal.pullToLatestBlockedByUnpushed', { count: branchData!.unpushedCommits, branch: baseBranch })}
+                  </p>
+                )}
+                {pullToLatest && !(branchData?.unpushedCommits) && (
                   <Select
                     value={pullRemoteBranch}
                     onValueChange={(v) => setPullRemoteBranch(v ?? '')}
@@ -1111,10 +1117,16 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                     </SelectContent>
                   </Select>
                 )}
-                {pullToLatest && (
+                {pullToLatest && !(branchData?.unpushedCommits) && (
                   <FieldDescription>{t('createModal.pullToLatestHint')}</FieldDescription>
                 )}
               </Field>
+              )}
+
+              {(branchData?.uncommittedFiles ?? 0) > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {t('createModal.uncommittedFilesNotice', { count: branchData!.uncommittedFiles })}
+                </p>
               )}
 
               <Field>

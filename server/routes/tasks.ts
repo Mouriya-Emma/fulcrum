@@ -640,16 +640,7 @@ app.post('/:id/initialize-worktree', async (c) => {
     }
 
     // Create git worktree
-    // Check source repo state before worktree creation
     const warnings: string[] = []
-    if (body.pullToLatest) {
-      const repoState = checkRepoStateForWorktree(body.repoPath, body.baseBranch, body.pullRemoteBranch || undefined)
-      warnings.push(...repoState.warnings)
-      if (repoState.skipPull) {
-        return c.json({ error: repoState.warnings.find(w => w.includes('Pull skipped')) || 'Cannot pull: base branch has unpushed commits' }, 400)
-      }
-    }
-
     const result = createGitWorktree(body.repoPath, body.worktreePath, body.branch, body.baseBranch)
     if (!result.success) {
       return c.json({ error: `Failed to create worktree: ${result.error}` }, 500)

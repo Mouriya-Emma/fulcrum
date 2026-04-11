@@ -374,11 +374,29 @@ app.get('/branches', (c) => {
     // Get the default branch (main/master)
     const defaultBranch = getDefaultBranch(repoPath)
 
+    // Count uncommitted files (staged + unstaged + untracked)
+    let uncommittedFiles = 0
+    try {
+      const status = execSync('git status --porcelain', { cwd: repoPath, encoding: 'utf-8' }).trim()
+      if (status) {
+        uncommittedFiles = status.split('\n').length
+      }
+    } catch { /* ignore */ }
+
+    // Count unpushed commits on current branch vs its upstream
+    let unpushedCommits = 0
+    try {
+      const count = execSync('git rev-list --count @{u}..HEAD', { cwd: repoPath, encoding: 'utf-8', stdio: 'pipe' }).trim()
+      unpushedCommits = parseInt(count, 10) || 0
+    } catch { /* no upstream or no remotes */ }
+
     return c.json({
       branches,
       remoteBranches,
       current,
       defaultBranch,
+      uncommittedFiles,
+      unpushedCommits,
     })
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : 'Failed to list branches' }, 500)
