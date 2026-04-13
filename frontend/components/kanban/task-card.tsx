@@ -14,9 +14,10 @@ import { useSelection } from './selection-context'
 import type { Task } from '@/types'
 import { cn } from '@/lib/utils'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { FolderLibraryIcon, GitPullRequestIcon, Calendar03Icon, AlertDiamondIcon, Alert02Icon, RepeatIcon, Clock01Icon, ArrowUp01Icon, ArrowDown01Icon, PinIcon, PinOffIcon } from '@hugeicons/core-free-icons'
+import { FolderLibraryIcon, GitPullRequestIcon, Calendar03Icon, AlertDiamondIcon, Alert02Icon, RepeatIcon, Clock01Icon, ArrowUp01Icon, ArrowDown01Icon, PinIcon, PinOffIcon, ComputerIcon } from '@hugeicons/core-free-icons'
 import { useRepositories } from '@/hooks/use-repositories'
 import { usePinTask } from '@/hooks/use-tasks'
+import { useHost } from '@/hooks/use-hosts'
 import { formatDateString } from '../../../shared/date-utils'
 import { useIsOverdue, useIsDueToday } from '@/hooks/use-date-utils'
 import { getTaskTypeCssVar } from '@/lib/task-type-colors'
@@ -37,6 +38,7 @@ export function TaskCard({ task, isDragPreview, isBlocked, isBlocking, showTypeL
   const navigate = useNavigate()
   const pinTask = usePinTask()
   const { data: repositories } = useRepositories()
+  const { data: host } = useHost(task.hostId)
   const selected = isSelected(task.id)
 
   const ref = useRef<HTMLDivElement>(null)
@@ -339,8 +341,18 @@ export function TaskCard({ task, isDragPreview, isBlocked, isBlocking, showTypeL
               </span>
             </>
           )}
+          {/* Remote host indicator */}
+          {host && (
+            <>
+              {(isCodeTask || task.dueDate || task.timeEstimate != null || task.recurrenceRule) && <span className="text-muted-foreground/30">•</span>}
+              <span className="inline-flex items-center gap-0.5 whitespace-nowrap text-blue-600 dark:text-blue-400">
+                <HugeiconsIcon icon={ComputerIcon} size={12} strokeWidth={2} />
+                <span className="truncate max-w-16">{host.name}</span>
+              </span>
+            </>
+          )}
           {/* Fallback for non-code tasks with no metadata */}
-          {!isCodeTask && !isBlocked && !isBlocking && task.tags.length === 0 && !task.dueDate && task.timeEstimate == null && (!task.priority || task.priority === 'medium') && !task.recurrenceRule && (
+          {!isCodeTask && !isBlocked && !isBlocking && task.tags.length === 0 && !task.dueDate && task.timeEstimate == null && (!task.priority || task.priority === 'medium') && !task.recurrenceRule && !host && (
             <span className="italic">Non-code task</span>
           )}
         </div>

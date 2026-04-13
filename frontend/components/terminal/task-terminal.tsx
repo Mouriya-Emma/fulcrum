@@ -627,7 +627,10 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
           <span>Terminal exited (code: {currentTerminal?.exitCode})</span>
           {hostId && (
             <span className="text-muted-foreground/70">
-              — SSH session disconnected. Use the reload button to reconnect.
+              — {currentTerminal?.exitCode === 0
+                ? 'Remote shell exited normally.'
+                : 'SSH connection lost (network issue or remote error).'}
+              {' '}Use the reload button to reconnect.
             </span>
           )}
         </div>

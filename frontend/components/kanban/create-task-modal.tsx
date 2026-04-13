@@ -848,26 +848,40 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
               )}
 
               {/* Remote host - for worktree and scratch tasks */}
-              {(taskType === 'worktree' || taskType === 'scratch') && remoteHosts.length > 0 && (
+              {(taskType === 'worktree' || taskType === 'scratch') && (
                 <Field>
                   <FieldLabel>Remote Host</FieldLabel>
                   <FieldDescription>Run this agent on a remote machine via SSH</FieldDescription>
-                  <Select
-                    value={selectedHostId ?? '__local__'}
-                    onValueChange={(v) => setSelectedHostId(v === '__local__' ? null : v)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__local__">Local (this machine)</SelectItem>
-                      {remoteHosts.filter((h) => h.status === 'connected').map((host) => (
-                        <SelectItem key={host.id} value={host.id}>
-                          {host.name} ({host.username}@{host.hostname})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {remoteHosts.length > 0 ? (
+                    <Select
+                      value={selectedHostId ?? '__local__'}
+                      onValueChange={(v) => setSelectedHostId(v === '__local__' ? null : v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__local__">Local (this machine)</SelectItem>
+                        {remoteHosts.filter((h) => h.status === 'connected').map((host) => (
+                          <SelectItem key={host.id} value={host.id}>
+                            {host.name} ({host.username}@{host.hostname})
+                          </SelectItem>
+                        ))}
+                        {remoteHosts.filter((h) => h.status === 'unknown').map((host) => (
+                          <SelectItem key={host.id} value={host.id}>
+                            <span className="text-amber-600 dark:text-amber-400">⚠</span> {host.name} ({host.username}@{host.hostname})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No remote hosts configured.{' '}
+                      <a href="/settings" className="text-primary hover:underline">
+                        Add hosts in Settings → General
+                      </a>
+                    </p>
+                  )}
                 </Field>
               )}
 
