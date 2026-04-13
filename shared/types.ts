@@ -62,6 +62,8 @@ export interface DiffOptions {
   ignoreWhitespace: boolean
   includeUntracked: boolean
   collapsedFiles: string[]
+  /** When true, files are collapsed by default and collapsedFiles acts as an expanded-files list */
+  defaultCollapsed: boolean
 }
 
 export interface FilesViewState {
@@ -70,7 +72,7 @@ export interface FilesViewState {
 }
 
 export interface ViewState {
-  activeTab: 'diff' | 'browser' | 'files' | 'details' | 'terminal'
+  activeTab: 'diff' | 'browser' | 'files' | 'scratch' | 'details' | 'terminal'
   browserUrl: string
   diffOptions: DiffOptions
   filesViewState: FilesViewState

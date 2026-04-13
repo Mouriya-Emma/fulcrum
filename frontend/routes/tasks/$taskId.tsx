@@ -27,6 +27,7 @@ import { TaskShellTerminal } from '@/components/terminal/task-shell-terminal'
 import { DiffViewer } from '@/components/viewer/diff-viewer'
 import { BrowserPreview } from '@/components/viewer/browser-preview'
 import { FilesViewer } from '@/components/viewer/files-viewer'
+import { ScratchEditor } from '@/components/viewer/scratch-editor'
 import { GitStatusBadge } from '@/components/viewer/git-status-badge'
 import { ManualTaskView } from '@/components/task/manual-task-view'
 import { TaskDetailsPanel } from '@/components/task/task-details-panel'
@@ -53,6 +54,7 @@ import {
   SourceCodeCircleIcon,
   Loading03Icon,
   CommandLineIcon,
+  NoteEditIcon,
 } from '@hugeicons/core-free-icons'
 import type { TaskLinkType } from '@/types'
 import { DeleteTaskDialog } from '@/components/delete-task-dialog'
@@ -68,7 +70,7 @@ import {
 import type { TaskStatus } from '@/types'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 
-type TabType = 'diff' | 'browser' | 'files' | 'details' | 'terminal'
+type TabType = 'diff' | 'browser' | 'files' | 'scratch' | 'details' | 'terminal'
 
 interface TaskViewSearch {
   tab?: TabType
@@ -78,7 +80,7 @@ interface TaskViewSearch {
 export const Route = createFileRoute('/tasks/$taskId')({
   component: TaskView,
   validateSearch: (search: Record<string, unknown>): TaskViewSearch => ({
-    tab: ['diff', 'browser', 'files', 'details', 'terminal'].includes(search.tab as string)
+    tab: ['diff', 'browser', 'files', 'scratch', 'details', 'terminal'].includes(search.tab as string)
       ? (search.tab as TabType)
       : undefined,
     file: typeof search.file === 'string' ? search.file : undefined,
@@ -1004,17 +1006,21 @@ function TaskView() {
                       Diff
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="browser">
-                    <HugeiconsIcon icon={BrowserIcon} size={14} strokeWidth={2} data-slot="icon" />
-                    Browser
+                  <TabsTrigger value="terminal">
+                    <HugeiconsIcon icon={CommandLineIcon} size={14} strokeWidth={2} data-slot="icon" />
+                    Terminal
+                  </TabsTrigger>
+                  <TabsTrigger value="scratch">
+                    <HugeiconsIcon icon={NoteEditIcon} size={14} strokeWidth={2} data-slot="icon" />
+                    Scratch
                   </TabsTrigger>
                   <TabsTrigger value="files">
                     <HugeiconsIcon icon={Folder01Icon} size={14} strokeWidth={2} data-slot="icon" />
                     Files
                   </TabsTrigger>
-                  <TabsTrigger value="terminal">
-                    <HugeiconsIcon icon={CommandLineIcon} size={14} strokeWidth={2} data-slot="icon" />
-                    Terminal
+                  <TabsTrigger value="browser">
+                    <HugeiconsIcon icon={BrowserIcon} size={14} strokeWidth={2} data-slot="icon" />
+                    Browser
                   </TabsTrigger>
                   <TabsTrigger value="details">
                     <HugeiconsIcon icon={More03Icon} size={14} strokeWidth={2} data-slot="icon" />
@@ -1030,8 +1036,16 @@ function TaskView() {
                 </TabsContent>
               )}
 
-              <TabsContent value="browser" className="flex-1 overflow-hidden">
-                <BrowserPreview taskId={task.id} />
+              <TabsContent value="terminal" className="flex-1 overflow-hidden">
+                <TaskShellTerminal taskId={task.id} taskName={task.title} cwd={task.worktreePath} />
+              </TabsContent>
+
+              <TabsContent value="scratch" className="flex-1 overflow-hidden">
+                <ScratchEditor
+                  taskId={task.id}
+                  worktreePath={task.worktreePath}
+                  terminalId={taskTerminal?.id ?? null}
+                />
               </TabsContent>
 
               <TabsContent value="files" className="flex-1 overflow-hidden">
@@ -1042,8 +1056,8 @@ function TaskView() {
                 />
               </TabsContent>
 
-              <TabsContent value="terminal" className="flex-1 overflow-hidden">
-                <TaskShellTerminal taskId={task.id} taskName={task.title} cwd={task.worktreePath} />
+              <TabsContent value="browser" className="flex-1 overflow-hidden">
+                <BrowserPreview taskId={task.id} />
               </TabsContent>
 
               <TabsContent value="details" className="flex-1 overflow-hidden">
@@ -1090,14 +1104,23 @@ function TaskView() {
                       Diff
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="browser">
+                  <TabsTrigger value="terminal">
                     <HugeiconsIcon
-                      icon={BrowserIcon}
+                      icon={CommandLineIcon}
                       size={14}
                       strokeWidth={2}
                       data-slot="icon"
                     />
-                    Browser
+                    Terminal
+                  </TabsTrigger>
+                  <TabsTrigger value="scratch">
+                    <HugeiconsIcon
+                      icon={NoteEditIcon}
+                      size={14}
+                      strokeWidth={2}
+                      data-slot="icon"
+                    />
+                    Scratch
                   </TabsTrigger>
                   <TabsTrigger value="files">
                     <HugeiconsIcon
@@ -1108,14 +1131,14 @@ function TaskView() {
                     />
                     Files
                   </TabsTrigger>
-                  <TabsTrigger value="terminal">
+                  <TabsTrigger value="browser">
                     <HugeiconsIcon
-                      icon={CommandLineIcon}
+                      icon={BrowserIcon}
                       size={14}
                       strokeWidth={2}
                       data-slot="icon"
                     />
-                    Terminal
+                    Browser
                   </TabsTrigger>
                   <TabsTrigger value="details">
                     <HugeiconsIcon
@@ -1136,8 +1159,16 @@ function TaskView() {
                 </TabsContent>
               )}
 
-              <TabsContent value="browser" className="flex-1 overflow-hidden">
-                <BrowserPreview taskId={task.id} />
+              <TabsContent value="terminal" className="flex-1 overflow-hidden">
+                <TaskShellTerminal taskId={task.id} taskName={task.title} cwd={task.worktreePath} />
+              </TabsContent>
+
+              <TabsContent value="scratch" className="flex-1 overflow-hidden">
+                <ScratchEditor
+                  taskId={task.id}
+                  worktreePath={task.worktreePath}
+                  terminalId={taskTerminal?.id ?? null}
+                />
               </TabsContent>
 
               <TabsContent value="files" className="flex-1 overflow-hidden">
@@ -1148,8 +1179,8 @@ function TaskView() {
                 />
               </TabsContent>
 
-              <TabsContent value="terminal" className="flex-1 overflow-hidden">
-                <TaskShellTerminal taskId={task.id} taskName={task.title} cwd={task.worktreePath} />
+              <TabsContent value="browser" className="flex-1 overflow-hidden">
+                <BrowserPreview taskId={task.id} />
               </TabsContent>
 
               <TabsContent value="details" className="flex-1 overflow-hidden">
