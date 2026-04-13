@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -18,10 +17,11 @@ import { TimeEstimatePicker } from '@/components/task/time-estimate-picker'
 import { PriorityPicker } from '@/components/task/priority-picker'
 import { LinksManager } from '@/components/task/links-manager'
 import { DependencyManager } from '@/components/task/dependency-manager'
+import { DerivedFromBadge } from '@/components/task/derived-from-badge'
 import { AttachmentsManager } from '@/components/task/attachments-manager'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon } from '@hugeicons/core-free-icons'
-import { useUpdateTask, useTask } from '@/hooks/use-tasks'
+import { useUpdateTask } from '@/hooks/use-tasks'
 import { useAddTaskTag, useRemoveTaskTag } from '@/hooks/use-tags'
 import { useBranches } from '@/hooks/use-filesystem'
 import { useIsOverdue } from '@/hooks/use-date-utils'
@@ -540,21 +540,3 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
   )
 }
 
-function DerivedFromBadge({ taskId }: { taskId: string }) {
-  const { data: parentTask } = useTask(taskId)
-
-  return (
-    <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/30 p-3">
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-purple-600 dark:text-purple-400 font-medium">Derived from:</span>
-        <Link
-          to="/tasks/$taskId"
-          params={{ taskId }}
-          className="truncate text-purple-600 dark:text-purple-400 hover:underline"
-        >
-          {parentTask?.title ?? taskId}
-        </Link>
-      </div>
-    </div>
-  )
-}
