@@ -40,6 +40,7 @@ import googleRoutes from './routes/google'
 import memoryRoutes from './routes/memory'
 import memoryFileRoutes from './routes/memory-file'
 import searchRoutes from './routes/search'
+import draftItemsRoutes from './routes/draft-items'
 import scratchDirsRoutes from './routes/scratch-dirs'
 import { writeEntry } from './lib/logger'
 import type { LogEntry } from '../shared/logger'
@@ -107,6 +108,7 @@ export function createApp() {
   app.route('/api/opencode', opencodeRoutes)
   app.route('/api/projects', projectsRoutes)
   app.route('/api/task-dependencies', taskDependenciesRoutes)
+  app.route('/api/draft-items', draftItemsRoutes)
   app.route('/api/tags', tagsRoutes)
   app.route('/api/version', versionRoutes)
 

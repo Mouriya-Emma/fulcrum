@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { nanoid } from 'nanoid'
-import { db, tasks, repositories, taskLinks, taskRelationships, taskAttachments, tags, taskTags, hosts, type Task, type NewTask, type TaskLink } from '../db'
+import { db, tasks, repositories, taskLinks, taskRelationships, taskAttachments, tags, taskTags, hosts, draftItems, type Task, type NewTask, type TaskLink } from '../db'
 import { eq, asc, and, inArray } from 'drizzle-orm'
 import { detectLinkType } from '../lib/link-utils'
 import { execSync } from 'child_process'
@@ -183,7 +183,7 @@ app.post('/', async (c) => {
         opencodeModel?: string | null
         tags?: string[]
         blockedByTaskIds?: string[]
-        type?: 'worktree' | 'scratch' | null
+        type?: 'worktree' | 'scratch' | 'draft' | null
         prefix?: string | null
         hostId?: string | null
       }
@@ -436,6 +436,9 @@ app.delete('/bulk', async (c) => {
 
       // Delete associated attachments (files and DB records)
       deleteTaskAttachments(id)
+
+      // Delete associated draft items
+      db.delete(draftItems).where(eq(draftItems.taskId, id)).run()
 
       db.delete(tasks).where(eq(tasks.id, id)).run()
       broadcast({ type: 'task:updated', payload: { taskId: id } })
@@ -764,6 +767,9 @@ app.delete('/:id', (c) => {
 
   // Delete associated attachments (files and DB records)
   deleteTaskAttachments(id)
+
+  // Delete associated draft items
+  db.delete(draftItems).where(eq(draftItems.taskId, id)).run()
 
   db.delete(tasks).where(eq(tasks.id, id)).run()
   broadcast({ type: 'task:updated', payload: { taskId: id } })

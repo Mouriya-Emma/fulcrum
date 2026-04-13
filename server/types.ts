@@ -416,3 +416,9 @@ export type ServerMessage =
   | MessagingQRMessage
   | MessagingDisplayNameMessage
   | { type: 'hosts:updated'; payload: Record<string, never> }
+  | DraftItemsUpdatedMessage
+
+export interface DraftItemsUpdatedMessage {
+  type: 'draft-items:updated'
+  payload: { taskId: string }
+}

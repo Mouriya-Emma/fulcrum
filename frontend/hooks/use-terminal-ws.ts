@@ -62,6 +62,7 @@ interface CreateTerminalOptions {
     description?: string
     taskName: string
     serverPort?: number
+    taskId?: string
   }
 }
 
@@ -74,6 +75,7 @@ interface PendingStartupInfo {
   description?: string
   taskName: string
   serverPort?: number
+  taskId?: string
 }
 
 interface AttachXtermOptions {

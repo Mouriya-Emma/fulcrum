@@ -58,7 +58,7 @@ import { DependencySelector } from '@/components/kanban/dependency-selector'
 import { TimeEstimatePicker } from '@/components/task/time-estimate-picker'
 import { PriorityPicker } from '@/components/task/priority-picker'
 
-type TaskType = 'worktree' | 'manual' | 'scratch'
+type TaskType = 'worktree' | 'manual' | 'scratch' | 'draft'
 
 function slugify(text: string): string {
   return text
@@ -422,7 +422,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
         prefix: isCodeTask && prefix.trim() ? prefix.trim() : undefined,
         worktreePath: shouldStartWork ? worktreePath : (shouldStartScratch ? scratchPath : null),
         // Type field for scratch tasks
-        type: isScratch ? 'scratch' : (isCodeTask ? 'worktree' : undefined),
+        type: isScratch ? 'scratch' : isCodeTask ? 'worktree' : taskType === 'draft' ? 'draft' : undefined,
         // Repository reference for deferred worktree creation
         repositoryId: isCodeTask && !startImmediately ? selectedRepoId : undefined,
         copyFiles: isCodeTask ? (selectedRepo?.copyFiles || undefined) : undefined,
@@ -603,7 +603,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
   }
 
   // Cmd+Enter to submit form when modal is open
-  const canSubmit = !createTask.isPending && !!title.trim() && (taskType === 'manual' || taskType === 'scratch' || !!repoPath)
+  const canSubmit = !createTask.isPending && !!title.trim() && (taskType === 'manual' || taskType === 'scratch' || taskType === 'draft' || !!repoPath)
   useHotkeys('meta+enter', () => {
     if (formRef.current) {
       formRef.current.requestSubmit()
@@ -646,7 +646,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 className="h-7 mx-auto"
                 variant="outline"
               >
-                {(['worktree', 'scratch', 'manual'] as const).map((type) => (
+                {(['worktree', 'scratch', 'manual', 'draft'] as const).map((type) => (
                   <ToggleGroupItem
                     key={type}
                     value={type}
@@ -658,11 +658,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 ))}
               </ToggleGroup>
               <DialogDescription className="mt-2 text-center">
-                {taskType === 'worktree'
-                  ? t('createModal.taskDescriptions.worktree')
-                  : taskType === 'scratch'
-                    ? t('createModal.taskDescriptions.scratch')
-                    : t('createModal.taskDescriptions.manual')}
+                {t(`createModal.taskDescriptions.${taskType}`)}
               </DialogDescription>
             </DialogHeader>
 
@@ -735,7 +731,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
               )}
 
               {/* Project selector for manual and scratch tasks */}
-              {(taskType === 'manual' || taskType === 'scratch') && (
+              {(taskType === 'manual' || taskType === 'scratch' || taskType === 'draft') && (
                 <Field>
                   <FieldLabel>{t('createModal.fields.project')}</FieldLabel>
                   <div className="relative" ref={projectContainerRef}>
