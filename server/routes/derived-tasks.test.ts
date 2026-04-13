@@ -350,6 +350,7 @@ describe('Derived Tasks', () => {
     expect(body._derivationResult).toBeDefined()
     expect(body._derivationResult.parentBlocked).toBe(true)
     expect(body._derivationResult.propagatedTo).toContain('upstream-1')
+    expect(body._derivationResult.guidance).toContain('Stop working on the current task')
   })
 
   test('deleting derived task cleans up relationships', async () => {

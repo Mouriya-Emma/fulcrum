@@ -308,7 +308,7 @@ app.post('/', async (c) => {
     }
 
     // All DB writes in a single transaction: task insert + tags + dependencies + derivation
-    const derivationResult: { parentBlocked: boolean; propagatedTo: string[] } = { parentBlocked: false, propagatedTo: [] }
+    const derivationResult: { parentBlocked: boolean; propagatedTo: string[]; guidance?: string } = { parentBlocked: false, propagatedTo: [] }
     const affectedTaskIds: string[] = []
 
     try {
@@ -376,6 +376,7 @@ app.post('/', async (c) => {
             })
             .run()
           derivationResult.parentBlocked = true
+          derivationResult.guidance = `Your current task is now blocked by the derived task you just created. Stop working on the current task until the derived task "${body.title}" is completed.`
           affectedTaskIds.push(body.derivedFromTaskId)
 
           // Propagate: all tasks that depend on parent should also depend on the new derived task
