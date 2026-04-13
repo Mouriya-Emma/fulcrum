@@ -45,6 +45,7 @@ export const taskRelationships = sqliteTable('task_relationships', {
   taskId: text('task_id').notNull(),
   relatedTaskId: text('related_task_id').notNull(),
   type: text('type').notNull().default('depends_on'), // 'depends_on' | 'relates_to' | 'subtask'
+  source: text('source').notNull().default('manual'), // 'manual' | 'derivation'
   createdAt: text('created_at').notNull(),
 })
 

@@ -372,6 +372,7 @@ app.post('/', async (c) => {
               taskId: body.derivedFromTaskId,
               relatedTaskId: newTask.id,
               type: 'depends_on',
+              source: 'derivation',
               createdAt: now,
             })
             .run()
@@ -415,6 +416,7 @@ app.post('/', async (c) => {
                 taskId: dep.taskId,
                 relatedTaskId: newTask.id,
                 type: 'depends_on',
+                source: 'derivation',
                 createdAt: now,
               })
               .run()

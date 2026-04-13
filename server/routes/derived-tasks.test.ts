@@ -351,6 +351,17 @@ describe('Derived Tasks', () => {
     expect(body._derivationResult.parentBlocked).toBe(true)
     expect(body._derivationResult.propagatedTo).toContain('upstream-1')
     expect(body._derivationResult.guidance).toContain('Stop working on the current task')
+
+    // Verify derivation relationships have source='derivation'
+    const parentDeps = db.select().from(taskRelationships)
+      .where(eq(taskRelationships.taskId, 'parent-result'))
+      .all()
+    expect(parentDeps.some((d) => d.source === 'derivation')).toBe(true)
+
+    const upstreamDeps = db.select().from(taskRelationships)
+      .where(eq(taskRelationships.taskId, 'upstream-1'))
+      .all()
+    expect(upstreamDeps.some((d) => d.source === 'derivation')).toBe(true)
   })
 
   test('deleting derived task cleans up relationships', async () => {
