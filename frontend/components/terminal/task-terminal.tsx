@@ -32,9 +32,10 @@ interface TaskTerminalProps {
   opencodeModel?: string | null
   serverPort?: number
   autoFocus?: boolean
+  hostId?: string | null
 }
 
-export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude', aiMode, description, startupScript, agentOptions, opencodeModel, serverPort = 7777, autoFocus = false }: TaskTerminalProps) {
+export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude', aiMode, description, startupScript, agentOptions, opencodeModel, serverPort = 7777, autoFocus = false, hostId }: TaskTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<AnyTerminal | null>(null)
   const hasFocusedRef = useRef(false)
@@ -284,6 +285,7 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
         rows,
         cwd,
         taskId,
+        hostId: hostId ?? undefined,
         // Include startup info - this is stored in the MST store to survive
         // component unmount/remount (fixes race condition with React strict mode)
         startup: {
@@ -621,8 +623,16 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
         </div>
       )}
       {terminalStatus === 'exited' && (
-        <div className="shrink-0 px-2 py-1 bg-muted text-muted-foreground text-xs">
-          Terminal exited (code: {currentTerminal?.exitCode})
+        <div className="shrink-0 px-2 py-1 bg-muted text-muted-foreground text-xs flex items-center gap-2">
+          <span>Terminal exited (code: {currentTerminal?.exitCode})</span>
+          {hostId && (
+            <span className="text-muted-foreground/70">
+              — {currentTerminal?.exitCode === 0
+                ? 'Remote shell exited normally.'
+                : 'SSH connection lost (network issue or remote error).'}
+              {' '}Use the reload button to reconnect.
+            </span>
+          )}
         </div>
       )}
 

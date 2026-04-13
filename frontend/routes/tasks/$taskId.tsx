@@ -19,6 +19,7 @@ import { useGitSyncParent } from '@/hooks/use-git-sync-parent'
 import { useGitCreatePR } from '@/hooks/use-git-create-pr'
 import { useKillClaudeInTask } from '@/hooks/use-kill-claude'
 import { useEditorApp, useEditorHost, useEditorSshPort, usePort, useOpencodeModel, useScratchStartupScript } from '@/hooks/use-config'
+import { useHost } from '@/hooks/use-hosts'
 import { useTerminalWS } from '@/hooks/use-terminal-ws'
 import { useStore } from '@/stores'
 import { buildEditorUrl, openExternalUrl } from '@/lib/editor-url'
@@ -139,6 +140,7 @@ function TaskView() {
   const { data: globalOpencodeModel } = useOpencodeModel()
   const { data: scratchStartupScript } = useScratchStartupScript()
   const { data: repositories = [] } = useRepositories()
+  const { data: taskHost } = useHost(task?.hostId ?? null)
 
   // Find the repository matching this task's repo path
   const repository = repositories.find((r) => r.path === task?.repoPath)
@@ -573,6 +575,11 @@ function TaskView() {
                 {task.title}
               </h1>
             )}
+            {taskHost && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                {taskHost.name}
+              </span>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -721,6 +728,11 @@ function TaskView() {
                 >
                   {task.title}
                 </h1>
+              )}
+              {taskHost && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  {taskHost.name}
+                </span>
               )}
               <button
                 type="button"
@@ -992,6 +1004,7 @@ function TaskView() {
               opencodeModel={resolvedOpencodeModel}
               serverPort={serverPort}
               autoFocus={shouldAutoFocus}
+              hostId={task.hostId}
             />
           </TabsContent>
 
@@ -1070,6 +1083,7 @@ function TaskView() {
               opencodeModel={resolvedOpencodeModel}
               serverPort={serverPort}
               autoFocus={shouldAutoFocus}
+              hostId={task.hostId}
             />
           </ResizablePanel>
 

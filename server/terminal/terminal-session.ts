@@ -6,6 +6,7 @@ import { db, terminals } from '../db'
 import { eq } from 'drizzle-orm'
 import { getShellEnv } from '../lib/env'
 import type { TerminalInfo, TerminalStatus } from '../types'
+import type { ITerminalSession } from './session-interface'
 import { log } from '../lib/logger'
 import { getSettingByKey } from '../lib/settings'
 
@@ -24,7 +25,7 @@ export interface TerminalSessionOptions {
   onShouldDestroy?: () => void
 }
 
-export class TerminalSession {
+export class TerminalSession implements ITerminalSession {
   readonly id: string
   private _name: string
   readonly cwd: string

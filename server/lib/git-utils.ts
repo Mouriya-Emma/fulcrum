@@ -3,6 +3,8 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { glob } from 'glob'
 import { log } from './logger'
+import { getSSHConnectionManager, type SSHConnectionConfig } from '../terminal/ssh-connection-manager'
+import { shellEscape } from './shell-escape'
 
 /**
  * Check if a string looks like a git URL
@@ -129,6 +131,39 @@ export function createGitWorktree(
     return { success: true }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to create worktree' }
+  }
+}
+
+/**
+ * Create a git worktree on a remote host via SSH.
+ */
+export async function createRemoteGitWorktree(
+  sshConfig: SSHConnectionConfig,
+  repoPath: string,
+  worktreePath: string,
+  branch: string,
+  baseBranch: string,
+): Promise<{ success: boolean; error?: string }> {
+  const manager = getSSHConnectionManager()
+  try {
+    // Verify remote repo path exists
+    try {
+      await manager.execCommand(sshConfig, `test -d ${shellEscape(repoPath)}`, 10000)
+    } catch {
+      return { success: false, error: `Remote repo path not found: ${repoPath}` }
+    }
+
+    const cmd = [
+      `mkdir -p "$(dirname ${shellEscape(worktreePath)})"`,
+      `cd ${shellEscape(repoPath)}`,
+      `git fetch origin ${shellEscape(baseBranch)} 2>/dev/null || true`,
+      `git worktree add -b ${shellEscape(branch)} ${shellEscape(worktreePath)} ${shellEscape(baseBranch)} 2>&1 || git worktree add ${shellEscape(worktreePath)} ${shellEscape(branch)} 2>&1`,
+    ].join(' && ')
+
+    await manager.execCommand(sshConfig, cmd, 120000)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create remote worktree' }
   }
 }
 

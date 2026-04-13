@@ -98,6 +98,7 @@ import {
 import { useLanguageSync } from '@/hooks/use-language-sync'
 import { useThemeSync } from '@/hooks/use-theme-sync'
 import { useOpencodeModels } from '@/hooks/use-opencode-models'
+import { RemoteHostsSettings } from '@/components/hosts/remote-hosts-settings'
 
 type SettingsTab = 'general' | 'ai' | 'messaging' | 'calendar'
 
@@ -1673,6 +1674,11 @@ function SettingsPage() {
                     {t('fields.port.description')}
                   </p>
                 </div>
+              </SettingsSection>
+
+              {/* Remote Hosts */}
+              <SettingsSection title="Remote Hosts">
+                <RemoteHostsSettings />
               </SettingsSection>
 
               {/* Paths */}
