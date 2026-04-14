@@ -120,6 +120,11 @@
     "blockedByHint": "Tasks that must be completed before this one can start.",
     "blockedByPlaceholder": "Search tasks to block this...",
     "noTasksFound": "No tasks found",
+    "pullToLatest": "Pull to Latest",
+    "pullToLatestHint": "Pull latest changes from remote after creating worktree.",
+    "pullToLatestBlockedByUnpushed": "{{count}} unpushed commit(s) on \"{{branch}}\" — push first to use Pull to Latest",
+    "uncommittedFilesNotice": "{{count}} uncommitted file(s) in source repo (will not be in worktree)",
+    "selectPullBranch": "Select remote branch",
     "startImmediately": "Start work immediately",
     "pinTask": "Pin task to top",
     "unpinTask": "Unpin task",
@@ -129,6 +134,14 @@
       "createFailed": "Failed to create task",
       "invalidUrl": "Invalid URL",
       "invalidUrlDescription": "Please enter a valid URL including the scheme (e.g., https://)"
+    }
+  },
+  "initializeModal": {
+    "title": "Initialize as Worktree Task",
+    "description": "Create a git worktree and start a coding session for \"{{taskTitle}}\"",
+    "branchName": "Branch Name",
+    "errors": {
+      "initFailed": "Failed to initialize worktree task"
     }
   }
 }

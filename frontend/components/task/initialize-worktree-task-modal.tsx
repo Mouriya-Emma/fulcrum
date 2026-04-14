@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Folder01Icon } from '@hugeicons/core-free-icons'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { PullToLatestField } from '@/components/shared/pull-to-latest-field'
 import { useBranches, checkIsGitRepo } from '@/hooks/use-filesystem'
 import { useWorktreeBasePath, useDefaultGitReposDir, useDefaultAgent, useOpencodeModel } from '@/hooks/use-config'
 import { AGENT_DISPLAY_NAMES, type AgentType } from '@/types'
@@ -67,6 +69,7 @@ interface InitializeWorktreeTaskModalProps {
 }
 
 export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: InitializeWorktreeTaskModalProps) {
+  const { t } = useTranslation('tasks')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [browserOpen, setBrowserOpen] = useState(false)
@@ -85,6 +88,8 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
   const [repoError, setRepoError] = useState<string | null>(null)
   const [isValidatingRepo, setIsValidatingRepo] = useState(false)
   const [opencodeModel, setOpencodeModel] = useState<string | null>(null)
+  const [pullToLatest, setPullToLatest] = useState(true)
+  const [pullRemoteBranch, setPullRemoteBranch] = useState('')
 
   const { data: worktreeBasePath } = useWorktreeBasePath()
   const { data: defaultGitReposDir } = useDefaultGitReposDir()
@@ -201,6 +206,21 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
     }
   }, [branchData, repoPath, repositories, selectedRepoId])
 
+  // Auto-set pullRemoteBranch when baseBranch changes
+  useEffect(() => {
+    if (!baseBranch) {
+      setPullRemoteBranch('')
+      return
+    }
+    const remoteBranches = branchData?.remoteBranches ?? []
+    if (baseBranch.includes('/')) {
+      setPullRemoteBranch(baseBranch)
+      return
+    }
+    const match = remoteBranches.find((rb) => rb.endsWith(`/${baseBranch}`))
+    setPullRemoteBranch(match || (remoteBranches.length > 0 ? remoteBranches[0] : ''))
+  }, [baseBranch, branchData?.remoteBranches])
+
   const handleRepoSelect = async (path: string) => {
     setRepoError(null)
     setIsValidatingRepo(true)
@@ -247,7 +267,7 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
         : (selectedRepo?.opencodeOptions ?? selectedRepoProject?.opencodeOptions)
 
       // Initialize the task as a worktree task by updating it with git fields
-      await fetchJSON<Task>(`/api/tasks/${task.id}/initialize-worktree`, {
+      const result = await fetchJSON<Task & { _warnings?: string[] }>(`/api/tasks/${task.id}/initialize-worktree`, {
         method: 'POST',
         body: JSON.stringify({
           agent,
@@ -262,8 +282,17 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
           startupScript: [selectedRepoProject?.startupScript, selectedRepo?.startupScript].filter(Boolean).join('\n') || undefined,
           agentOptions: agentOptions || undefined,
           opencodeModel: agent === 'opencode' ? opencodeModel : undefined,
+          pullToLatest,
+          pullRemoteBranch: pullToLatest ? (pullRemoteBranch || undefined) : undefined,
         }),
       })
+
+      // Show warnings from pull-to-latest or other non-fatal operations
+      if (result._warnings?.length) {
+        for (const warning of result._warnings) {
+          toast.warning(warning)
+        }
+      }
 
       // Invalidate queries to refresh task data
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -282,7 +311,7 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
         replace: true,
       })
     } catch (error) {
-      toast.error('Failed to initialize worktree task', {
+      toast.error(t('initializeModal.errors.initFailed'), {
         description: error instanceof Error ? error.message : String(error),
       })
     } finally {
@@ -296,7 +325,8 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
     ? `${worktreeBasePath}/${effectiveBranch}`
     : ''
 
-  const canSubmit = !isSubmitting && !!repoPath
+  const pullBlockedByUnpushed = pullToLatest && (branchData?.unpushedCommits ?? 0) > 0
+  const canSubmit = !isSubmitting && !!repoPath && !pullBlockedByUnpushed
 
   return (
     <>
@@ -304,9 +334,9 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
         <DialogContent className="sm:max-w-md max-h-[80dvh] flex flex-col overflow-hidden">
           <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
             <DialogHeader className="shrink-0">
-              <DialogTitle>Initialize as Worktree Task</DialogTitle>
+              <DialogTitle>{t('initializeModal.title')}</DialogTitle>
               <DialogDescription>
-                Create a git worktree and start a coding session for "{task.title}"
+                {t('initializeModal.description', { taskTitle: task.title })}
               </DialogDescription>
             </DialogHeader>
 
@@ -485,8 +515,20 @@ export function InitializeWorktreeTaskModal({ task, open, onOpenChange }: Initia
                 </Select>
               </Field>
 
+              <PullToLatestField
+                pullToLatest={pullToLatest}
+                onPullToLatestChange={setPullToLatest}
+                pullRemoteBranch={pullRemoteBranch}
+                onPullRemoteBranchChange={setPullRemoteBranch}
+                remoteBranches={branchData?.remoteBranches ?? []}
+                unpushedCommits={branchData?.unpushedCommits ?? 0}
+                uncommittedFiles={branchData?.uncommittedFiles ?? 0}
+                baseBranch={baseBranch}
+                disabled={!repoPath || branchesLoading}
+              />
+
               <Field>
-                <FieldLabel>Branch Name</FieldLabel>
+                <FieldLabel>{t('initializeModal.branchName')}</FieldLabel>
                 <Input
                   value={branch}
                   onChange={(e) => setBranch(e.target.value)}

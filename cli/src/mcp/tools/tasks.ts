@@ -209,6 +209,12 @@ function registerCreateTask(server: Server, client: Client) {
       derivedFromTaskId: z
         .optional(z.string())
         .describe('Create as a derived task from the given task ID. The parent task and all tasks that depend on it will automatically depend on this new task. Use this when your current task discovers blocking work that must be completed first.'),
+      pullToLatest: z
+        .optional(z.boolean())
+        .describe('Pull latest from remote after worktree creation (default: true when status is IN_PROGRESS)'),
+      pullRemoteBranch: z
+        .optional(z.string())
+        .describe('Remote branch to pull from, e.g. origin/main (auto-inferred from baseBranch if omitted)'),
     },
     async ({
       title,
@@ -229,6 +235,8 @@ function registerCreateTask(server: Server, client: Client) {
       recurrenceEndDate,
       blockedByTaskIds,
       derivedFromTaskId,
+      pullToLatest,
+      pullRemoteBranch,
     }) => {
       try {
         const repoName = repoPath ? basename(repoPath) : null
@@ -254,7 +262,12 @@ function registerCreateTask(server: Server, client: Client) {
           recurrenceEndDate: recurrenceEndDate ?? null,
           blockedByTaskIds,
           derivedFromTaskId: derivedFromTaskId ?? null,
+          pullToLatest: pullToLatest ?? (status === 'IN_PROGRESS' && repoPath ? true : undefined),
+          pullRemoteBranch: pullRemoteBranch ?? (repoPath ? `origin/${effectiveBaseBranch}` : undefined),
         })
+
+        // Extract warnings from API response (e.g. pull-to-latest failures)
+        const warnings = (task as Record<string, unknown>)._warnings as string[] | undefined
 
         if (tags && tags.length > 0) {
           const allTasks = await client.listTasks()
@@ -269,10 +282,11 @@ function registerCreateTask(server: Server, client: Client) {
           return formatSuccess({
             task,
             existingTags: Array.from(existingTags).sort(),
+            ...(warnings?.length ? { warnings } : {}),
           })
         }
 
-        return formatSuccess(task)
+        return formatSuccess(warnings?.length ? { ...task, warnings } : task)
       } catch (err) {
         return handleToolError(err)
       }

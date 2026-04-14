@@ -60,6 +60,8 @@ export interface CreateTaskInput {
   recurrenceEndDate?: string | null
   blockedByTaskIds?: string[]
   derivedFromTaskId?: string | null
+  pullToLatest?: boolean
+  pullRemoteBranch?: string
 }
 
 export interface TaskTagsResponse {

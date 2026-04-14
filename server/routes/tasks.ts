@@ -16,7 +16,7 @@ import { broadcast } from '../websocket/terminal-ws'
 import { updateTaskStatus } from '../services/task-status'
 import { reindexTaskFTS } from '../services/search-service'
 import { log } from '../lib/logger'
-import { createGitWorktree, createRemoteGitWorktree, copyFilesToWorktree } from '../lib/git-utils'
+import { createGitWorktree, createRemoteGitWorktree, copyFilesToWorktree, pullLatestInWorktree, checkRepoStateForWorktree } from '../lib/git-utils'
 import { isValidBranchName } from '../lib/shell-escape'
 
 // Helper to delete git worktree
@@ -187,6 +187,8 @@ app.post('/', async (c) => {
         type?: 'worktree' | 'scratch' | 'draft' | null
         prefix?: string | null
         hostId?: string | null
+        pullToLatest?: boolean
+        pullRemoteBranch?: string | null
       }
     >()
 
@@ -239,10 +241,20 @@ app.post('/', async (c) => {
     }
 
     // Create git worktree if branch and worktreePath are provided (for immediate IN_PROGRESS tasks)
+    const warnings: string[] = []
     if (body.branch && body.worktreePath && body.repoPath && body.baseBranch) {
       // Validate branch name to prevent shell injection
       if (!isValidBranchName(body.branch)) {
         return c.json({ error: 'Invalid branch name: only alphanumeric, /, _, -, . characters allowed' }, 400)
+      }
+
+      // Check source repo state before worktree creation (local only, skip for remote hosts)
+      if (body.pullToLatest && !body.hostId) {
+        const repoState = checkRepoStateForWorktree(body.repoPath, body.baseBranch, body.pullRemoteBranch || undefined)
+        warnings.push(...repoState.warnings)
+        if (repoState.skipPull) {
+          return c.json({ error: repoState.warnings.find(w => w.includes('Pull skipped')) || 'Cannot pull: base branch has unpushed commits' }, 400)
+        }
       }
 
       // Remote worktree creation via SSH
@@ -264,15 +276,27 @@ app.post('/', async (c) => {
           return c.json({ error: `Failed to create remote worktree: ${result.error}` }, 500)
         }
 
-        // copyFiles not yet supported for remote tasks
+        // copyFiles and pullToLatest not yet supported for remote tasks
         if (body.copyFiles) {
           log.api.info('copyFiles skipped for remote task (not yet supported)', { taskId: newTask.id })
+        }
+        if (body.pullToLatest) {
+          log.api.info('pullToLatest skipped for remote task (not yet supported)', { taskId: newTask.id })
         }
       } else {
         // Local worktree creation (existing behavior)
         const result = createGitWorktree(body.repoPath, body.worktreePath, body.branch, body.baseBranch)
         if (!result.success) {
           return c.json({ error: `Failed to create worktree: ${result.error}` }, 500)
+        }
+
+        // Pull latest from remote if requested (local only)
+        if (body.pullToLatest) {
+          const pullResult = pullLatestInWorktree(body.worktreePath, body.pullRemoteBranch || undefined)
+          if (!pullResult.success) {
+            log.api.error('Failed to pull latest in worktree', { error: pullResult.error })
+            warnings.push(`Pull failed: ${pullResult.error}`)
+          }
         }
 
         // Copy files if patterns provided (local only)
@@ -488,6 +512,9 @@ app.post('/', async (c) => {
     if (response && body.derivedFromTaskId && derivationResult.parentBlocked) {
       ;(response as Record<string, unknown>)._derivationResult = derivationResult
     }
+    if (warnings.length > 0) {
+      ;(response as Record<string, unknown>)._warnings = warnings
+    }
     return c.json(response, 201)
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : 'Failed to create task' }, 400)
@@ -604,16 +631,37 @@ app.post('/:id/initialize-worktree', async (c) => {
       agentOptions?: Record<string, string> | null
       opencodeModel?: string | null
       prefix?: string | null
+      pullToLatest?: boolean
+      pullRemoteBranch?: string | null
     }>()
 
     if (!body.repoPath || !body.branch || !body.worktreePath || !body.baseBranch) {
       return c.json({ error: 'repoPath, branch, worktreePath, and baseBranch are required' }, 400)
     }
 
+    // Server-side check: block pull if base branch has unpushed commits
+    const warnings: string[] = []
+    if (body.pullToLatest) {
+      const repoState = checkRepoStateForWorktree(body.repoPath, body.baseBranch, body.pullRemoteBranch || undefined)
+      warnings.push(...repoState.warnings)
+      if (repoState.skipPull) {
+        return c.json({ error: repoState.warnings.find(w => w.includes('Pull skipped')) || 'Cannot pull: base branch has unpushed commits. Push first or disable Pull to Latest.' }, 400)
+      }
+    }
+
     // Create git worktree
     const result = createGitWorktree(body.repoPath, body.worktreePath, body.branch, body.baseBranch)
     if (!result.success) {
       return c.json({ error: `Failed to create worktree: ${result.error}` }, 500)
+    }
+
+    // Pull latest from remote if requested
+    if (body.pullToLatest) {
+      const pullResult = pullLatestInWorktree(body.worktreePath, body.pullRemoteBranch || undefined)
+      if (!pullResult.success) {
+        log.api.error('Failed to pull latest during worktree initialization', { error: pullResult.error })
+        warnings.push(`Pull failed: ${pullResult.error}`)
+      }
     }
 
     // Copy files if patterns provided
@@ -657,7 +705,8 @@ app.post('/:id/initialize-worktree', async (c) => {
 
     const updated = db.select().from(tasks).where(eq(tasks.id, id)).get()
     broadcast({ type: 'task:updated', payload: { taskId: id } })
-    return c.json(updated ? toApiResponse(updated, true) : null)
+    const response = updated ? toApiResponse(updated, true) : null
+    return c.json(warnings.length > 0 ? { ...response, _warnings: warnings } : response)
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : 'Failed to initialize worktree task' }, 400)
   }

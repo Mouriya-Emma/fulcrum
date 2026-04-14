@@ -57,6 +57,9 @@ export function useCreateTask() {
       recurrenceEndDate?: string | null
       // Dependencies - tasks that must be completed before this one can start
       blockedByTaskIds?: string[]
+      // Pull to Latest
+      pullToLatest?: boolean
+      pullRemoteBranch?: string
       // Pin
       pinned?: boolean
       // Remote host

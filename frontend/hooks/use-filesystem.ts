@@ -27,6 +27,8 @@ interface BranchListing {
   remoteBranches: string[]
   current: string
   defaultBranch: string
+  uncommittedFiles: number
+  unpushedCommits: number
 }
 
 interface GitFile {

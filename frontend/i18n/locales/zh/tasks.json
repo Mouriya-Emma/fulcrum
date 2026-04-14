@@ -120,6 +120,11 @@
     "blockedByHint": "必须完成才能开始此任务的前置任务。",
     "blockedByPlaceholder": "搜索阻塞任务...",
     "noTasksFound": "未找到任务",
+    "pullToLatest": "拉取最新代码",
+    "pullToLatestHint": "创建工作树后从远程拉取最新更改。",
+    "pullToLatestBlockedByUnpushed": "\"{{branch}}\" 有 {{count}} 个未推送的提交 - 请先推送后再使用拉取最新代码",
+    "uncommittedFilesNotice": "源仓库有 {{count}} 个未提交的文件（不会包含在工作树中）",
+    "selectPullBranch": "选择远程分支",
     "startImmediately": "立即开始工作",
     "pinTask": "置顶任务",
     "unpinTask": "取消置顶",
@@ -129,6 +134,14 @@
       "createFailed": "创建任务失败",
       "invalidUrl": "无效的 URL",
       "invalidUrlDescription": "请输入包含协议的有效 URL（例如：https://）"
+    }
+  },
+  "initializeModal": {
+    "title": "初始化为工作树任务",
+    "description": "为 \"{{taskTitle}}\" 创建 Git 工作树并开始编码会话",
+    "branchName": "分支名称",
+    "errors": {
+      "initFailed": "初始化工作树任务失败"
     }
   }
 }
