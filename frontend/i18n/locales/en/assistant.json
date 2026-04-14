@@ -1,9 +1,5 @@
 {
   "title": "AI Assistant",
-  "preview": {
-    "badge": "Preview",
-    "tooltip": "The AI Assistant is in active development. There may be breaking changes."
-  },
   "header": {
     "clearConversation": "Clear conversation",
     "connected": "Connected",

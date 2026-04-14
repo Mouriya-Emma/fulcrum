@@ -1,9 +1,5 @@
 {
   "title": "AI 助手",
-  "preview": {
-    "badge": "预览",
-    "tooltip": "AI 助手正在积极开发中，可能会有重大更改。"
-  },
   "header": {
     "clearConversation": "清除对话",
     "connected": "已连接",

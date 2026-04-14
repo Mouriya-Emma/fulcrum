@@ -36,7 +36,7 @@ import {
   ComboboxLabel,
 } from '@/components/ui/combobox'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { TaskAdd01Icon, Folder01Icon, Cancel01Icon, Attachment01Icon, Link01Icon, Add01Icon, Tick01Icon, PinIcon, PinOffIcon } from '@hugeicons/core-free-icons'
+import { TaskAdd01Icon, Folder01Icon, Cancel01Icon, Attachment01Icon, Link01Icon, Add01Icon, Tick01Icon, PinIcon, PinOffIcon, ArrowDown01Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { getTaskTypeCssVar } from '@/lib/task-type-colors'
@@ -146,6 +146,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
   const [pinned, setPinned] = useState(false)
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const tagContainerRef = useRef<HTMLDivElement>(null)
   const projectContainerRef = useRef<HTMLDivElement>(null)
 
@@ -554,6 +555,7 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
     setSelectedHostId(null)
     setPullToLatest(true)
     setPullRemoteBranch('')
+    setShowAdvanced(false)
     setShowTagDropdown(false)
     setProjectSearchQuery('')
     setShowProjectDropdown(false)
@@ -848,76 +850,6 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 </Field>
               )}
 
-              {/* Agent selector - for worktree and scratch tasks */}
-              {(taskType === 'worktree' || taskType === 'scratch') && (
-                <>
-              <Field>
-                <FieldLabel>{t('createModal.fields.agent')}</FieldLabel>
-                <Select value={agent} onValueChange={(value) => setAgent(value as AgentType)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(AGENT_DISPLAY_NAMES) as AgentType[]).map((agentType) => (
-                      <SelectItem key={agentType} value={agentType}>
-                        {AGENT_DISPLAY_NAMES[agentType]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              {agent === 'opencode' && (
-                <Field>
-                  <FieldLabel>{t('createModal.fields.opencodeModel')}</FieldLabel>
-                  <ModelPicker
-                    value={opencodeModel}
-                    onChange={setOpencodeModel}
-                    placeholder={t('createModal.fields.opencodeModelPlaceholder')}
-                  />
-                </Field>
-              )}
-                </>
-              )}
-
-              {/* Remote host - for worktree and scratch tasks */}
-              {(taskType === 'worktree' || taskType === 'scratch') && (
-                <Field>
-                  <FieldLabel>Remote Host</FieldLabel>
-                  <FieldDescription>Run this agent on a remote machine via SSH</FieldDescription>
-                  {remoteHosts.length > 0 ? (
-                    <Select
-                      value={selectedHostId ?? '__local__'}
-                      onValueChange={(v) => setSelectedHostId(v === '__local__' ? null : v)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__local__">Local (this machine)</SelectItem>
-                        {remoteHosts.filter((h) => h.status === 'connected').map((host) => (
-                          <SelectItem key={host.id} value={host.id}>
-                            {host.name} ({host.username}@{host.hostname})
-                          </SelectItem>
-                        ))}
-                        {remoteHosts.filter((h) => h.status === 'unknown').map((host) => (
-                          <SelectItem key={host.id} value={host.id}>
-                            <span className="text-amber-600 dark:text-amber-400">⚠</span> {host.name} ({host.username}@{host.hostname})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      No remote hosts configured.{' '}
-                      <a href="/settings" className="text-primary hover:underline">
-                        Add hosts in Settings → General
-                      </a>
-                    </p>
-                  )}
-                </Field>
-              )}
-
               {/* Repository & branch - only for worktree tasks */}
               {taskType === 'worktree' && (
                 <>
@@ -1078,6 +1010,8 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                   </ComboboxContent>
                 </Combobox>
               </Field>
+                </>
+              )}
 
               <PullToLatestField
                 pullToLatest={pullToLatest}
@@ -1091,6 +1025,26 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 disabled={!repoPath || branchesLoading}
               />
 
+              {/* Advanced section toggle */}
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors -mx-0.5"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+              >
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  size={14}
+                  strokeWidth={2}
+                  className={cn('transition-transform', showAdvanced && 'rotate-180')}
+                />
+                {t('createModal.advanced')}
+              </button>
+
+              {showAdvanced && (
+                <>
+              {/* Branch prefix & name - only for worktree tasks */}
+              {taskType === 'worktree' && (
+                <>
               <Field>
                 <FieldLabel htmlFor="prefix">{t('createModal.fields.prefix')}</FieldLabel>
                 <Input
@@ -1124,6 +1078,76 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 )}
               </Field>
                 </>
+              )}
+
+              {/* Agent selector - for worktree and scratch tasks */}
+              {(taskType === 'worktree' || taskType === 'scratch') && (
+                <>
+              <Field>
+                <FieldLabel>{t('createModal.fields.agent')}</FieldLabel>
+                <Select value={agent} onValueChange={(value) => setAgent(value as AgentType)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(AGENT_DISPLAY_NAMES) as AgentType[]).map((agentType) => (
+                      <SelectItem key={agentType} value={agentType}>
+                        {AGENT_DISPLAY_NAMES[agentType]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              {agent === 'opencode' && (
+                <Field>
+                  <FieldLabel>{t('createModal.fields.opencodeModel')}</FieldLabel>
+                  <ModelPicker
+                    value={opencodeModel}
+                    onChange={setOpencodeModel}
+                    placeholder={t('createModal.fields.opencodeModelPlaceholder')}
+                  />
+                </Field>
+              )}
+                </>
+              )}
+
+              {/* Remote host - for worktree and scratch tasks */}
+              {(taskType === 'worktree' || taskType === 'scratch') && (
+                <Field>
+                  <FieldLabel>Remote Host</FieldLabel>
+                  <FieldDescription>Run this agent on a remote machine via SSH</FieldDescription>
+                  {remoteHosts.length > 0 ? (
+                    <Select
+                      value={selectedHostId ?? '__local__'}
+                      onValueChange={(v) => setSelectedHostId(v === '__local__' ? null : v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__local__">Local (this machine)</SelectItem>
+                        {remoteHosts.filter((h) => h.status === 'connected').map((host) => (
+                          <SelectItem key={host.id} value={host.id}>
+                            {host.name} ({host.username}@{host.hostname})
+                          </SelectItem>
+                        ))}
+                        {remoteHosts.filter((h) => h.status === 'unknown').map((host) => (
+                          <SelectItem key={host.id} value={host.id}>
+                            <span className="text-amber-600 dark:text-amber-400">⚠</span> {host.name} ({host.username}@{host.hostname})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No remote hosts configured.{' '}
+                      <a href="/settings" className="text-primary hover:underline">
+                        Add hosts in Settings → General
+                      </a>
+                    </p>
+                  )}
+                </Field>
               )}
 
               {/* Estimate */}
@@ -1383,6 +1407,8 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                   )}
                 </div>
               </Field>
+                </>
+              )}
             </FieldGroup>
 
             <DialogFooter className="mt-4 shrink-0 px-3">

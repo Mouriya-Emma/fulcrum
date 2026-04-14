@@ -103,15 +103,16 @@ export function Header({ onNewTaskRef, onOpenCommandPalette }: HeaderProps) {
         </NavigationMenu>
 
         {/* Tablet/Desktop navigation */}
-        <nav className="hidden items-center gap-1 sm:flex">
+        <nav className="hidden items-center gap-0.5 sm:flex lg:gap-1">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.to, item.matchPrefix)
             return (
               <Link
                 key={item.to}
                 to={item.to}
+                title={t(item.labelKey)}
                 className={cn(
-                  'relative flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors',
+                  'relative flex items-center gap-0 rounded-md px-2 py-1 text-sm font-medium transition-colors lg:gap-1.5',
                   active
                     ? 'bg-background text-foreground'
                     : 'text-foreground/60 hover:text-foreground',
@@ -130,7 +131,7 @@ export function Header({ onNewTaskRef, onOpenCommandPalette }: HeaderProps) {
                 ) : item.lucideIcon ? (
                   <item.lucideIcon className="size-4" data-slot="icon" />
                 ) : null}
-                <span>{t(item.labelKey)}</span>
+                <span className="hidden lg:inline">{t(item.labelKey)}</span>
               </Link>
             )
           })}

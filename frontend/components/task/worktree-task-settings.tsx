@@ -67,7 +67,7 @@ export function WorktreeTaskSettings({ task, compact }: WorktreeTaskSettingsProp
         Initialize as Worktree Task
       </Button>
 
-      {task.type !== 'scratch' && task.type !== 'worktree' && (
+      {task.type !== 'worktree' && (
         <>
           <div className="my-3 flex items-center gap-2">
             <div className="h-px flex-1 bg-border" />

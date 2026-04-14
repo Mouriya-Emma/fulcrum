@@ -126,6 +126,7 @@
     "uncommittedFilesNotice": "{{count}} uncommitted file(s) in source repo (will not be in worktree)",
     "selectPullBranch": "Select remote branch",
     "startImmediately": "Start work immediately",
+    "advanced": "Advanced",
     "pinTask": "Pin task to top",
     "unpinTask": "Unpin task",
     "errors": {

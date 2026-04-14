@@ -1,5 +1,5 @@
 import { useQueryClient, useMutation } from '@tanstack/react-query'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTask } from './use-tasks'
 import type { Task, ViewState, DiffOptions, FilesViewState } from '@/types'
 
@@ -20,6 +20,7 @@ const DEFAULT_VIEW_STATE: ViewState = {
     ignoreWhitespace: true,
     includeUntracked: false,
     collapsedFiles: [],
+    defaultCollapsed: false,
   },
   filesViewState: {
     selectedFile: null,
@@ -31,6 +32,7 @@ export function useTaskViewState(taskId: string) {
   const queryClient = useQueryClient()
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const pendingUpdatesRef = useRef<PendingUpdates>({})
+  const latestViewStateRef = useRef<ViewState>(DEFAULT_VIEW_STATE)
 
   const { data: task } = useTask(taskId)
 
@@ -53,7 +55,16 @@ export function useTaskViewState(taskId: string) {
     }
   }, [task?.viewState])
 
-  // Mutation for backend persistence
+  useEffect(() => {
+    latestViewStateRef.current = viewState
+  }, [viewState])
+
+  // Mutation for backend persistence — fire-and-forget.
+  // The optimistic cache update is the source of truth for the UI.
+  // On success we just invalidate so the next natural refetch picks up
+  // the server's persisted state, rather than writing server data into
+  // the cache immediately (which caused a flash when a stale GET raced
+  // the PATCH).
   const updateMutation = useMutation({
     mutationFn: async (newViewState: ViewState) => {
       const response = await fetch(`/api/tasks/${taskId}`, {
@@ -62,21 +73,14 @@ export function useTaskViewState(taskId: string) {
         body: JSON.stringify({ viewState: newViewState }),
       })
       if (!response.ok) throw new Error('Failed to update view state')
-      return response.json()
-    },
-    onSuccess: (data: Task) => {
-      queryClient.setQueryData(['tasks', taskId], data)
-      // Also update the tasks list cache if it exists
-      queryClient.setQueryData<Task[]>(['tasks'], (old) => {
-        if (!old) return old
-        return old.map((t) => (t.id === taskId ? data : t))
-      })
     },
   })
 
   // Optimistic update with debounced persistence
   const updateViewState = useCallback(
     (updates: PendingUpdates) => {
+      const baseViewState = latestViewStateRef.current
+
       // Merge with pending updates
       const pending = pendingUpdatesRef.current
       pendingUpdatesRef.current = {
@@ -95,17 +99,22 @@ export function useTaskViewState(taskId: string) {
       // Build new view state with full defaults
       const merged = pendingUpdatesRef.current
       const newViewState: ViewState = {
-        activeTab: merged.activeTab ?? viewState.activeTab,
-        browserUrl: merged.browserUrl ?? viewState.browserUrl,
+        activeTab: merged.activeTab ?? baseViewState.activeTab,
+        browserUrl: merged.browserUrl ?? baseViewState.browserUrl,
         diffOptions: {
-          ...viewState.diffOptions,
+          ...baseViewState.diffOptions,
           ...merged.diffOptions,
         },
         filesViewState: {
-          ...viewState.filesViewState,
+          ...baseViewState.filesViewState,
           ...merged.filesViewState,
         },
       }
+      latestViewStateRef.current = newViewState
+
+      // Cancel any in-flight task queries so a stale GET can't overwrite
+      // our optimistic cache update
+      queryClient.cancelQueries({ queryKey: ['tasks', taskId] })
 
       // Immediate optimistic update
       queryClient.setQueryData<Task>(['tasks', taskId], (old) => {
@@ -130,7 +139,7 @@ export function useTaskViewState(taskId: string) {
         pendingUpdatesRef.current = {}
       }, 500)
     },
-    [queryClient, taskId, viewState, updateMutation]
+    [queryClient, taskId, updateMutation]
   )
 
   const setActiveTab = useCallback(

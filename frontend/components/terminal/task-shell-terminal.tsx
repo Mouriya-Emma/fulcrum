@@ -9,6 +9,9 @@ import { MobileTerminalControls } from './mobile-terminal-controls'
 import { useTheme } from 'next-themes'
 import { log } from '@/lib/logger'
 
+/** Prefix used for synthetic tabIds assigned to task shell terminals */
+export const TASK_SHELL_TAB_PREFIX = 'task-shell:'
+
 interface TaskShellTerminalProps {
   taskId: string
   taskName: string
@@ -23,7 +26,7 @@ interface TaskShellTerminalProps {
  * duplicate-cwd detection (which only applies to terminals without a tabId).
  */
 export function TaskShellTerminal({ taskId, taskName, cwd, className }: TaskShellTerminalProps) {
-  const shellTabId = `task-shell:${taskId}`
+  const shellTabId = `${TASK_SHELL_TAB_PREFIX}${taskId}`
   const [terminalId, setTerminalId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const xtermRef = useRef<XTerm | null>(null)
@@ -42,6 +45,7 @@ export function TaskShellTerminal({ taskId, taskName, cwd, className }: TaskShel
     resizeTerminal,
     setupImagePaste,
     writeToTerminal,
+    recreateTerminal,
   } = useTerminalWS()
 
   const attachXtermRef = useRef(attachXterm)
@@ -147,6 +151,15 @@ export function TaskShellTerminal({ taskId, taskName, cwd, className }: TaskShel
     }
   }, [terminalId, writeToTerminal])
 
+  const handleReset = useCallback(() => {
+    if (terminalId) {
+      attachedRef.current = false
+      createdRef.current = false
+      setTerminalId(null)
+      recreateTerminal(terminalId)
+    }
+  }, [terminalId, recreateTerminal])
+
   if (!cwd) {
     return (
       <div className={cn('flex h-full items-center justify-center text-muted-foreground text-sm bg-terminal-background', className)}>
@@ -182,6 +195,7 @@ export function TaskShellTerminal({ taskId, taskName, cwd, className }: TaskShel
           terminalId={terminalId ?? undefined}
           setupImagePaste={setupImagePaste}
           onSend={handleMobileSend}
+          onReset={terminalId ? handleReset : undefined}
         />
 
         {isCreating && !terminalId && (

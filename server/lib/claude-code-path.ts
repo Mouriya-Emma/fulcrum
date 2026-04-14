@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { getSetting } from './settings'
@@ -92,4 +92,61 @@ export function getClaudeCodePathForSdk(): string | undefined {
 export function getCleanEnv(): Record<string, string | undefined> {
   const { CLAUDECODE: _, ...env } = process.env
   return env
+}
+
+/**
+ * Resolve user-enabled plugins to local paths for the SDK.
+ *
+ * settingSources: ['user'] loads enabledPlugins from ~/.claude/settings.json,
+ * but the SDK can't resolve marketplace plugins (it needs installed_plugins.json
+ * and known_marketplaces.json which live outside settings.json). Only local-directory
+ * plugins from extraKnownMarketplaces resolve correctly.
+ *
+ * This function reads the user's installed plugin cache and returns local plugin
+ * configs for all enabled marketplace plugins, so they can be passed via the
+ * SDK's `plugins` option.
+ *
+ * @param exclude Plugin IDs to skip (e.g., plugins already loaded via other means)
+ */
+export function getUserPluginsForSdk(exclude: string[] = []): Array<{ type: 'local'; path: string }> {
+  const home = homedir()
+  const settingsPath = join(home, '.claude', 'settings.json')
+  const installedPath = join(home, '.claude', 'plugins', 'installed_plugins.json')
+
+  try {
+    if (!existsSync(settingsPath) || !existsSync(installedPath)) {
+      return []
+    }
+
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'))
+    const installed = JSON.parse(readFileSync(installedPath, 'utf-8'))
+
+    const enabledPlugins = settings.enabledPlugins as Record<string, boolean> | undefined
+    if (!enabledPlugins) return []
+
+    const plugins: Array<{ type: 'local'; path: string }> = []
+
+    for (const [pluginId, enabled] of Object.entries(enabledPlugins)) {
+      if (!enabled) continue
+      if (exclude.includes(pluginId)) continue
+
+      // Find installed entry with a user scope
+      const entries = installed.plugins?.[pluginId] as Array<{ scope: string; installPath: string }> | undefined
+      const userEntry = entries?.find((e) => e.scope === 'user')
+      if (!userEntry?.installPath) continue
+
+      if (!existsSync(userEntry.installPath)) {
+        log.assistant.debug('Plugin install path missing, skipping', { pluginId, path: userEntry.installPath })
+        continue
+      }
+
+      plugins.push({ type: 'local' as const, path: userEntry.installPath })
+      log.assistant.debug('Resolved user plugin for SDK', { pluginId, path: userEntry.installPath })
+    }
+
+    return plugins
+  } catch (err) {
+    log.assistant.debug('Failed to resolve user plugins', { error: String(err) })
+    return []
+  }
 }

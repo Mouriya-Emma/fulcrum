@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect } from 'react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { log } from '@/lib/logger'
 import {
@@ -83,6 +83,10 @@ const TerminalPane = observer(function TerminalPane({ terminal, taskInfo, repoIn
   const store = useStore()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  const handleReset = useCallback(() => {
+    store.recreateTerminal(terminal.id)
+  }, [store, terminal.id])
 
   // Get the observable isStartingUp state from the terminal model (only for task terminals)
   // This is reactive because TerminalPane is wrapped with observer()
@@ -170,7 +174,7 @@ const TerminalPane = observer(function TerminalPane({ terminal, taskInfo, repoIn
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
       {renderHeader()}
       <div className="relative min-h-0 min-w-0 flex-1">
-        <Terminal onReady={onReady} onResize={onResize} onContainerReady={onContainerReady} terminalId={terminal.id} setupImagePaste={setupImagePaste} onFocus={onFocus} />
+        <Terminal onReady={onReady} onResize={onResize} onContainerReady={onContainerReady} terminalId={terminal.id} setupImagePaste={setupImagePaste} onFocus={onFocus} onReset={handleReset} />
         {/* Loading overlay - shown while Claude is starting */}
         {isStartingClaude && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-terminal-background/90">

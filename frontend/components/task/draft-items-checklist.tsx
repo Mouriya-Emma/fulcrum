@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -324,7 +324,6 @@ function DraftItemRow({
   onEditChange,
   onEditKeyDown,
   onSaveEdit,
-  onCancelEdit,
   onDelete,
   onConfirmDelete,
   onCancelDelete,
@@ -355,7 +354,7 @@ function DraftItemRow({
       element: el,
       getData: () => ({ itemId: item.id, index }),
       canDrop: ({ source }) => source.data.itemId !== item.id,
-      onDragEnter: ({ self, source }) => {
+      onDragEnter: ({ source }) => {
         const sourceIndex = source.data.index as number
         setDragOverState(sourceIndex < index ? 'bottom' : 'top')
       },
