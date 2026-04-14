@@ -53,6 +53,11 @@ function formatTask(
     console.log(`  Options:    ${JSON.stringify(task.agentOptions)}`)
   }
 
+  // Derived from
+  if (task.derivedFromTaskId) {
+    console.log(`  Derived from: ${task.derivedFromTaskId}`)
+  }
+
   // Dependencies
   if (dependencies) {
     if (dependencies.isBlocked) {

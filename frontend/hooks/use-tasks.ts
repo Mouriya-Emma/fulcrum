@@ -257,6 +257,7 @@ export interface TaskGraphNode {
   projectId: string | null
   tags: string[]
   dueDate: string | null
+  derivedFromTaskId: string | null
 }
 
 export interface TaskGraphEdge {

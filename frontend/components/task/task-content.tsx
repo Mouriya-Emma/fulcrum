@@ -6,6 +6,7 @@ import { DatePickerPopover } from '@/components/ui/date-picker-popover'
 import { TimeEstimatePicker } from '@/components/task/time-estimate-picker'
 import { LinksManager } from '@/components/task/links-manager'
 import { DependencyManager } from '@/components/task/dependency-manager'
+import { DerivedFromBadge } from '@/components/task/derived-from-badge'
 import { AttachmentsManager } from '@/components/task/attachments-manager'
 import { WorktreeTaskSettings } from '@/components/task/worktree-task-settings'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -588,6 +589,9 @@ export function TaskContent({ task, onDeleted, compact }: TaskContentProps) {
               </Button>
             )}
           </div>
+
+          {/* Derived from */}
+          {task.derivedFromTaskId && <DerivedFromBadge taskId={task.derivedFromTaskId} />}
 
           {/* Dependencies */}
           <div className={`rounded-lg border bg-card ${paddingClass}`}>

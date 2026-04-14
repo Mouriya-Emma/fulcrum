@@ -120,6 +120,7 @@ export interface Task {
   agentOptions: Record<string, string> | null
   opencodeModel: string | null
   type: 'worktree' | 'scratch' | 'draft' | null // null = manual/legacy
+  derivedFromTaskId: string | null // FK to parent task this was derived from
   pinned: boolean
   // Generalized task management fields
   projectId: string | null // FK to project (null = orphan/inbox)

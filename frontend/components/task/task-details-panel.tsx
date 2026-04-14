@@ -17,6 +17,7 @@ import { TimeEstimatePicker } from '@/components/task/time-estimate-picker'
 import { PriorityPicker } from '@/components/task/priority-picker'
 import { LinksManager } from '@/components/task/links-manager'
 import { DependencyManager } from '@/components/task/dependency-manager'
+import { DerivedFromBadge } from '@/components/task/derived-from-badge'
 import { AttachmentsManager } from '@/components/task/attachments-manager'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon } from '@hugeicons/core-free-icons'
@@ -462,6 +463,9 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
           </p>
         </div>
 
+        {/* Derived from */}
+        {task.derivedFromTaskId && <DerivedFromBadge taskId={task.derivedFromTaskId} />}
+
         {/* Dependencies */}
         <div className="rounded-lg border bg-card p-4">
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Dependencies</h3>
@@ -535,3 +539,4 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
     </div>
   )
 }
+

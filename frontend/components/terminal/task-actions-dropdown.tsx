@@ -101,6 +101,7 @@ export function TaskActionsDropdown({
     recurrenceRule: null,
     recurrenceEndDate: null,
     recurrenceSourceTaskId: null,
+    derivedFromTaskId: null,
     notes: null,
     hostId: null,
     createdAt: '',

@@ -32,6 +32,7 @@ export const tasks = sqliteTable('tasks', {
   recurrenceEndDate: text('recurrence_end_date'), // YYYY-MM-DD or null = forever
   recurrenceSourceTaskId: text('recurrence_source_task_id'), // FK to parent task (lineage chain)
   type: text('type'), // 'worktree' | 'scratch' | null (null = manual/legacy)
+  derivedFromTaskId: text('derived_from_task_id'), // FK to parent task this was derived from
   notes: text('notes'), // Free-form notes/comments
   hostId: text('host_id'), // FK to hosts (nullable - null = local execution)
   createdAt: text('created_at').notNull(),
@@ -44,6 +45,7 @@ export const taskRelationships = sqliteTable('task_relationships', {
   taskId: text('task_id').notNull(),
   relatedTaskId: text('related_task_id').notNull(),
   type: text('type').notNull().default('depends_on'), // 'depends_on' | 'relates_to' | 'subtask'
+  source: text('source').notNull().default('manual'), // 'manual' | 'derivation'
   createdAt: text('created_at').notNull(),
 })
 
