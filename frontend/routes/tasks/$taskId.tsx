@@ -993,6 +993,7 @@ function TaskView() {
               opencodeModel={resolvedOpencodeModel}
               serverPort={serverPort}
               autoFocus={shouldAutoFocus}
+              isScratch={isScratchTask}
             />
           </TabsContent>
 
@@ -1083,6 +1084,7 @@ function TaskView() {
               opencodeModel={resolvedOpencodeModel}
               serverPort={serverPort}
               autoFocus={shouldAutoFocus}
+              isScratch={isScratchTask}
             />
           </ResizablePanel>
 

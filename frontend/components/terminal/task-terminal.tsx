@@ -32,9 +32,10 @@ interface TaskTerminalProps {
   opencodeModel?: string | null
   serverPort?: number
   autoFocus?: boolean
+  isScratch?: boolean
 }
 
-export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude', aiMode, description, startupScript, agentOptions, opencodeModel, serverPort = 7777, autoFocus = false }: TaskTerminalProps) {
+export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude', aiMode, description, startupScript, agentOptions, opencodeModel, serverPort = 7777, autoFocus = false, isScratch = false }: TaskTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<AnyTerminal | null>(null)
   const hasFocusedRef = useRef(false)
@@ -296,6 +297,7 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
           description,
           taskName,
           serverPort,
+          isScratch,
         },
       })
     } else if (createdTerminalRef.current) {
@@ -406,6 +408,7 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
         description: currentDescription,
         taskName: currentTaskName,
         serverPort: currentServerPort,
+        isScratch: currentIsScratch,
       } = pendingStartup
 
       // 1. Run startup script first (e.g., mise trust, mkdir .fulcrum, export FULCRUM_DIR)
@@ -421,13 +424,18 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
       // 2. Build the agent command using the command builder abstraction
       const effectivePort = currentServerPort ?? 7777
       const portFlag = effectivePort !== 7777 ? ` --port=${effectivePort}` : ''
-      const systemPrompt = 'You are working in a Fulcrum task worktree. ' +
+      const baseSystemPrompt = 'You are working in a Fulcrum task worktree. ' +
         'Reference the fulcrum skill for complete CLI documentation (attachments, dependencies, notifications, etc.). ' +
         'Commit after completing each logical unit of work (feature, fix, refactor) to preserve progress. ' +
         `When you finish working and need user input, run: fulcrum current-task review${portFlag}. ` +
         `When linking a PR: fulcrum current-task pr <url>${portFlag}. ` +
         `When linking a URL: fulcrum current-task link <url>${portFlag}. ` +
         `For notifications: fulcrum notify "Title" "Message"${portFlag}.`
+      const scratchSuffix = currentIsScratch
+        ? ' This is a Fulcrum scratch task: keep every file you create inside the current working directory. ' +
+          'Do NOT write to /tmp, /var/tmp, $TMPDIR, or any other system temp directory — those files are invisible to the user and are cleaned up independently of this task.'
+        : ''
+      const systemPrompt = baseSystemPrompt + scratchSuffix
       const taskInfo = currentDescription ? `${currentTaskName}: ${currentDescription}` : currentTaskName
 
       // Use the agent command builder to construct the appropriate CLI command

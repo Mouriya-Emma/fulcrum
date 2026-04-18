@@ -196,6 +196,7 @@ export const RootStore = types
       description?: string
       taskName: string
       serverPort?: number
+      isScratch?: boolean
     }>(),
     /**
      * Pending tab creation tempId.
