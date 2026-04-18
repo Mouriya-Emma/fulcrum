@@ -26,7 +26,6 @@ import { registerMemoryFileTools } from './memory-file'
 import { registerMessagingTools } from './messaging'
 import { registerSearchTools } from './search'
 import { registerJobTools } from './jobs'
-import { registerBoardTools } from './board'
 
 export function registerTools(server: McpServer, client: FulcrumClient) {
   registerCoreTools(server, client)
@@ -49,7 +48,6 @@ export function registerTools(server: McpServer, client: FulcrumClient) {
   registerMemoryFileTools(server, client)
   registerSearchTools(server, client)
   registerJobTools(server, client)
-  registerBoardTools(server, client)
 }
 
 // Re-export types and schemas for external use
