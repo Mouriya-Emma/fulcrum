@@ -5,13 +5,29 @@ import { getFulcrumDir, getDatabasePath } from '../lib/settings'
 import { initFnoxConfig } from '../lib/settings/fnox'
 import { log } from '../lib/logger'
 
+// Walk-safe location that matches `getFnoxConfigPath()` in fnox.ts.
+// Legacy deployments may still have the file at `<fulcrumDir>/.fnox.toml` or
+// `<fulcrumDir>/fnox.toml`; we probe those as fallbacks for backup.
+function findFnoxConfigPath(fulcrumDir: string): string | null {
+  const candidates = [
+    path.join(fulcrumDir, 'config', 'fnox.toml'),
+    path.join(fulcrumDir, '.fnox.toml'),
+    path.join(fulcrumDir, 'fnox.toml'),
+  ]
+  return candidates.find((p) => fs.existsSync(p)) ?? null
+}
+
+function getFnoxConfigRestorePath(fulcrumDir: string): string {
+  return path.join(fulcrumDir, 'config', 'fnox.toml')
+}
+
 const app = new Hono()
 
 // Backup directory structure:
 // ~/.fulcrum/backups/
 //   2024-01-15T10-30-00/
 //     fulcrum.db
-//     fnox.toml       (archive name; on disk it's .fnox.toml)
+//     fnox.toml       (archive name; on disk it lives at config/fnox.toml)
 //     age.txt
 //     manifest.json  (metadata about the backup)
 
@@ -128,9 +144,9 @@ app.post('/', async (c) => {
       }
     }
 
-    // Copy .fnox.toml (stored as fnox.toml in backup for backward compat)
-    const fnoxConfigPath = path.join(fulcrumDir, '.fnox.toml')
-    if (fs.existsSync(fnoxConfigPath)) {
+    // Copy fnox config (archive keeps flat name `fnox.toml` for compat)
+    const fnoxConfigPath = findFnoxConfigPath(fulcrumDir)
+    if (fnoxConfigPath) {
       fs.copyFileSync(fnoxConfigPath, path.join(backupPath, 'fnox.toml'))
       manifest.files.fnoxConfig = true
       manifest.fnoxConfigSize = fs.statSync(fnoxConfigPath).size
@@ -255,14 +271,20 @@ app.post('/:name/restore', async (c) => {
     // Restore fnox config and age key
     if (restoreConfig) {
       const fnoxConfigBackup = path.join(backupPath, 'fnox.toml')
-      const fnoxConfigPath = path.join(fulcrumDir, '.fnox.toml')
+      const fnoxConfigRestorePath = getFnoxConfigRestorePath(fulcrumDir)
       if (manifest.files.fnoxConfig && fs.existsSync(fnoxConfigBackup)) {
-        // Backup current (stored as fnox.toml in backup for backward compat)
-        if (fs.existsSync(fnoxConfigPath)) {
-          fs.copyFileSync(fnoxConfigPath, path.join(preRestoreBackupPath, 'fnox.toml'))
+        // Snapshot any existing fnox config (new or legacy location) first
+        const existingFnoxConfig = findFnoxConfigPath(fulcrumDir)
+        if (existingFnoxConfig) {
+          fs.copyFileSync(existingFnoxConfig, path.join(preRestoreBackupPath, 'fnox.toml'))
           preRestoreManifest.files.fnoxConfig = true
         }
-        fs.copyFileSync(fnoxConfigBackup, fnoxConfigPath)
+        fs.mkdirSync(path.dirname(fnoxConfigRestorePath), { recursive: true })
+        fs.copyFileSync(fnoxConfigBackup, fnoxConfigRestorePath)
+        // Remove any leftover legacy copies so fnox's upward walk can't see them
+        for (const legacy of [path.join(fulcrumDir, '.fnox.toml'), path.join(fulcrumDir, 'fnox.toml')]) {
+          if (fs.existsSync(legacy)) fs.unlinkSync(legacy)
+        }
         restored.fnoxConfig = true
       }
 

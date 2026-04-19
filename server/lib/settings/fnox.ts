@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync, chmodSync, renameSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync, chmodSync, renameSync, mkdirSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import { log } from '../logger'
 import { getFulcrumDir, isTestMode } from './paths'
 
@@ -145,8 +145,31 @@ for (const [settingsPath, entry] of Object.entries(FNOX_CONFIG_MAP)) {
 
 // --- Paths ---
 
+// Nested under `config/` so fnox's upward directory walk from task worktrees
+// at `~/.fulcrum/worktrees/<slug>/` does not discover this file and merge its
+// providers into user-invoked `fnox` commands. The walk only checks direct
+// children of each ancestor directory for `fnox.toml`/`.fnox.toml`, so any
+// subdirectory is safe.
 function getFnoxConfigPath(): string {
-  return join(getFulcrumDir(), '.fnox.toml')
+  return join(getFulcrumDir(), 'config', 'fnox.toml')
+}
+
+function getLegacyFnoxConfigPaths(fulcrumDir: string): string[] {
+  return [join(fulcrumDir, '.fnox.toml'), join(fulcrumDir, 'fnox.toml')]
+}
+
+export function migrateLegacyFnoxConfig(fulcrumDir: string): boolean {
+  const newPath = join(fulcrumDir, 'config', 'fnox.toml')
+  if (existsSync(newPath)) return false
+  for (const legacy of getLegacyFnoxConfigPaths(fulcrumDir)) {
+    if (existsSync(legacy)) {
+      mkdirSync(dirname(newPath), { recursive: true })
+      renameSync(legacy, newPath)
+      log.settings.info(`Migrated ${basename(legacy)} → config/fnox.toml`)
+      return true
+    }
+  }
+  return false
 }
 
 function getFnoxKeyPath(): string {
@@ -189,24 +212,22 @@ export function isFnoxAvailable(): boolean {
 
 /**
  * Bootstrap fnox configuration when the server starts directly (e.g. systemd)
- * without going through `fulcrum up`. Creates age.txt and .fnox.toml if missing.
- * Skips gracefully if fnox or age-keygen binaries aren't available.
+ * without going through `fulcrum up`. Creates age.txt and config/fnox.toml if
+ * missing. Skips gracefully if fnox or age-keygen binaries aren't available.
  */
 export function ensureFnoxBootstrap(): void {
   if (isTestMode()) return
 
   const fulcrumDir = getFulcrumDir()
 
-  // Migrate fnox.toml → .fnox.toml (prevent auto-discovery in worktrees)
-  const oldFnoxPath = join(fulcrumDir, 'fnox.toml')
-  const newFnoxPath = join(fulcrumDir, '.fnox.toml')
-  if (existsSync(oldFnoxPath) && !existsSync(newFnoxPath)) {
-    renameSync(oldFnoxPath, newFnoxPath)
-    log.settings.info('Migrated fnox.toml → .fnox.toml')
-  }
+  // Move any legacy `~/.fulcrum/fnox.toml` or `~/.fulcrum/.fnox.toml` into
+  // `~/.fulcrum/config/fnox.toml`. Earlier versions kept the file at the
+  // Fulcrum root, where fnox's upward walk from task worktrees picked it up
+  // and silently re-encrypted user-level secrets to Fulcrum's age recipient.
+  migrateLegacyFnoxConfig(fulcrumDir)
 
   const ageKeyPath = join(fulcrumDir, 'age.txt')
-  const fnoxConfigPath = join(fulcrumDir, '.fnox.toml')
+  const fnoxConfigPath = getFnoxConfigPath()
 
   // If both files exist, nothing to do
   if (existsSync(ageKeyPath) && existsSync(fnoxConfigPath)) return
@@ -247,9 +268,10 @@ export function ensureFnoxBootstrap(): void {
     publicKey = match[1]
   }
 
-  // Create .fnox.toml if needed
+  // Create config/fnox.toml if needed
   if (!existsSync(fnoxConfigPath)) {
     log.settings.info('Creating fnox configuration...')
+    mkdirSync(dirname(fnoxConfigPath), { recursive: true })
     const config = `[providers.plain]\ntype = "plain"\n\n[providers.age]\ntype = "age"\nrecipients = ["${publicKey}"]\n`
     writeFileSync(fnoxConfigPath, config, 'utf-8')
   } else {

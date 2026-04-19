@@ -681,7 +681,7 @@ list_settings
 
 ### Configuration Storage (fnox)
 
-All Fulcrum configuration is stored in \`~/.fulcrum/.fnox.toml\` using fnox. This is the single source of truth for ~80 settings.
+All Fulcrum configuration is stored in \`~/.fulcrum/config/fnox.toml\` using fnox. This is the single source of truth for ~80 settings.
 
 **Architecture:**
 - Non-sensitive values (server.port, editor.app, appearance.theme, etc.) use the \`plain\` provider
