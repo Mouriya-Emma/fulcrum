@@ -11,12 +11,10 @@ import {
   updateZAiSettings,
   getClaudeSettings,
   updateClaudeSettings,
-  syncClaudeCodeTheme,
   isDeveloperMode,
   getDefaultValue,
   isFnoxAvailable,
   getFnoxConfigCount,
-  CLAUDE_CODE_THEMES,
   type NotificationSettings,
   type ZAiSettings,
 } from '../lib/settings'
@@ -247,37 +245,6 @@ app.post('/restart', (c) => {
   return c.json({ success: true, message: 'Restart initiated' })
 })
 
-// POST /api/config/sync-theme - Sync theme to Claude Code config
-// Debounce to prevent rapid repeated syncs from multiple tabs
-let lastSyncedTheme: { theme: 'light' | 'dark'; timestamp: number } | null = null
-const SYNC_DEBOUNCE_MS = 1000
-
-app.post('/sync-claude-theme', async (c) => {
-  try {
-    const body = await c.req.json<{ resolvedTheme: 'light' | 'dark' }>()
-    const { resolvedTheme } = body
-
-    if (resolvedTheme !== 'light' && resolvedTheme !== 'dark') {
-      return c.json({ error: 'resolvedTheme must be "light" or "dark"' }, 400)
-    }
-
-    // Skip if same theme was synced recently (defense against multiple tabs)
-    const now = Date.now()
-    if (lastSyncedTheme &&
-        lastSyncedTheme.theme === resolvedTheme &&
-        now - lastSyncedTheme.timestamp < SYNC_DEBOUNCE_MS) {
-      return c.json({ success: true, resolvedTheme, skipped: true })
-    }
-
-    syncClaudeCodeTheme(resolvedTheme)
-    lastSyncedTheme = { theme: resolvedTheme, timestamp: now }
-
-    return c.json({ success: true, resolvedTheme })
-  } catch (err) {
-    return c.json({ error: err instanceof Error ? err.message : 'Failed to sync theme' }, 400)
-  }
-})
-
 // GET /api/config/:key - Get config value
 app.get('/:key', (c) => {
   const key = c.req.param('key')
@@ -392,9 +359,6 @@ const CONFIG_VALIDATORS: Record<string, (value: unknown) => ValidatorResult> = {
     }
     return { value: value === '' ? null : value }
   },
-  [CONFIG_KEYS.SYNC_CLAUDE_CODE_THEME]: booleanValidator('Sync setting'),
-  [CONFIG_KEYS.CLAUDE_CODE_LIGHT_THEME]: enumValidator(CLAUDE_CODE_THEMES, 'Claude Code theme'),
-  [CONFIG_KEYS.CLAUDE_CODE_DARK_THEME]: enumValidator(CLAUDE_CODE_THEMES, 'Claude Code theme'),
   [CONFIG_KEYS.EDITOR_APP]: enumValidator(['vscode', 'cursor', 'windsurf', 'zed', 'antigravity'] as const, 'Editor app'),
   [CONFIG_KEYS.DEFAULT_AGENT]: enumValidator(['claude', 'opencode'] as const, 'Default agent'),
   [CONFIG_KEYS.OPENCODE_MODEL]: nullableStringValidator('OpenCode model'),

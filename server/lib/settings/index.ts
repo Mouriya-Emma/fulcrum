@@ -4,12 +4,10 @@
 // Types and constants
 export {
   CURRENT_SCHEMA_VERSION,
-  CLAUDE_CODE_THEMES,
   DEFAULT_SETTINGS,
   VALID_SETTING_PATHS,
   MIGRATION_MAP,
   type EditorApp,
-  type ClaudeCodeTheme,
   type TaskType,
   type AssistantProvider,
   type AssistantModel,
@@ -75,7 +73,6 @@ export {
   updateClaudeSettings,
   getClaudeConfig,
   updateClaudeConfig,
-  syncClaudeCodeTheme,
 } from './claude-code'
 
 // z.ai settings

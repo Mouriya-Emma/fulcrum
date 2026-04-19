@@ -585,9 +585,6 @@ You can read and modify all Fulcrum settings using the settings MCP tools. Setti
 - \`appearance.language\` - UI language: 'en', 'zh', or null (system default)
 - \`appearance.theme\` - Color theme: 'system', 'light', 'dark', or null
 - \`appearance.timezone\` - IANA timezone (e.g., 'America/New_York'), null for system
-- \`appearance.syncClaudeCodeTheme\` - Sync theme to Claude Code (default: false)
-- \`appearance.claudeCodeLightTheme\` - Light theme for Claude Code: 'light', 'light-ansi', 'light-daltonized', 'dark', 'dark-ansi', 'dark-daltonized'
-- \`appearance.claudeCodeDarkTheme\` - Dark theme for Claude Code (same options)
 
 **assistant** - Built-in assistant settings
 - \`assistant.provider\` - AI provider: 'claude' or 'opencode'

@@ -224,22 +224,6 @@
       "options": {
         "auto": "Auto (System)"
       }
-    },
-    "syncClaudeTheme": {
-      "label": "Sync Claude Code",
-      "description": "Automatically update Claude Code's theme when Fulcrum switches between light and dark mode"
-    },
-    "claudeCodeTheme": {
-      "light": "Light mode",
-      "dark": "Dark mode",
-      "options": {
-        "light": "Light",
-        "light-ansi": "Light ANSI",
-        "light-daltonized": "Light (colorblind)",
-        "dark": "Dark",
-        "dark-ansi": "Dark ANSI",
-        "dark-daltonized": "Dark (colorblind)"
-      }
     }
   },
   "notifications": {

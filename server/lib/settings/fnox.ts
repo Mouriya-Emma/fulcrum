@@ -50,9 +50,6 @@ export const FNOX_CONFIG_MAP: Record<string, ConfigEntry> = {
   'appearance.language': { fnoxKey: 'FULCRUM_APPEARANCE_LANGUAGE', provider: 'plain', type: 'string' },
   'appearance.theme': { fnoxKey: 'FULCRUM_APPEARANCE_THEME', provider: 'plain', type: 'string' },
   'appearance.timezone': { fnoxKey: 'FULCRUM_APPEARANCE_TIMEZONE', provider: 'plain', type: 'string' },
-  'appearance.syncClaudeCodeTheme': { fnoxKey: 'FULCRUM_APPEARANCE_SYNC_THEME', provider: 'plain', type: 'boolean' },
-  'appearance.claudeCodeLightTheme': { fnoxKey: 'FULCRUM_APPEARANCE_LIGHT_THEME', provider: 'plain', type: 'string' },
-  'appearance.claudeCodeDarkTheme': { fnoxKey: 'FULCRUM_APPEARANCE_DARK_THEME', provider: 'plain', type: 'string' },
 
   // Assistant
   'assistant.provider': { fnoxKey: 'FULCRUM_ASSISTANT_PROVIDER', provider: 'plain', type: 'string' },
