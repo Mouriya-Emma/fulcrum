@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
   useCopierTemplates,
   useCopierQuestions,
+  useCreateProjectFromTemplate,
 } from '@/hooks/use-copier'
 import {
   useAddRepositoryToProject,
@@ -67,7 +67,6 @@ import {
 } from '@hugeicons/core-free-icons'
 import { useDefaultGitReposDir } from '@/hooks/use-config'
 import type { CopierQuestion } from '@/types'
-import { fetchJSON } from '@/lib/api'
 
 interface AddRepositoryModalProps {
   open: boolean
@@ -122,13 +121,13 @@ export function AddRepositoryModal({
   initialTab = 'clone',
 }: AddRepositoryModalProps) {
   const { t } = useTranslation('repositories')
-  const queryClient = useQueryClient()
   const { data: defaultGitReposDir } = useDefaultGitReposDir()
   const { data: projects } = useProjects()
   const addRepositoryMutation = useAddRepositoryToProject()
   const scanMutation = useScanProjects()
   const bulkCreateMutation = useBulkCreateProjects()
   const createProjectMutation = useCreateProject()
+  const createFromTemplateMutation = useCreateProjectFromTemplate()
 
   // Project selection state (only used when propProjectId is not provided)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
@@ -251,7 +250,7 @@ export function AddRepositoryModal({
   const isClonePending = addRepositoryMutation.isPending && activeTab === 'clone'
   const isLocalPending = addRepositoryMutation.isPending && activeTab === 'local'
   const isScanPending = scanMutation.isPending || bulkCreateMutation.isPending
-  const isTemplatePending = addRepositoryMutation.isPending && activeTab === 'template'
+  const isTemplatePending = createFromTemplateMutation.isPending
 
   // Filtered projects for project selector
   const filteredProjects = useMemo(() => {
@@ -466,28 +465,14 @@ export function AddRepositoryModal({
     setTemplateError(null)
     setProjectError(null)
     try {
-      // Create the repository from template and link to the selected project
-      await fetchJSON<{ projectId: string; repositoryId: string; path: string }>(
-        '/api/copier/create',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            templateSource: effectiveTemplateSource,
-            outputPath,
-            answers,
-            projectName: templateProjectName,
-            trust: shouldTrust,
-            existingProjectId: projectId, // Link repo to selected project
-          }),
-        }
-      )
-
-      // Invalidate queries to refresh the UI
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['projects'] }),
-        queryClient.invalidateQueries({ queryKey: ['repositories'] }),
-      ])
-
+      await createFromTemplateMutation.mutateAsync({
+        templateSource: effectiveTemplateSource,
+        outputPath,
+        answers,
+        projectName: templateProjectName,
+        trust: shouldTrust,
+        existingProjectId: projectId,
+      })
       onOpenChange(false)
     } catch (err) {
       setTemplateError(err instanceof Error ? err.message : 'Failed to create from template')
@@ -1331,7 +1316,15 @@ export function AddRepositoryModal({
                         onClick={handleCreateFromTemplate}
                         disabled={!canCreateFromTemplate || isTemplatePending || !projectId}
                       >
-                        Create & Add
+                        {isTemplatePending && (
+                          <HugeiconsIcon
+                            icon={Loading03Icon}
+                            size={14}
+                            strokeWidth={2}
+                            className="animate-spin mr-2"
+                          />
+                        )}
+                        {isTemplatePending ? 'Creating…' : 'Create & Add'}
                       </Button>
                     </div>
                   </div>
