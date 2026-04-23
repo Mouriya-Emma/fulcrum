@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { registerOsc52Handler } from './osc52-handler'
 import { useKeyboardContext } from '@/contexts/keyboard-context'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ReloadIcon } from '@hugeicons/core-free-icons'
+import { ArrowDownDoubleIcon, ReloadIcon } from '@hugeicons/core-free-icons'
 import { MobileTerminalControls } from './mobile-terminal-controls'
 import { useTheme } from 'next-themes'
 import { getTerminalTheme } from './terminal-theme'
@@ -192,7 +192,7 @@ export function Terminal({ className, onReady, onResize, onContainerReady, termi
           ref={containerRef}
           className={cn('h-full w-full max-w-full overflow-hidden p-2 bg-terminal-background touch-none', className)}
         />
-        <div className={cn('group absolute top-2 right-5 flex items-center gap-1', isDark ? 'text-white/50' : 'text-black/50')}>
+        <div className={cn('group absolute top-2 right-5 flex flex-col items-end gap-1', isDark ? 'text-white/50' : 'text-black/50')}>
           {onReset && (
             <button
               onClick={() => { if (window.confirm('Reset this terminal? This will destroy and recreate it.')) onReset() }}
@@ -202,6 +202,13 @@ export function Terminal({ className, onReady, onResize, onContainerReady, termi
               <HugeiconsIcon icon={ReloadIcon} size={20} strokeWidth={2} />
             </button>
           )}
+          <button
+            onClick={() => termRef.current?.scrollToBottom()}
+            className={cn('p-1 opacity-0 transition-all group-hover:opacity-100', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+            title="Scroll to bottom"
+          >
+            <HugeiconsIcon icon={ArrowDownDoubleIcon} size={24} strokeWidth={2} />
+          </button>
         </div>
       </div>
       <div className="h-2 shrink-0 bg-terminal-background" />
