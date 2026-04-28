@@ -1007,6 +1007,7 @@ function TaskView() {
               serverPort={serverPort}
               autoFocus={shouldAutoFocus}
               hostId={task.hostId}
+              isScratch={isScratchTask}
             />
           </TabsContent>
 
@@ -1098,6 +1099,7 @@ function TaskView() {
               serverPort={serverPort}
               autoFocus={shouldAutoFocus}
               hostId={task.hostId}
+              isScratch={isScratchTask}
             />
           </ResizablePanel>
 

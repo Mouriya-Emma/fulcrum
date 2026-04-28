@@ -9,7 +9,7 @@ import { registerOsc52Handler } from './osc52-handler'
 import { useTerminalWS } from '@/hooks/use-terminal-ws'
 import { useKeyboardContext } from '@/contexts/keyboard-context'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Loading03Icon, Alert02Icon, Cancel01Icon, ReloadIcon } from '@hugeicons/core-free-icons'
+import { Loading03Icon, Alert02Icon, Cancel01Icon, ReloadIcon, ArrowDownDoubleIcon } from '@hugeicons/core-free-icons'
 import { MobileTerminalControls } from './mobile-terminal-controls'
 import { log } from '@/lib/logger'
 import { useTheme } from 'next-themes'
@@ -33,9 +33,10 @@ interface TaskTerminalProps {
   serverPort?: number
   autoFocus?: boolean
   hostId?: string | null
+  isScratch?: boolean
 }
 
-export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude', aiMode, description, startupScript, agentOptions, opencodeModel, serverPort = 7777, autoFocus = false, hostId }: TaskTerminalProps) {
+export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude', aiMode, description, startupScript, agentOptions, opencodeModel, serverPort = 7777, autoFocus = false, hostId, isScratch = false }: TaskTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<AnyTerminal | null>(null)
   const hasFocusedRef = useRef(false)
@@ -299,6 +300,7 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
           taskName,
           serverPort,
           taskId,
+          isScratch,
         },
       })
     } else if (createdTerminalRef.current) {
@@ -410,6 +412,7 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
         taskName: currentTaskName,
         serverPort: currentServerPort,
         taskId: currentTaskId,
+        isScratch: currentIsScratch,
       } = pendingStartup
 
       // 1. Run startup script first (e.g., mise trust, mkdir .fulcrum, export FULCRUM_DIR)
@@ -427,16 +430,18 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
       const buildAndSendAgentCommand = async () => {
         const effectivePort = currentServerPort ?? 7777
         const portFlag = effectivePort !== 7777 ? ` --port=${effectivePort}` : ''
-        const systemPrompt = 'You are working in a Fulcrum task worktree. ' +
+        const baseSystemPrompt = 'You are working in a Fulcrum task worktree. ' +
           'Reference the fulcrum skill for complete CLI documentation (attachments, dependencies, notifications, etc.). ' +
           'Commit after completing each logical unit of work (feature, fix, refactor) to preserve progress. ' +
           `When you finish working and need user input, run: fulcrum current-task review${portFlag}. ` +
           `When linking a PR: fulcrum current-task pr <url>${portFlag}. ` +
           `When linking a URL: fulcrum current-task link <url>${portFlag}. ` +
-          `For notifications: fulcrum notify "Title" "Message"${portFlag}. ` +
-          'Before claiming shared resources (ports, services), check the agent coordination board: fulcrum board read. ' +
-          'Claim resources before using them: fulcrum board post "message" --type claim --tag port:<N>. ' +
-          'Release resources when done: fulcrum board post "message" --type release --tag port:<N>.'
+          `For notifications: fulcrum notify "Title" "Message"${portFlag}.`
+        const scratchSuffix = currentIsScratch
+          ? ' This is a Fulcrum scratch task: keep every file you create inside the current working directory. ' +
+            'Do NOT write to /tmp, /var/tmp, $TMPDIR, or any other system temp directory — those files are invisible to the user and are cleaned up independently of this task.'
+          : ''
+        const systemPrompt = baseSystemPrompt + scratchSuffix
 
         let taskInfo = currentDescription ? `${currentTaskName}: ${currentDescription}` : currentTaskName
 
@@ -729,7 +734,7 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
           </div>
         )}
 
-        <div className={cn('group absolute top-2 right-5 flex items-center gap-1', isDark ? 'text-white/50' : 'text-black/50')}>
+        <div className={cn('group absolute top-2 right-5 flex flex-col items-end gap-1', isDark ? 'text-white/50' : 'text-black/50')}>
           {terminalId && (
             <button
               onClick={() => { if (window.confirm('Reset this terminal? This will destroy and recreate it.')) handleReset() }}
@@ -739,6 +744,13 @@ export function TaskTerminal({ taskName, cwd, taskId, className, agent = 'claude
               <HugeiconsIcon icon={ReloadIcon} size={20} strokeWidth={2} />
             </button>
           )}
+          <button
+            onClick={() => termRef.current?.scrollToBottom()}
+            className={cn('p-1 opacity-0 transition-all group-hover:opacity-100', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+            title="Scroll to bottom"
+          >
+            <HugeiconsIcon icon={ArrowDownDoubleIcon} size={24} strokeWidth={2} />
+          </button>
         </div>
       </div>
 

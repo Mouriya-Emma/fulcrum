@@ -568,63 +568,6 @@ describe('Config Routes', () => {
     })
   })
 
-  describe('POST /api/config/sync-claude-theme', () => {
-    test('syncs light theme', async () => {
-      const { post } = createTestApp()
-      const res = await post('/api/config/sync-claude-theme', {
-        resolvedTheme: 'light',
-      })
-      const body = await res.json()
-
-      expect(res.status).toBe(200)
-      expect(body.success).toBe(true)
-      expect(body.resolvedTheme).toBe('light')
-    })
-
-    test('syncs dark theme', async () => {
-      const { post } = createTestApp()
-      const res = await post('/api/config/sync-claude-theme', {
-        resolvedTheme: 'dark',
-      })
-      const body = await res.json()
-
-      expect(res.status).toBe(200)
-      expect(body.success).toBe(true)
-      expect(body.resolvedTheme).toBe('dark')
-    })
-
-    test('returns 400 for invalid theme', async () => {
-      const { post } = createTestApp()
-      const res = await post('/api/config/sync-claude-theme', {
-        resolvedTheme: 'invalid',
-      })
-      const body = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(body.error).toContain('must be "light" or "dark"')
-    })
-
-    test('debounces rapid requests', async () => {
-      const { post } = createTestApp()
-
-      // First request should succeed
-      const res1 = await post('/api/config/sync-claude-theme', {
-        resolvedTheme: 'light',
-      })
-      const body1 = await res1.json()
-      expect(body1.success).toBe(true)
-      expect(body1.skipped).toBeUndefined()
-
-      // Immediate second request with same theme should be skipped
-      const res2 = await post('/api/config/sync-claude-theme', {
-        resolvedTheme: 'light',
-      })
-      const body2 = await res2.json()
-      expect(body2.success).toBe(true)
-      expect(body2.skipped).toBe(true)
-    })
-  })
-
   describe('CONFIG_KEYS / VALID_SETTING_PATHS drift prevention', () => {
     // Keys that are only exposed through specialized routes, not the generic config API.
     // These are intentionally excluded from CONFIG_KEYS.

@@ -44,6 +44,7 @@ interface CreateTerminalOptions {
     taskName: string
     serverPort?: number
     taskId?: string
+    isScratch?: boolean
   }
 }
 
@@ -59,6 +60,7 @@ export interface PendingStartupInfo {
   taskName: string
   serverPort?: number
   taskId?: string
+  isScratch?: boolean
 }
 
 /**

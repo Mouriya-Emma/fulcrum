@@ -4,14 +4,10 @@ import type { AgentType } from '@shared/types'
 // Schema version for settings migration
 // IMPORTANT: This must match the major version in package.json
 // When bumping schema version, also bump major version with: mise run bump major
-export const CURRENT_SCHEMA_VERSION = 4
+export const CURRENT_SCHEMA_VERSION = 5
 
 // Editor app types
 export type EditorApp = 'vscode' | 'cursor' | 'windsurf' | 'zed' | 'antigravity'
-
-// Claude Code theme types
-export type ClaudeCodeTheme = 'light' | 'light-ansi' | 'light-daltonized' | 'dark' | 'dark-ansi' | 'dark-daltonized'
-export const CLAUDE_CODE_THEMES: ClaudeCodeTheme[] = ['light', 'light-ansi', 'light-daltonized', 'dark', 'dark-ansi', 'dark-daltonized']
 
 // Task type for defaults
 export type TaskType = 'worktree' | 'manual' | 'scratch'
@@ -135,9 +131,6 @@ export interface Settings {
     language: 'en' | 'zh' | null
     theme: 'system' | 'light' | 'dark' | null
     timezone: string | null // IANA timezone, null = system default
-    syncClaudeCodeTheme: boolean
-    claudeCodeLightTheme: ClaudeCodeTheme
-    claudeCodeDarkTheme: ClaudeCodeTheme
   }
   assistant: {
     provider: AssistantProvider
@@ -195,9 +188,6 @@ export const DEFAULT_SETTINGS: Settings = {
     language: null,
     theme: null,
     timezone: null,
-    syncClaudeCodeTheme: false,
-    claudeCodeLightTheme: 'light-ansi',
-    claudeCodeDarkTheme: 'dark-ansi',
   },
   assistant: {
     provider: 'claude',
@@ -300,9 +290,6 @@ export const VALID_SETTING_PATHS = new Set([
   'appearance.language',
   'appearance.theme',
   'appearance.timezone',
-  'appearance.syncClaudeCodeTheme',
-  'appearance.claudeCodeLightTheme',
-  'appearance.claudeCodeDarkTheme',
   'assistant.provider',
   'assistant.model',
   'assistant.observerModel',
@@ -343,9 +330,6 @@ export interface LegacySettings {
   githubPat: string | null
   language: 'en' | 'zh' | null
   theme: 'system' | 'light' | 'dark' | null
-  syncClaudeCodeTheme: boolean
-  claudeCodeLightTheme: ClaudeCodeTheme
-  claudeCodeDarkTheme: ClaudeCodeTheme
 }
 
 // Notification settings types
@@ -430,7 +414,4 @@ export const MIGRATION_MAP: Record<string, string> = {
   githubPat: 'integrations.githubPat',
   language: 'appearance.language',
   theme: 'appearance.theme',
-  syncClaudeCodeTheme: 'appearance.syncClaudeCodeTheme',
-  claudeCodeLightTheme: 'appearance.claudeCodeLightTheme',
-  claudeCodeDarkTheme: 'appearance.claudeCodeDarkTheme',
 }

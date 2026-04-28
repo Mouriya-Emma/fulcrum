@@ -235,39 +235,6 @@ export function useTimezone() {
   }
 }
 
-export function useSyncClaudeCodeTheme() {
-  const query = useConfig(CONFIG_KEYS.SYNC_CLAUDE_CODE_THEME)
-
-  return {
-    ...query,
-    data: Boolean(query.data?.value),
-    isDefault: query.data?.isDefault ?? true,
-  }
-}
-
-export type ClaudeCodeTheme = 'light' | 'light-ansi' | 'light-daltonized' | 'dark' | 'dark-ansi' | 'dark-daltonized'
-export const CLAUDE_CODE_THEMES: ClaudeCodeTheme[] = ['light', 'light-ansi', 'light-daltonized', 'dark', 'dark-ansi', 'dark-daltonized']
-
-export function useClaudeCodeLightTheme() {
-  const query = useConfig(CONFIG_KEYS.CLAUDE_CODE_LIGHT_THEME)
-
-  return {
-    ...query,
-    data: (query.data?.value as ClaudeCodeTheme) ?? 'light-ansi',
-    isDefault: query.data?.isDefault ?? true,
-  }
-}
-
-export function useClaudeCodeDarkTheme() {
-  const query = useConfig(CONFIG_KEYS.CLAUDE_CODE_DARK_THEME)
-
-  return {
-    ...query,
-    data: (query.data?.value as ClaudeCodeTheme) ?? 'dark-ansi',
-    isDefault: query.data?.isDefault ?? true,
-  }
-}
-
 // Task defaults
 export type TaskType = 'worktree' | 'manual' | 'scratch'
 

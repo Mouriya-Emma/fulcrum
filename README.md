@@ -20,7 +20,6 @@ Fulcrum doesn't replace your tools—it gives you leverage over them. You config
 - **Project Management** — Tasks with dependencies, due dates, time estimates, priority levels, recurrence, labels, and attachments. Visual kanban boards.
 - **Production Deployment** — Docker Compose with automatic Traefik routing and Cloudflare DNS/tunnels.
 - **Agent Memory** — Persistent knowledge store with full-text search. Agents remember across sessions.
-- **Agent Coordination** — Filesystem-based message board for coordinating agents across worktrees. Claim ports, share status, avoid conflicts.
 - **MCP-First Architecture** — 100+ tools exposed via Model Context Protocol. Agents discover what they need.
 
 ## MCP-First Architecture
@@ -237,7 +236,7 @@ The Fulcrum plugin enables seamless integration:
 - **Automatic Status Sync** — Task moves to "In Review" when Claude stops, "In Progress" when you respond
 - **Session Continuity** — Sessions tied to task IDs
 - **MCP Server** — Task management tools available directly to Claude
-- **Slash Commands** — `/review`, `/pr`, `/notify`, `/linear`, `/task-info`, `/board`
+- **Slash Commands** — `/review`, `/pr`, `/notify`, `/linear`, `/task-info`
 
 ```bash
 claude plugin marketplace add knowsuchagency/fulcrum
@@ -273,7 +272,6 @@ Both plugins include an MCP server with 100+ tools:
 | **Gmail** | List Google accounts, manage Gmail drafts, send emails |
 | **Jobs** | List, create, update, delete, enable/disable, and run systemd timers and launchd jobs |
 | **Assistant** | Send messages via channels (WhatsApp, Discord, Telegram, Slack, Gmail); query sweep history |
-| **Agent Coordination** | Read/post to coordination board; claim and check shared resources (ports, services) |
 
 Use `search_tools` to discover available tools by keyword or category.
 
@@ -318,7 +316,7 @@ For browser-only access, use Tailscale or Cloudflare Tunnels to expose your serv
 <details>
 <summary><strong>Configuration</strong></summary>
 
-All configuration is managed by [fnox](https://github.com/yarlson/fnox) — a single `.fnox.toml` file stores both plain and encrypted settings. Sensitive credentials (API keys, tokens, webhook URLs) are encrypted with age; the age key (`age.txt`) lives alongside `.fnox.toml` in the fulcrum directory. Existing `settings.json` files are automatically migrated to fnox on server start.
+All configuration is managed by [fnox](https://github.com/yarlson/fnox) — a single `config/fnox.toml` file inside the fulcrum directory stores both plain and encrypted settings. Sensitive credentials (API keys, tokens, webhook URLs) are encrypted with age; the age key (`age.txt`) lives in the fulcrum directory root. The config is nested under `config/` so fnox's upward directory walk from task worktrees does not merge Fulcrum's recipients into user-invoked `fnox` commands. Existing `settings.json` files are automatically migrated to fnox on server start.
 
 The fulcrum directory is resolved in this order:
 
@@ -355,8 +353,6 @@ fulcrum down                      # Stop server
 fulcrum status                    # Check server status
 fulcrum doctor                    # Check all dependencies
 fulcrum mcp                       # Start MCP server (stdio)
-fulcrum board read                # Read agent coordination board
-fulcrum board post "msg" --type claim --tag port:5173  # Claim a resource
 ```
 
 ### Current Task (auto-detected from worktree)
@@ -377,17 +373,6 @@ fulcrum claude install            # Install Claude Code plugin + MCP server
 fulcrum claude uninstall          # Remove plugin + MCP server
 fulcrum opencode install          # Install OpenCode plugin + MCP server
 fulcrum opencode uninstall        # Remove plugin + MCP server
-```
-
-### Agent Coordination
-
-```bash
-fulcrum board read                # Read recent messages (last 1h)
-fulcrum board read --type claim   # Filter by type
-fulcrum board post "msg" --type claim --tag port:5173  # Claim a resource
-fulcrum board check port:5173     # Check if resource is claimed
-fulcrum board release-all         # Release all your claims
-fulcrum board clean               # Remove expired messages
 ```
 
 ### Notifications

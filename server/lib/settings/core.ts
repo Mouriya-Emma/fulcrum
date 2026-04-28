@@ -4,7 +4,6 @@ import {
   DEFAULT_SETTINGS,
   VALID_SETTING_PATHS,
   MIGRATION_MAP,
-  type ClaudeCodeTheme,
   type EditorApp,
   type LegacySettings,
   type Settings,
@@ -74,9 +73,6 @@ export function getSettings(): Settings {
       language: (fv('appearance.language') as 'en' | 'zh' | null) ?? null,
       theme: (fv('appearance.theme') as 'system' | 'light' | 'dark' | null) ?? null,
       timezone: (fv('appearance.timezone') as string | null) ?? null,
-      syncClaudeCodeTheme: (fv('appearance.syncClaudeCodeTheme') as boolean | null) ?? false,
-      claudeCodeLightTheme: (fv('appearance.claudeCodeLightTheme') as ClaudeCodeTheme) ?? DEFAULT_SETTINGS.appearance.claudeCodeLightTheme,
-      claudeCodeDarkTheme: (fv('appearance.claudeCodeDarkTheme') as ClaudeCodeTheme) ?? DEFAULT_SETTINGS.appearance.claudeCodeDarkTheme,
     },
     assistant: {
       provider: (fv('assistant.provider') as AssistantProvider) ?? DEFAULT_SETTINGS.assistant.provider,
@@ -197,9 +193,6 @@ export function toLegacySettings(settings: Settings): LegacySettings {
     githubPat: settings.integrations.githubPat,
     language: settings.appearance.language,
     theme: settings.appearance.theme,
-    syncClaudeCodeTheme: settings.appearance.syncClaudeCodeTheme,
-    claudeCodeLightTheme: settings.appearance.claudeCodeLightTheme,
-    claudeCodeDarkTheme: settings.appearance.claudeCodeDarkTheme,
   }
 }
 
