@@ -1,0 +1,15 @@
+=== PATCH host on task WITH worktree (should be rejected) ===
+$ curl -X PATCH http://localhost:8888/api/tasks/<id-with-worktree> \
+    -H "content-type: application/json" \
+    -d '{"hostId":"QJcDV30ztY1p4S1kBiiOd"}'
+
+HTTP 400
+{"error":"Cannot change host on an initialized worktree task. Delete the worktree first."}
+
+=== PATCH host on task WITHOUT worktree (should succeed) ===
+$ curl -X PATCH http://localhost:8888/api/tasks/<id-no-worktree> \
+    -H "content-type: application/json" \
+    -d '{"hostId":"QJcDV30ztY1p4S1kBiiOd"}'
+
+HTTP 200
+{"id":"feb639af-ee54-4c3f-bc84-42ae913a6e40", ..., "hostId":"QJcDV30ztY1p4S1kBiiOd", ...}

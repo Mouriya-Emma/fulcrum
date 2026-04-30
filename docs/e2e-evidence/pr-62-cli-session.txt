@@ -1,0 +1,61 @@
+=== fulcrum hosts list (initial) ===
+Remote Hosts
+============
+  ✗ localhost-test       mouriya@127.0.0.1:22
+
+=== fulcrum hosts add demo --hostname 192.168.1.50 --username root ===
+Host "demo" added (root@192.168.1.50:8888)
+
+=== fulcrum hosts list (after add) ===
+Remote Hosts
+============
+  ✗ localhost-test       mouriya@127.0.0.1:22
+  ? demo                 root@192.168.1.50:8888
+
+=== fulcrum hosts test demo (no key, expect FAIL + non-zero exit) ===
+FAIL demo: Invalid SSH auth config: method=key
+exit=1
+
+=== fulcrum hosts check-env demo ===
+Environment check: demo
+  ✗ dtach       
+  ✗ fulcrum     
+  ✗ claude      
+  ✗ opencode    
+Status: not ready
+exit=1
+
+=== fulcrum hosts add foo (missing required) ===
+Add a new remote host (hosts add)
+
+USAGE hosts add [OPTIONS] <NAME> --hostname --username
+
+ARGUMENTS
+
+  NAME    Host name (display label, must be unique)    
+
+OPTIONS
+
+                 --port    Server port (default: 7777)                           
+                  --url    Override full server URL                              
+                 --json    Output as JSON                                        
+                --debug    Show detailed error stack traces                      
+  --hostname (required)    SSH hostname or IP                                    
+  --username (required)    SSH username                                          
+             --key-path    Private key path (default: ~/.ssh/id_ed25519)         
+            --directory    Default directory on remote host                      
+          --fulcrum-url    URL the remote agent uses to reach this Fulcrum server
+
+
+
+ ERROR  Missing required argument: --hostname
+
+exit=1
+
+=== fulcrum hosts remove demo ===
+Host "demo" removed
+
+=== fulcrum hosts list (final) ===
+Remote Hosts
+============
+  ✗ localhost-test       mouriya@127.0.0.1:22
