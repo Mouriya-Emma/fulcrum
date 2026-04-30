@@ -110,3 +110,19 @@ export function useCheckHostEnv() {
       ),
   })
 }
+
+export function useResetHostFingerprint() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      fetchJSON<{ success: boolean }>(
+        `${API_BASE}/api/hosts/${id}/reset-fingerprint`,
+        { method: 'POST' },
+      ),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['hosts'] })
+      queryClient.invalidateQueries({ queryKey: ['hosts', id] })
+    },
+  })
+}

@@ -220,6 +220,27 @@ app.post('/:id/test', async (c) => {
   return c.json({ ...result, fingerprint: savedFingerprint || host.hostFingerprint || undefined })
 })
 
+// POST /api/hosts/:id/reset-fingerprint - Clear stored TOFU host key fingerprint
+// so the next connection re-records it. Use when the remote host's SSH key
+// has legitimately rotated and existing fingerprint is no longer valid.
+app.post('/:id/reset-fingerprint', (c) => {
+  const id = c.req.param('id')
+  const host = db.select().from(hosts).where(eq(hosts.id, id)).get()
+  if (!host) {
+    return c.json({ error: 'Host not found' }, 404)
+  }
+
+  const now = new Date().toISOString()
+  db.update(hosts)
+    .set({ hostFingerprint: null, updatedAt: now })
+    .where(eq(hosts.id, id))
+    .run()
+
+  broadcast({ type: 'hosts:updated', payload: {} })
+
+  return c.json({ success: true })
+})
+
 // POST /api/hosts/:id/check-env - Check remote environment readiness
 app.post('/:id/check-env', async (c) => {
   const id = c.req.param('id')

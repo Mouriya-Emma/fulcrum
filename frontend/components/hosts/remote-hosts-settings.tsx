@@ -21,6 +21,7 @@ import {
   useDeleteHost,
   useTestHostConnection,
   useCheckHostEnv,
+  useResetHostFingerprint,
   type EnvCheckResult,
 } from '@/hooks/use-hosts'
 import type { Host } from '@/types'
@@ -124,6 +125,7 @@ export function RemoteHostsSettings() {
   const deleteHost = useDeleteHost()
   const testConnection = useTestHostConnection()
   const checkEnv = useCheckHostEnv()
+  const resetFingerprint = useResetHostFingerprint()
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingHostId, setEditingHostId] = useState<string | null>(null)
@@ -268,6 +270,18 @@ export function RemoteHostsSettings() {
       toast.success(`Host "${host.name}" deleted`)
     } catch (err) {
       toast.error(`Failed to delete: ${err}`)
+    }
+  }
+
+  async function handleResetFingerprint(host: Host) {
+    if (!confirm(`Clear stored TOFU fingerprint for "${host.name}"? Next connection will accept and re-record whatever host key the server presents.`)) {
+      return
+    }
+    try {
+      await resetFingerprint.mutateAsync(host.id)
+      toast.success(`Fingerprint cleared for "${host.name}"`)
+    } catch (err) {
+      toast.error(`Failed to reset fingerprint: ${err}`)
     }
   }
 
@@ -467,6 +481,36 @@ export function RemoteHostsSettings() {
                   {host.fulcrumUrl && <span>URL: {host.fulcrumUrl}</span>}
                 </div>
               )}
+
+              {/* TOFU fingerprint row */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground pl-4">
+                <span title="SSH host key fingerprint stored on first connection (Trust On First Use)">
+                  Fingerprint:
+                </span>
+                {host.hostFingerprint ? (
+                  <>
+                    <code
+                      className="font-mono select-all truncate max-w-[280px]"
+                      title={`SHA256:${host.hostFingerprint}`}
+                    >
+                      SHA256:{host.hostFingerprint}
+                    </code>
+                    <button
+                      type="button"
+                      className="underline hover:text-foreground disabled:opacity-50 disabled:no-underline"
+                      onClick={() => handleResetFingerprint(host)}
+                      disabled={resetFingerprint.isPending}
+                    >
+                      Reset
+                    </button>
+                  </>
+                ) : (
+                  <span className="italic text-amber-600 dark:text-amber-500" title="No fingerprint stored — first successful connection will record one">
+                    not yet recorded
+                  </span>
+                )}
+              </div>
+
 
               {/* Env check results */}
               {envResults[host.id] && (
