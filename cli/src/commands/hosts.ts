@@ -108,7 +108,7 @@ async function handleTest(client: FulcrumClient, name: string) {
     console.log(`OK ${host.name} (${result.latencyMs ?? '?'}ms)${result.fingerprint ? `  fingerprint=SHA256:${result.fingerprint}` : ''}`)
   } else {
     console.log(`FAIL ${host.name}: ${result.error ?? 'connection failed'}`)
-    process.exitCode = ExitCodes.GENERIC_ERROR
+    process.exitCode = ExitCodes.GENERAL_ERROR
   }
 }
 
@@ -128,7 +128,7 @@ async function handleCheckEnv(client: FulcrumClient, name: string) {
   }
   console.log(`Status: ${result.ready ? 'ready' : 'not ready'}`)
   if (!result.ready) {
-    process.exitCode = ExitCodes.GENERIC_ERROR
+    process.exitCode = ExitCodes.GENERAL_ERROR
   }
 }
 
@@ -214,6 +214,8 @@ export const hostsCommand = defineCommand({
     'check-env': hostsCheckEnvCommand,
   },
   async run({ args }) {
+    const positionals = (args._ as string[] | undefined) ?? []
+    if (positionals.length > 0) return
     setupJsonOutput(args)
     const client = new FulcrumClient(toFlags(args).url, toFlags(args).port)
     await handleList(client)
