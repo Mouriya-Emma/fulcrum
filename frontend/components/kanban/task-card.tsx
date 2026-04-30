@@ -14,9 +14,9 @@ import { useSelection } from './selection-context'
 import type { Task } from '@/types'
 import { cn } from '@/lib/utils'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { FolderLibraryIcon, GitPullRequestIcon, Calendar03Icon, AlertDiamondIcon, Alert02Icon, RepeatIcon, Clock01Icon, ArrowUp01Icon, ArrowDown01Icon, PinIcon, PinOffIcon, ComputerIcon } from '@hugeicons/core-free-icons'
+import { FolderLibraryIcon, GitPullRequestIcon, Calendar03Icon, AlertDiamondIcon, Alert02Icon, RepeatIcon, Clock01Icon, ArrowUp01Icon, ArrowDown01Icon, PinIcon, PinOffIcon, ComputerIcon, GitForkIcon } from '@hugeicons/core-free-icons'
 import { useRepositories } from '@/hooks/use-repositories'
-import { usePinTask } from '@/hooks/use-tasks'
+import { usePinTask, useTask } from '@/hooks/use-tasks'
 import { useHost } from '@/hooks/use-hosts'
 import { formatDateString } from '../../../shared/date-utils'
 import { useIsOverdue, useIsDueToday } from '@/hooks/use-date-utils'
@@ -39,6 +39,7 @@ export function TaskCard({ task, isDragPreview, isBlocked, isBlocking, showTypeL
   const pinTask = usePinTask()
   const { data: repositories } = useRepositories()
   const { data: host } = useHost(task.hostId)
+  const { data: derivedFromTask } = useTask(task.derivedFromTaskId ?? '')
   const selected = isSelected(task.id)
 
   const ref = useRef<HTMLDivElement>(null)
@@ -351,8 +352,20 @@ export function TaskCard({ task, isDragPreview, isBlocked, isBlocking, showTypeL
               </span>
             </>
           )}
+          {/* Derived task indicator */}
+          {task.derivedFromTaskId && (
+            <>
+              {(isCodeTask || task.dueDate || task.timeEstimate != null || task.recurrenceRule || host) && <span className="text-muted-foreground/30">•</span>}
+              <span
+                className="inline-flex items-center gap-0.5 whitespace-nowrap text-purple-600 dark:text-purple-400"
+                title={derivedFromTask?.title ? t('card.derivedFromTooltip', { title: derivedFromTask.title }) : t('card.derivedFromUnknown')}
+              >
+                <HugeiconsIcon icon={GitForkIcon} size={12} strokeWidth={2} />
+              </span>
+            </>
+          )}
           {/* Fallback for non-code tasks with no metadata */}
-          {!isCodeTask && !isBlocked && !isBlocking && task.tags.length === 0 && !task.dueDate && task.timeEstimate == null && (!task.priority || task.priority === 'medium') && !task.recurrenceRule && !host && (
+          {!isCodeTask && !isBlocked && !isBlocking && task.tags.length === 0 && !task.dueDate && task.timeEstimate == null && (!task.priority || task.priority === 'medium') && !task.recurrenceRule && !host && !task.derivedFromTaskId && (
             <span className="italic">Non-code task</span>
           )}
         </div>

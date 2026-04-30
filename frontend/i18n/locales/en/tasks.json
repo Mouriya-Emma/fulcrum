@@ -136,6 +136,10 @@
       "invalidUrlDescription": "Please enter a valid URL including the scheme (e.g., https://)"
     }
   },
+  "card": {
+    "derivedFromTooltip": "Derived from: {{title}}",
+    "derivedFromUnknown": "Derived from another task"
+  },
   "initializeModal": {
     "title": "Initialize as Worktree Task",
     "description": "Create a git worktree and start a coding session for \"{{taskTitle}}\"",
