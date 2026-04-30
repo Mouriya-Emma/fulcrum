@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -35,12 +35,40 @@ function StatusDot({ status }: { status: Host['status'] }) {
   return <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40" title="Unknown" />
 }
 
-function EnvChecks({ result }: { result: EnvCheckResult }) {
+function formatRelativeTime(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 5) return 'just now'
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  return `${hours}h ago`
+}
+
+function EnvChecks({ result, checkedAt, onRecheck, isRechecking }: { result: EnvCheckResult; checkedAt: number; onRecheck: () => void; isRechecking: boolean }) {
   const required = ['dtach', 'fulcrum']
   const optional = ['claude', 'opencode']
+  const [, force] = useState(0)
+
+  // Re-render every 15s so the relative timestamp stays fresh
+  useEffect(() => {
+    const id = setInterval(() => force((n) => n + 1), 15000)
+    return () => clearInterval(id)
+  }, [])
 
   return (
     <div className="mt-2 space-y-1 text-xs">
+      <div className="flex items-center gap-2 text-muted-foreground/80">
+        <span>Checked {formatRelativeTime(checkedAt)}</span>
+        <button
+          type="button"
+          className="underline hover:text-foreground disabled:opacity-50 disabled:no-underline"
+          onClick={onRecheck}
+          disabled={isRechecking}
+        >
+          {isRechecking ? 'Re-checking…' : 'Re-check'}
+        </button>
+      </div>
       {[...required, ...optional].map((name) => {
         const check = result.checks[name]
         if (!check) return null
@@ -142,8 +170,15 @@ export function RemoteHostsSettings() {
 
   // Per-host env check results
   const [envResults, setEnvResults] = useState<Record<string, EnvCheckResult>>({})
+  const [envCheckedAt, setEnvCheckedAt] = useState<Record<string, number>>({})
   const [testingHostId, setTestingHostId] = useState<string | null>(null)
   const [checkingEnvHostId, setCheckingEnvHostId] = useState<string | null>(null)
+
+  // Latest envResults seen by the visibility listener — without this ref the
+  // listener would close over the initial empty object and never see new
+  // entries.
+  const envResultsRef = useRef(envResults)
+  envResultsRef.current = envResults
 
   function resetForm() {
     setFormName('')
@@ -242,22 +277,46 @@ export function RemoteHostsSettings() {
     }
   }
 
-  async function handleCheckEnv(id: string) {
+  async function handleCheckEnv(id: string, options?: { silent?: boolean }) {
     setCheckingEnvHostId(id)
     try {
       const result = await checkEnv.mutateAsync(id)
       setEnvResults((prev) => ({ ...prev, [id]: result }))
+      setEnvCheckedAt((prev) => ({ ...prev, [id]: Date.now() }))
+      if (options?.silent) return
       if (result.ready) {
         toast.success('Environment ready')
       } else {
         toast.warning('Environment not ready — some required tools are missing')
       }
     } catch (err) {
-      toast.error(`Environment check failed: ${err}`)
+      if (!options?.silent) toast.error(`Environment check failed: ${err}`)
     } finally {
       setCheckingEnvHostId(null)
     }
   }
+
+  // When the user comes back to the tab after installing missing tools, re-run
+  // env check silently for any host whose last result was not ready. This
+  // closes the gap where "I installed it on the box, why does the UI still
+  // say fulcrum ✗?" — they don't have to remember to click again.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return
+      const stale = Object.entries(envResultsRef.current)
+        .filter(([, r]) => !r.ready)
+        .map(([id]) => id)
+      for (const id of stale) {
+        void handleCheckEnv(id, { silent: true })
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+    // handleCheckEnv is stable enough — captures checkEnv mutation which is
+    // memoized by react-query. Re-binding on every render adds noise without
+    // value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleDelete(host: Host) {
     if (!confirm(`Delete host "${host.name}"? Tasks using this host will fall back to local execution.`)) {
@@ -471,7 +530,12 @@ export function RemoteHostsSettings() {
               {/* Env check results */}
               {envResults[host.id] && (
                 <div className="pl-4">
-                  <EnvChecks result={envResults[host.id]} />
+                  <EnvChecks
+                    result={envResults[host.id]}
+                    checkedAt={envCheckedAt[host.id] ?? Date.now()}
+                    onRecheck={() => handleCheckEnv(host.id)}
+                    isRechecking={checkingEnvHostId === host.id}
+                  />
                 </div>
               )}
             </div>
