@@ -1403,7 +1403,11 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
                 type="submit"
                 disabled={!canSubmit}
               >
-                {createTask.isPending ? tc('status.creating') : t('createModal.createTask')}
+                {createTask.isPending
+                  ? (pullToLatest && taskType === 'worktree' && startImmediately
+                    ? t('createModal.creatingWithPull')
+                    : tc('status.creating'))
+                  : t('createModal.createTask')}
               </Button>
             </DialogFooter>
           </form>
