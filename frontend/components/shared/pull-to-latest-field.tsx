@@ -37,55 +37,52 @@ export function PullToLatestField({
   if (remoteBranches.length === 0) return null
 
   return (
-    <>
-      <Field>
-        <div className="flex items-center justify-between">
-          <FieldLabel>{t('createModal.pullToLatest')}</FieldLabel>
-          <Switch
-            checked={pullToLatest}
-            onCheckedChange={onPullToLatestChange}
-            size="sm"
-          />
-        </div>
-        {pullToLatest && unpushedCommits > 0 && (
-          <p className="text-sm text-destructive">
-            {t('createModal.pullToLatestBlockedByUnpushed', { count: unpushedCommits, branch: baseBranch })}
-          </p>
-        )}
-        {pullToLatest && !unpushedCommits && (
-          <Select
-            value={pullRemoteBranch}
-            onValueChange={(v) => onPullRemoteBranchChange(v ?? '')}
-            disabled={disabled}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue>
-                {pullRemoteBranch || (
-                  <span className="text-muted-foreground">
-                    {t('createModal.selectPullBranch')}
-                  </span>
-                )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {remoteBranches.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {pullToLatest && !unpushedCommits && (
-          <FieldDescription>{t('createModal.pullToLatestHint')}</FieldDescription>
-        )}
-      </Field>
-
-      {uncommittedFiles > 0 && (
-        <p className="text-sm text-muted-foreground">
-          {t('createModal.uncommittedFilesNotice', { count: uncommittedFiles })}
+    <Field>
+      <div className="flex items-center justify-between">
+        <FieldLabel>{t('createModal.pullToLatest')}</FieldLabel>
+        <Switch
+          checked={pullToLatest}
+          onCheckedChange={onPullToLatestChange}
+          size="sm"
+        />
+      </div>
+      {pullToLatest && unpushedCommits > 0 && (
+        <p className="text-sm text-destructive">
+          {t('createModal.pullToLatestBlockedByUnpushed', { count: unpushedCommits, branch: baseBranch })}
         </p>
       )}
-    </>
+      {pullToLatest && !unpushedCommits && (
+        <Select
+          value={pullRemoteBranch}
+          onValueChange={(v) => onPullRemoteBranchChange(v ?? '')}
+          disabled={disabled}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue>
+              {pullRemoteBranch || (
+                <span className="text-muted-foreground">
+                  {t('createModal.selectPullBranch')}
+                </span>
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {remoteBranches.map((b) => (
+              <SelectItem key={b} value={b}>
+                {b}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      {pullToLatest && !unpushedCommits && (
+        <FieldDescription>{t('createModal.pullToLatestHint')}</FieldDescription>
+      )}
+      {uncommittedFiles > 0 && (
+        <FieldDescription>
+          {t('createModal.uncommittedFilesNotice', { count: uncommittedFiles })}
+        </FieldDescription>
+      )}
+    </Field>
   )
 }
