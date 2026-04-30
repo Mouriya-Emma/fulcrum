@@ -34,7 +34,7 @@ export function PullToLatestField({
 }: PullToLatestFieldProps) {
   const { t } = useTranslation('tasks')
 
-  if (remoteBranches.length === 0) return null
+  const noRemoteBranches = remoteBranches.length === 0
 
   return (
     <>
@@ -42,17 +42,23 @@ export function PullToLatestField({
         <div className="flex items-center justify-between">
           <FieldLabel>{t('createModal.pullToLatest')}</FieldLabel>
           <Switch
-            checked={pullToLatest}
+            checked={pullToLatest && !noRemoteBranches}
             onCheckedChange={onPullToLatestChange}
+            disabled={disabled || noRemoteBranches}
             size="sm"
           />
         </div>
-        {pullToLatest && unpushedCommits > 0 && (
+        {noRemoteBranches && (
+          <FieldDescription>
+            {t('createModal.pullToLatestNoRemoteBranches')}
+          </FieldDescription>
+        )}
+        {!noRemoteBranches && pullToLatest && unpushedCommits > 0 && (
           <p className="text-sm text-destructive">
             {t('createModal.pullToLatestBlockedByUnpushed', { count: unpushedCommits, branch: baseBranch })}
           </p>
         )}
-        {pullToLatest && !unpushedCommits && (
+        {!noRemoteBranches && pullToLatest && !unpushedCommits && (
           <Select
             value={pullRemoteBranch}
             onValueChange={(v) => onPullRemoteBranchChange(v ?? '')}
@@ -76,7 +82,7 @@ export function PullToLatestField({
             </SelectContent>
           </Select>
         )}
-        {pullToLatest && !unpushedCommits && (
+        {!noRemoteBranches && pullToLatest && !unpushedCommits && (
           <FieldDescription>{t('createModal.pullToLatestHint')}</FieldDescription>
         )}
       </Field>
