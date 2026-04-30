@@ -24,6 +24,7 @@ import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon } from '@hu
 import { useUpdateTask } from '@/hooks/use-tasks'
 import { useAddTaskTag, useRemoveTaskTag } from '@/hooks/use-tags'
 import { useBranches } from '@/hooks/use-filesystem'
+import { useHosts } from '@/hooks/use-hosts'
 import { useIsOverdue } from '@/hooks/use-date-utils'
 import { openExternalUrl } from '@/lib/editor-url'
 import type { Task, TaskPriority } from '@/types'
@@ -49,6 +50,8 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
 
   const isWorktreeTask = !!task.worktreePath
   const { data: branchData, isLoading: branchesLoading } = useBranches(isWorktreeTask ? (task.repoPath || null) : null)
+  const { data: hostsList = [] } = useHosts()
+  const canChangeHost = !task.worktreePath
 
   const handleSaveDescription = () => {
     if (editedDescription !== (task.description || '')) {
@@ -137,6 +140,13 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
     updateTask.mutate({
       taskId: task.id,
       updates: { baseBranch: newBranch },
+    })
+  }
+
+  const handleHostChange = (newHostId: string | null) => {
+    updateTask.mutate({
+      taskId: task.id,
+      updates: { hostId: newHostId } as Partial<Task>,
     })
   }
 
@@ -462,6 +472,36 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
             Pinned tasks appear first in their kanban column and calendar day list.
           </p>
         </div>
+
+        {/* Execution Host (only when task hasn't been initialized yet) */}
+        {canChangeHost && hostsList.length > 0 && (
+          <div className="rounded-lg border bg-card p-4">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Execution Host</h3>
+            <Select
+              value={task.hostId ?? '__local__'}
+              onValueChange={(v) => handleHostChange(v === '__local__' ? null : v)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {task.hostId
+                    ? (hostsList.find((h) => h.id === task.hostId)?.name ?? task.hostId)
+                    : <span className="text-muted-foreground">Local</span>}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__local__">Local (this machine)</SelectItem>
+                {hostsList.map((host) => (
+                  <SelectItem key={host.id} value={host.id}>
+                    {host.name} ({host.username}@{host.hostname})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Where the worktree and agent run. Locked once the worktree is created.
+            </p>
+          </div>
+        )}
 
         {/* Derived from */}
         {task.derivedFromTaskId && <DerivedFromBadge taskId={task.derivedFromTaskId} />}

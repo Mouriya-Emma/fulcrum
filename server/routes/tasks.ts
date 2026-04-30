@@ -798,6 +798,7 @@ const TASK_PATCH_FIELDS: Record<string, (v: unknown) => unknown> = {
   branch: (v) => v,
   prefix: (v) => v,
   worktreePath: (v) => v,
+  hostId: (v) => v,
   timeEstimate: (v) => v != null ? (Number.isInteger(Number(v)) && Number(v) >= 1 ? Number(v) : null) : null,
   viewState: (v) => v ? JSON.stringify(v) : null,
   agentOptions: (v) => v ? JSON.stringify(v) : null,
@@ -824,6 +825,13 @@ app.patch('/:id', async (c) => {
 
     const body = await c.req.json<Partial<Task> & { viewState?: unknown }>()
     const now = new Date().toISOString()
+
+    // hostId reassignment is only allowed when the task hasn't been initialized
+    // into a worktree yet — once worktreePath is set, the worktree lives on a
+    // specific host's filesystem and cannot be moved without recreating it.
+    if (body.hostId !== undefined && body.hostId !== existing.hostId && existing.worktreePath) {
+      return c.json({ error: 'Cannot change host on an initialized worktree task. Delete the worktree first.' }, 400)
+    }
 
     // Handle status change via centralized function
     if (body.status && body.status !== existing.status) {
