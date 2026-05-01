@@ -278,6 +278,23 @@ export class SSHConnectionManager {
     }
     this.pool.clear()
   }
+
+  // Drop every pooled connection whose makeHostKey matches `<username>@<host>:<port>`.
+  // Use after the operator deliberately invalidates a host's TOFU fingerprint —
+  // existing sessions stay attached to a server we no longer trust until we
+  // close them, so reset must hang up first.
+  destroyForHost(config: { host: string; port: number; username: string }): number {
+    const hostKey = `${config.username}@${config.host}:${config.port}`
+    const connections = this.pool.get(hostKey)
+    if (!connections || connections.length === 0) return 0
+    const count = connections.length
+    for (const conn of connections) {
+      try { conn.client.end() } catch { /* ignore */ }
+    }
+    this.pool.delete(hostKey)
+    log.pty.info('Destroyed SSH connections (TOFU reset)', { hostKey, count })
+    return count
+  }
 }
 
 // Singleton
