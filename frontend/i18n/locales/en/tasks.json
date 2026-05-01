@@ -143,5 +143,11 @@
     "errors": {
       "initFailed": "Failed to initialize worktree task"
     }
+  },
+  "executionHost": {
+    "heading": "Execution Host",
+    "local": "Local",
+    "localFull": "Local (this machine)",
+    "hint": "Where the worktree and agent run. Locked once the worktree is created."
   }
 }

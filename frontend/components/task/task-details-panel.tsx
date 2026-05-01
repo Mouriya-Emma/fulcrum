@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -34,6 +35,7 @@ interface TaskDetailsPanelProps {
 }
 
 export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
+  const { t } = useTranslation('tasks')
   const updateTask = useUpdateTask()
   const addTaskTag = useAddTaskTag()
   const removeTaskTag = useRemoveTaskTag()
@@ -476,7 +478,7 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
         {/* Execution Host (only when task hasn't been initialized yet) */}
         {canChangeHost && hostsList.length > 0 && (
           <div className="rounded-lg border bg-card p-4">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Execution Host</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">{t('executionHost.heading')}</h3>
             <Select
               value={task.hostId ?? '__local__'}
               onValueChange={(v) => handleHostChange(v === '__local__' ? null : v)}
@@ -485,11 +487,11 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
                 <SelectValue>
                   {task.hostId
                     ? (hostsList.find((h) => h.id === task.hostId)?.name ?? task.hostId)
-                    : <span className="text-muted-foreground">Local</span>}
+                    : <span className="text-muted-foreground">{t('executionHost.local')}</span>}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__local__">Local (this machine)</SelectItem>
+                <SelectItem value="__local__">{t('executionHost.localFull')}</SelectItem>
                 {hostsList.map((host) => (
                   <SelectItem key={host.id} value={host.id}>
                     {host.name} ({host.username}@{host.hostname})
@@ -498,7 +500,7 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1.5">
-              Where the worktree and agent run. Locked once the worktree is created.
+              {t('executionHost.hint')}
             </p>
           </div>
         )}

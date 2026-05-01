@@ -826,11 +826,21 @@ app.patch('/:id', async (c) => {
     const body = await c.req.json<Partial<Task> & { viewState?: unknown }>()
     const now = new Date().toISOString()
 
-    // hostId reassignment is only allowed when the task hasn't been initialized
-    // into a worktree yet — once worktreePath is set, the worktree lives on a
-    // specific host's filesystem and cannot be moved without recreating it.
-    if (body.hostId !== undefined && body.hostId !== existing.hostId && existing.worktreePath) {
-      return c.json({ error: 'Cannot change host on an initialized worktree task. Delete the worktree first.' }, 400)
+    // hostId reassignment rules:
+    //   - only worktree / scratch tasks have an execution host (manual / draft
+    //     have no agent, no filesystem to point at)
+    //   - once worktreePath is set the worktree lives on a specific host's
+    //     filesystem and cannot be moved without recreating it
+    // Both rules are also enforced in the UI (TaskDetailsPanel only mounts the
+    // selector for worktree/scratch + !worktreePath), but we re-check here so
+    // direct API access stays in sync with what the UI exposes.
+    if (body.hostId !== undefined && body.hostId !== existing.hostId) {
+      if (existing.worktreePath) {
+        return c.json({ error: 'Cannot change host on an initialized worktree task. Delete the worktree first.' }, 400)
+      }
+      if (existing.type !== 'worktree' && existing.type !== 'scratch') {
+        return c.json({ error: 'Host can only be set on worktree or scratch tasks.' }, 400)
+      }
     }
 
     // Handle status change via centralized function
