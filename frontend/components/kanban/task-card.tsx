@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { FolderLibraryIcon, GitPullRequestIcon, Calendar03Icon, AlertDiamondIcon, Alert02Icon, RepeatIcon, Clock01Icon, ArrowUp01Icon, ArrowDown01Icon, PinIcon, PinOffIcon, ComputerIcon, GitForkIcon } from '@hugeicons/core-free-icons'
 import { useRepositories } from '@/hooks/use-repositories'
-import { usePinTask, useTask } from '@/hooks/use-tasks'
+import { usePinTask, useTasks } from '@/hooks/use-tasks'
 import { useHost } from '@/hooks/use-hosts'
 import { formatDateString } from '../../../shared/date-utils'
 import { useIsOverdue, useIsDueToday } from '@/hooks/use-date-utils'
@@ -39,7 +39,14 @@ export function TaskCard({ task, isDragPreview, isBlocked, isBlocking, showTypeL
   const pinTask = usePinTask()
   const { data: repositories } = useRepositories()
   const { data: host } = useHost(task.hostId)
-  const { data: derivedFromTask } = useTask(task.derivedFromTaskId ?? '')
+  // Reuse the kanban-level useTasks() cache rather than fetching the parent
+  // separately for every derived card — react-query dedupes the request, but
+  // a per-card useTask() still generates N+1 invalidations when any task
+  // changes.
+  const { data: allTasks } = useTasks()
+  const derivedFromTask = task.derivedFromTaskId
+    ? allTasks?.find((t) => t.id === task.derivedFromTaskId)
+    : undefined
   const selected = isSelected(task.id)
 
   const ref = useRef<HTMLDivElement>(null)
