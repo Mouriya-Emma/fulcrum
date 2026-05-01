@@ -150,5 +150,12 @@
     "errors": {
       "initFailed": "初始化工作树任务失败"
     }
+  },
+  "executionHost": {
+    "heading": "执行主机",
+    "local": "本机",
+    "localFull": "本机（这台机器）",
+    "hint": "工作树和 Agent 运行的位置。工作树创建后无法更改。",
+    "confirmChange": "切换执行主机？\n\n这是一次性决定——工作树创建后主机就被锁死，要再改必须先删工作树。"
   }
 }

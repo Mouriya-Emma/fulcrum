@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -20,10 +21,11 @@ import { DependencyManager } from '@/components/task/dependency-manager'
 import { DerivedFromBadge } from '@/components/task/derived-from-badge'
 import { AttachmentsManager } from '@/components/task/attachments-manager'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon } from '@hugeicons/core-free-icons'
+import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon, LockIcon } from '@hugeicons/core-free-icons'
 import { useUpdateTask } from '@/hooks/use-tasks'
 import { useAddTaskTag, useRemoveTaskTag } from '@/hooks/use-tags'
 import { useBranches } from '@/hooks/use-filesystem'
+import { useHosts } from '@/hooks/use-hosts'
 import { useIsOverdue } from '@/hooks/use-date-utils'
 import { openExternalUrl } from '@/lib/editor-url'
 import type { Task, TaskPriority } from '@/types'
@@ -33,6 +35,7 @@ interface TaskDetailsPanelProps {
 }
 
 export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
+  const { t } = useTranslation('tasks')
   const updateTask = useUpdateTask()
   const addTaskTag = useAddTaskTag()
   const removeTaskTag = useRemoveTaskTag()
@@ -49,6 +52,8 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
 
   const isWorktreeTask = !!task.worktreePath
   const { data: branchData, isLoading: branchesLoading } = useBranches(isWorktreeTask ? (task.repoPath || null) : null)
+  const { data: hostsList = [] } = useHosts()
+  const canChangeHost = !task.worktreePath
 
   const handleSaveDescription = () => {
     if (editedDescription !== (task.description || '')) {
@@ -137,6 +142,13 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
     updateTask.mutate({
       taskId: task.id,
       updates: { baseBranch: newBranch },
+    })
+  }
+
+  const handleHostChange = (newHostId: string | null) => {
+    updateTask.mutate({
+      taskId: task.id,
+      updates: { hostId: newHostId } as Partial<Task>,
     })
   }
 
@@ -462,6 +474,46 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
             Pinned tasks appear first in their kanban column and calendar day list.
           </p>
         </div>
+
+        {/* Execution Host — once-only decision, locked once worktree is created.
+            Distinct visual treatment (amber accent + lock icon) so user notices
+            this isn't a casual round-trip field like priority or tags. */}
+        {canChangeHost && hostsList.length > 0 && (
+          <div className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 p-4">
+            <h3 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mb-2">
+              <HugeiconsIcon icon={LockIcon} size={13} className="text-amber-600 dark:text-amber-500" />
+              {t('executionHost.heading')}
+            </h3>
+            <Select
+              value={task.hostId ?? '__local__'}
+              onValueChange={(v) => {
+                const next = v === '__local__' ? null : v
+                if (next === task.hostId) return
+                if (!confirm(t('executionHost.confirmChange'))) return
+                handleHostChange(next)
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {task.hostId
+                    ? (hostsList.find((h) => h.id === task.hostId)?.name ?? task.hostId)
+                    : <span className="text-muted-foreground">{t('executionHost.local')}</span>}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__local__">{t('executionHost.localFull')}</SelectItem>
+                {hostsList.map((host) => (
+                  <SelectItem key={host.id} value={host.id}>
+                    {host.name} ({host.username}@{host.hostname})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {t('executionHost.hint')}
+            </p>
+          </div>
+        )}
 
         {/* Derived from */}
         {task.derivedFromTaskId && <DerivedFromBadge taskId={task.derivedFromTaskId} />}

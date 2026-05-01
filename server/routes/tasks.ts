@@ -798,6 +798,7 @@ const TASK_PATCH_FIELDS: Record<string, (v: unknown) => unknown> = {
   branch: (v) => v,
   prefix: (v) => v,
   worktreePath: (v) => v,
+  hostId: (v) => v,
   timeEstimate: (v) => v != null ? (Number.isInteger(Number(v)) && Number(v) >= 1 ? Number(v) : null) : null,
   viewState: (v) => v ? JSON.stringify(v) : null,
   agentOptions: (v) => v ? JSON.stringify(v) : null,
@@ -824,6 +825,32 @@ app.patch('/:id', async (c) => {
 
     const body = await c.req.json<Partial<Task> & { viewState?: unknown }>()
     const now = new Date().toISOString()
+
+    // hostId reassignment rules:
+    //   - only worktree / scratch tasks have an execution host (manual / draft
+    //     have no agent, no filesystem to point at)
+    //   - once worktreePath is set the worktree lives on a specific host's
+    //     filesystem and cannot be moved without recreating it
+    // Both rules are also enforced in the UI (TaskDetailsPanel only mounts the
+    // selector for worktree/scratch + !worktreePath), but we re-check here so
+    // direct API access stays in sync with what the UI exposes.
+    if (body.hostId !== undefined && body.hostId !== existing.hostId) {
+      if (existing.worktreePath) {
+        return c.json({ error: 'Cannot change host on an initialized worktree task. Delete the worktree first.' }, 400)
+      }
+      if (existing.type !== 'worktree' && existing.type !== 'scratch') {
+        return c.json({ error: 'Host can only be set on worktree or scratch tasks.' }, 400)
+      }
+      // Verify the target host exists. Without this a typo'd id silently writes
+      // through and worktree init crashes later when joining hosts. POST does
+      // the same check (line 261) — PATCH must too.
+      if (body.hostId !== null) {
+        const host = db.select().from(hosts).where(eq(hosts.id, body.hostId)).get()
+        if (!host) {
+          return c.json({ error: `Host not found: ${body.hostId}` }, 400)
+        }
+      }
+    }
 
     // Handle status change via centralized function
     if (body.status && body.status !== existing.status) {
