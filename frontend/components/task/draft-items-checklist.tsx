@@ -324,6 +324,7 @@ function DraftItemRow({
   onEditChange,
   onEditKeyDown,
   onSaveEdit,
+  onCancelEdit: _onCancelEdit,
   onDelete,
   onConfirmDelete,
   onCancelDelete,

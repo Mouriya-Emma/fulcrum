@@ -46,7 +46,7 @@ export function useCreateDraftItem() {
 export function useUpdateDraftItem() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ itemId, taskId, ...data }: { itemId: string; taskId: string; title?: string; completed?: boolean; position?: number }) => {
+    mutationFn: async ({ itemId, taskId: _taskId, ...data }: { itemId: string; taskId: string; title?: string; completed?: boolean; position?: number }) => {
       const res = await fetch(`/api/draft-items/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
