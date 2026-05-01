@@ -47,15 +47,21 @@ export function PullToLatestField({
     }
   }, [noRemoteBranches, pullToLatest, onPullToLatestChange])
 
+  const fullyDisabled = disabled || noRemoteBranches
+
   return (
     <>
-      <Field>
-        <div className="flex items-center justify-between">
+      <Field data-disabled={fullyDisabled || undefined}>
+        <div
+          className="flex items-center justify-between"
+          title={noRemoteBranches ? t('createModal.pullToLatestNoRemoteBranches') : undefined}
+        >
           <FieldLabel>{t('createModal.pullToLatest')}</FieldLabel>
           <Switch
             checked={pullToLatest && !noRemoteBranches}
             onCheckedChange={onPullToLatestChange}
-            disabled={disabled || noRemoteBranches}
+            disabled={fullyDisabled}
+            aria-disabled={fullyDisabled}
             size="sm"
           />
         </div>
