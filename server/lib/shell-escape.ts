@@ -10,7 +10,7 @@ export function shellEscape(s: string): string {
  * Validate a git branch name - only allow safe characters.
  */
 export function isValidBranchName(name: string): boolean {
-  return /^[a-zA-Z0-9][a-zA-Z0-9\/_.-]*$/.test(name)
+  return /^[a-zA-Z0-9][a-zA-Z0-9/_.-]*$/.test(name)
 }
 
 /**
@@ -19,7 +19,7 @@ export function isValidBranchName(name: string): boolean {
 export function isValidPath(p: string): boolean {
   // Allow ~, /, alphanumeric, -, _, .
   // Must not contain shell metacharacters: ; & | ` $ ( ) { } < > ! ? * [ ] # "
-  return /^[~\/a-zA-Z0-9][a-zA-Z0-9\/_.\-~]*$/.test(p)
+  return /^[~/a-zA-Z0-9][a-zA-Z0-9/_.\-~]*$/.test(p)
 }
 
 /**
