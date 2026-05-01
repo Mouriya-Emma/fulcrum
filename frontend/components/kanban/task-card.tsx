@@ -364,10 +364,11 @@ export function TaskCard({ task, isDragPreview, isBlocked, isBlocking, showTypeL
             <>
               {(isCodeTask || task.dueDate || task.timeEstimate != null || task.recurrenceRule || host) && <span className="text-muted-foreground/30">•</span>}
               <span
-                className="inline-flex items-center gap-0.5 whitespace-nowrap text-purple-600 dark:text-purple-400"
+                className="inline-flex items-center gap-1 whitespace-nowrap text-purple-600 dark:text-purple-400"
                 title={derivedFromTask?.title ? t('card.derivedFromTooltip', { title: derivedFromTask.title }) : t('card.derivedFromUnknown')}
               >
                 <HugeiconsIcon icon={GitForkIcon} size={12} strokeWidth={2} />
+                <span>{t('card.derivedLabel')}</span>
               </span>
             </>
           )}

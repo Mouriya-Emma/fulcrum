@@ -138,7 +138,8 @@
   },
   "card": {
     "derivedFromTooltip": "Derived from: {{title}}",
-    "derivedFromUnknown": "Derived from another task"
+    "derivedFromUnknown": "Derived from another task",
+    "derivedLabel": "derived"
   },
   "initializeModal": {
     "title": "Initialize as Worktree Task",

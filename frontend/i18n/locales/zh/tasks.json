@@ -138,7 +138,8 @@
   },
   "card": {
     "derivedFromTooltip": "派生自：{{title}}",
-    "derivedFromUnknown": "派生自其他任务"
+    "derivedFromUnknown": "派生自其他任务",
+    "derivedLabel": "派生"
   },
   "initializeModal": {
     "title": "初始化为工作树任务",
