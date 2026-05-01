@@ -281,7 +281,64 @@ function getChannelDispatchers(
     dispatchers.push({ channel: 'gmail', send: () => sendGmailNotification(settings.gmail!, payload) })
   }
 
+  if (settings.mattermost?.enabled) {
+    dispatchers.push({ channel: 'mattermost', send: () => sendMattermostNotification(payload) })
+  }
+
   return dispatchers
+}
+
+// Send Mattermost notification via bot API (rich card with actions)
+async function sendMattermostNotification(
+  payload: NotificationPayload
+): Promise<NotificationResult> {
+  try {
+    const { postNotification } = await import('./mattermost/client')
+
+    const color = payload.type === 'deployment_failed' ? '#EF4444'
+      : payload.type === 'deployment_success' ? '#22C55E'
+      : '#7C3AED'
+
+    const actions = []
+    if (payload.taskId) {
+      const { getActionsUrl } = await import('./mattermost/client')
+      actions.push({
+        id: 'view_task',
+        name: 'View Task',
+        type: 'button' as const,
+        style: 'primary' as const,
+        integration: {
+          url: getActionsUrl(),
+          context: { action: 'task_detail', task_id: payload.taskId },
+        },
+      })
+    }
+    if (payload.appId) {
+      const { getActionsUrl } = await import('./mattermost/client')
+      actions.push({
+        id: 'view_app',
+        name: 'View App',
+        type: 'button' as const,
+        integration: {
+          url: getActionsUrl(),
+          context: { action: 'app_detail', app_id: payload.appId },
+        },
+      })
+    }
+
+    await postNotification({
+      fallback: `${payload.title}: ${payload.message}`,
+      color,
+      pretext: `#### ${payload.title}`,
+      text: payload.message,
+      actions: actions.length > 0 ? actions : undefined,
+    })
+
+    return { channel: 'mattermost', success: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { channel: 'mattermost', success: false, error: message }
+  }
 }
 
 // Send notification to all enabled channels
@@ -322,7 +379,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<No
 
 // Test a specific notification channel
 export async function testNotificationChannel(
-  channel: 'sound' | 'slack' | 'discord' | 'pushover' | 'whatsapp' | 'telegram' | 'gmail',
+  channel: 'sound' | 'slack' | 'discord' | 'pushover' | 'whatsapp' | 'telegram' | 'gmail' | 'mattermost',
   settings?: NotificationSettings
 ): Promise<NotificationResult> {
   const config = settings ?? getNotificationSettings()
@@ -360,6 +417,8 @@ export async function testNotificationChannel(
       return sendViaMessagingChannel('telegram', testPayload)
     case 'gmail':
       return sendGmailNotification(config.gmail, testPayload)
+    case 'mattermost':
+      return sendMattermostNotification(testPayload)
     default:
       return { channel, success: false, error: 'Unknown channel' }
   }

@@ -62,6 +62,16 @@ export interface TelegramSettings {
   botToken: string
 }
 
+// Mattermost integration settings
+export interface MattermostSettings {
+  enabled: boolean
+  serverUrl: string
+  botToken: string
+  teamId: string
+  channelId: string // Default channel for notifications
+  commandToken: string // Slash command verification token
+}
+
 // CalDAV OAuth tokens (for Google Calendar)
 export interface CalDavOAuthTokens {
   accessToken: string
@@ -91,6 +101,7 @@ export interface ChannelsSettings {
   slack: SlackSettings
   discord: DiscordSettings
   telegram: TelegramSettings
+  mattermost: MattermostSettings
 }
 
 // Nested settings interface
@@ -248,6 +259,14 @@ Then store the action plan as a memory tagged with: ritual, plan, evening-ritual
       enabled: false,
       botToken: '',
     },
+    mattermost: {
+      enabled: false,
+      serverUrl: '',
+      botToken: '',
+      teamId: '',
+      channelId: '',
+      commandToken: '',
+    },
   },
   caldav: {
     enabled: false,
@@ -318,6 +337,12 @@ export const VALID_SETTING_PATHS = new Set([
   'channels.discord.botToken',
   'channels.telegram.enabled',
   'channels.telegram.botToken',
+  'channels.mattermost.enabled',
+  'channels.mattermost.serverUrl',
+  'channels.mattermost.botToken',
+  'channels.mattermost.teamId',
+  'channels.mattermost.channelId',
+  'channels.mattermost.commandToken',
   'caldav.enabled',
   'caldav.syncIntervalMinutes',
 ])
@@ -377,6 +402,10 @@ export interface GmailNotificationConfig {
   googleAccountId?: string
 }
 
+export interface MattermostNotificationConfig {
+  enabled: boolean
+}
+
 export interface NotificationSettings {
   enabled: boolean
   toast: ToastNotificationConfig
@@ -388,6 +417,7 @@ export interface NotificationSettings {
   whatsapp: WhatsAppNotificationConfig
   telegram: TelegramNotificationConfig
   gmail: GmailNotificationConfig
+  mattermost: MattermostNotificationConfig
   _updatedAt?: number // Timestamp for optimistic locking - prevents stale tabs from overwriting settings
 }
 

@@ -31,6 +31,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   whatsapp: { enabled: false },
   telegram: { enabled: false },
   gmail: { enabled: false },
+  mattermost: { enabled: false },
 }
 
 // Get notification settings from fnox
@@ -73,6 +74,9 @@ export function getNotificationSettings(): NotificationSettings {
     gmail: {
       enabled: (fv('notifications.gmail.enabled') as boolean | null) ?? false,
       googleAccountId: (fv('notifications.gmail.googleAccountId') as string | undefined) ?? undefined,
+    },
+    mattermost: {
+      enabled: (fv('notifications.mattermost.enabled') as boolean | null) ?? false,
     },
     _updatedAt: (fv('notifications._updatedAt') as number | null) ?? undefined,
   }
