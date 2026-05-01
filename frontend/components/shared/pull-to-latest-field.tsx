@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
@@ -35,6 +36,16 @@ export function PullToLatestField({
   const { t } = useTranslation('tasks')
 
   const noRemoteBranches = remoteBranches.length === 0
+
+  // Sync internal toggle to source-repo capability: switching repos from
+  // with-remote (where user pulled toggle on) to no-remote shouldn't leave
+  // pullToLatest=true in form state, or submit would send a flag the server
+  // can't honour.
+  useEffect(() => {
+    if (noRemoteBranches && pullToLatest) {
+      onPullToLatestChange(false)
+    }
+  }, [noRemoteBranches, pullToLatest, onPullToLatestChange])
 
   return (
     <>
