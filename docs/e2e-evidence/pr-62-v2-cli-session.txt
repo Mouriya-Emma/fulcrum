@@ -1,0 +1,48 @@
+=== fulcrum hosts list (initial) ===
+No remote hosts configured. Use "fulcrum hosts add <name>" to add one.
+
+=== fulcrum hosts add demo-key --hostname 192.168.1.50 --username root (default key auth) ===
+Host "demo-key" added (root@192.168.1.50:8888)
+
+=== fulcrum hosts add demo-pwd --hostname 192.168.1.51 --username admin --auth-method password --password supersecret ===
+Host "demo-pwd" added (admin@192.168.1.51:8888)
+
+=== fulcrum hosts add bad-pwd --hostname x --username y --auth-method password (missing --password) ===
+
+ ERROR  --password is required when --auth-method=password
+
+exit=1
+
+=== fulcrum hosts add bad-method --hostname x --username y --auth-method certificate ===
+
+ ERROR  --auth-method must be "key" or "password"
+
+exit=1
+
+=== fulcrum hosts list (after add) ===
+Remote Hosts
+============
+  ? demo-key             root@192.168.1.50:8888
+  ? demo-pwd             admin@192.168.1.51:8888
+
+=== verify password persisted via direct API GET ===
+[
+  {
+    "name": "demo-key",
+    "authMethod": "key"
+  },
+  {
+    "name": "demo-pwd",
+    "authMethod": "password"
+  }
+]
+
+=== fulcrum hosts test demo-pwd (will fail no real ssh) ===
+FAIL demo-pwd: Invalid SSH auth config: method=password
+exit=1
+
+=== fulcrum hosts remove demo-key ===
+Host "demo-key" removed
+
+=== fulcrum hosts remove demo-pwd ===
+Host "demo-pwd" removed
