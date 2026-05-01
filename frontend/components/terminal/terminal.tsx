@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { registerOsc52Handler } from './osc52-handler'
 import { useKeyboardContext } from '@/contexts/keyboard-context'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowDownDoubleIcon } from '@hugeicons/core-free-icons'
+import { ArrowDownDoubleIcon, ReloadIcon } from '@hugeicons/core-free-icons'
 import { MobileTerminalControls } from './mobile-terminal-controls'
 import { useTheme } from 'next-themes'
 import { getTerminalTheme } from './terminal-theme'
@@ -22,9 +22,10 @@ interface TerminalProps {
   setupImagePaste?: (container: HTMLElement, terminalId: string) => () => void
   onSend?: (data: string) => void
   onFocus?: () => void
+  onReset?: () => void
 }
 
-export function Terminal({ className, onReady, onResize, onContainerReady, terminalId, setupImagePaste, onSend, onFocus }: TerminalProps) {
+export function Terminal({ className, onReady, onResize, onContainerReady, terminalId, setupImagePaste, onSend, onFocus, onReset }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -184,10 +185,6 @@ export function Terminal({ className, onReady, onResize, onContainerReady, termi
     termRef.current.refresh(0, termRef.current.rows - 1)
   }, [terminalTheme])
 
-  const handleScrollToBottom = useCallback(() => {
-    termRef.current?.scrollToBottom()
-  }, [])
-
   return (
     <div className="flex h-full w-full max-w-full flex-col">
       <div className="relative min-h-0 flex-1">
@@ -195,12 +192,24 @@ export function Terminal({ className, onReady, onResize, onContainerReady, termi
           ref={containerRef}
           className={cn('h-full w-full max-w-full overflow-hidden p-2 bg-terminal-background touch-none', className)}
         />
-        <button
-          onClick={handleScrollToBottom}
-          className={cn('absolute top-2 right-5 p-1 transition-colors', isDark ? 'text-white/50 hover:text-white/80' : 'text-black/50 hover:text-black/80')}
-        >
-          <HugeiconsIcon icon={ArrowDownDoubleIcon} size={20} strokeWidth={2} />
-        </button>
+        <div className={cn('group absolute top-2 right-5 flex flex-col items-end gap-1', isDark ? 'text-white/50' : 'text-black/50')}>
+          {onReset && (
+            <button
+              onClick={() => { if (window.confirm('Reset this terminal? This will destroy and recreate it.')) onReset() }}
+              className={cn('p-1 opacity-0 transition-all group-hover:opacity-100', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+              title="Reset terminal"
+            >
+              <HugeiconsIcon icon={ReloadIcon} size={20} strokeWidth={2} />
+            </button>
+          )}
+          <button
+            onClick={() => termRef.current?.scrollToBottom()}
+            className={cn('p-1 opacity-0 transition-all group-hover:opacity-100', isDark ? 'hover:text-white/80' : 'hover:text-black/80')}
+            title="Scroll to bottom"
+          >
+            <HugeiconsIcon icon={ArrowDownDoubleIcon} size={24} strokeWidth={2} />
+          </button>
+        </div>
       </div>
       <div className="h-2 shrink-0 bg-terminal-background" />
       {onSend && <MobileTerminalControls onSend={onSend} />}

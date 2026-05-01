@@ -1,26 +1,41 @@
 import { execSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync, chmodSync, renameSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync, renameSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import { CliError, ExitCodes } from './errors'
+
+// Tmp+rename so a crash mid-write can't leave a half-written fnox.toml that fnox would refuse to decode.
+function writeFileAtomicSync(filePath: string, content: string): void {
+  const tmpPath = `${filePath}.tmp`
+  writeFileSync(tmpPath, content, 'utf-8')
+  renameSync(tmpPath, filePath)
+}
 
 /**
  * Ensure fnox is set up in the given Fulcrum directory.
  *
  * 1. Generate age key if it doesn't exist
- * 2. Create .fnox.toml with age provider if it doesn't exist
+ * 2. Create config/fnox.toml with age provider if it doesn't exist
  * 3. Verify the setup works with a round-trip test
+ *
+ * The config lives under `config/` so fnox's upward directory walk from task
+ * worktrees at `~/.fulcrum/worktrees/<slug>/` does not discover it.
  */
 export function ensureFnoxSetup(fulcrumDir: string): void {
-  // Migrate fnox.toml → .fnox.toml (prevent auto-discovery in worktrees)
-  const oldFnoxPath = join(fulcrumDir, 'fnox.toml')
-  const newFnoxPath = join(fulcrumDir, '.fnox.toml')
-  if (existsSync(oldFnoxPath) && !existsSync(newFnoxPath)) {
-    renameSync(oldFnoxPath, newFnoxPath)
-    console.error('Migrated fnox.toml → .fnox.toml')
-  }
-
   const ageKeyPath = join(fulcrumDir, 'age.txt')
-  const fnoxConfigPath = join(fulcrumDir, '.fnox.toml')
+  const fnoxConfigPath = join(fulcrumDir, 'config', 'fnox.toml')
+
+  // Migrate any legacy config at `<fulcrumDir>/fnox.toml` or
+  // `<fulcrumDir>/.fnox.toml` into the walk-safe nested location.
+  if (!existsSync(fnoxConfigPath)) {
+    for (const legacy of [join(fulcrumDir, '.fnox.toml'), join(fulcrumDir, 'fnox.toml')]) {
+      if (existsSync(legacy)) {
+        mkdirSync(dirname(fnoxConfigPath), { recursive: true })
+        renameSync(legacy, fnoxConfigPath)
+        console.error(`Migrated ${basename(legacy)} → config/fnox.toml`)
+        break
+      }
+    }
+  }
 
   // Step 1: Generate age key if needed
   let publicKey: string
@@ -58,18 +73,19 @@ export function ensureFnoxSetup(fulcrumDir: string): void {
     publicKey = match[1]
   }
 
-  // Step 2: Create .fnox.toml if needed, or ensure plain provider exists
+  // Step 2: Create config/fnox.toml if needed, or ensure plain provider exists
   if (!existsSync(fnoxConfigPath)) {
     console.error('Creating fnox configuration...')
+    mkdirSync(dirname(fnoxConfigPath), { recursive: true })
     const config = `[providers.plain]\ntype = "plain"\n\n[providers.age]\ntype = "age"\nrecipients = ["${publicKey}"]\n`
-    writeFileSync(fnoxConfigPath, config, 'utf-8')
+    writeFileAtomicSync(fnoxConfigPath, config)
     console.error('fnox configuration created.')
   } else {
     // Ensure plain provider exists in existing config (upgrade from age-only)
     const existingConfig = readFileSync(fnoxConfigPath, 'utf-8')
     if (!existingConfig.includes('[providers.plain]')) {
       const updatedConfig = `[providers.plain]\ntype = "plain"\n\n${existingConfig}`
-      writeFileSync(fnoxConfigPath, updatedConfig, 'utf-8')
+      writeFileAtomicSync(fnoxConfigPath, updatedConfig)
       console.error('Added plain provider to fnox configuration.')
     }
   }

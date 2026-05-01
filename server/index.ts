@@ -21,7 +21,7 @@ import { clearSensitiveEnvVars } from './lib/env'
 // Clear sensitive env vars inherited from parent shell before reading settings
 clearSensitiveEnvVars()
 
-// Bootstrap fnox (create age.txt + .fnox.toml if missing, e.g. when started via systemd)
+// Bootstrap fnox (create age.txt + config/fnox.toml if missing, e.g. when started via systemd)
 ensureFnoxBootstrap()
 
 // Initialize fnox config cache (must happen before ensureLatestConfig for migration)

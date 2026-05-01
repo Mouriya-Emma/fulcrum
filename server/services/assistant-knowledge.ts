@@ -222,11 +222,6 @@ You have access to Fulcrum's MCP tools. Use them proactively to help users.
 - \`delete-caldav-copy-rule\` - Remove a copy rule
 - \`execute-caldav-copy-rule\` - Manually run a copy rule
 
-**Agent Coordination Board:**
-- \`board-read\` - Read recent messages from the coordination board (filter by time, type, project, tag)
-- \`board-post\` - Post a message (claim resources, share status, warn other agents)
-- \`board-check\` - Check if a specific resource is claimed (e.g., "port:5173")
-
 **Utilities:**
 - \`list-tags\` - See all tags in use
 - \`delete-tag\` - Delete a tag and all its associations
@@ -590,9 +585,6 @@ You can read and modify all Fulcrum settings using the settings MCP tools. Setti
 - \`appearance.language\` - UI language: 'en', 'zh', or null (system default)
 - \`appearance.theme\` - Color theme: 'system', 'light', 'dark', or null
 - \`appearance.timezone\` - IANA timezone (e.g., 'America/New_York'), null for system
-- \`appearance.syncClaudeCodeTheme\` - Sync theme to Claude Code (default: false)
-- \`appearance.claudeCodeLightTheme\` - Light theme for Claude Code: 'light', 'light-ansi', 'light-daltonized', 'dark', 'dark-ansi', 'dark-daltonized'
-- \`appearance.claudeCodeDarkTheme\` - Dark theme for Claude Code (same options)
 
 **assistant** - Built-in assistant settings
 - \`assistant.provider\` - AI provider: 'claude' or 'opencode'
@@ -686,7 +678,7 @@ list_settings
 
 ### Configuration Storage (fnox)
 
-All Fulcrum configuration is stored in \`~/.fulcrum/.fnox.toml\` using fnox. This is the single source of truth for ~80 settings.
+All Fulcrum configuration is stored in \`~/.fulcrum/config/fnox.toml\` using fnox. This is the single source of truth for ~80 settings.
 
 **Architecture:**
 - Non-sensitive values (server.port, editor.app, appearance.theme, etc.) use the \`plain\` provider

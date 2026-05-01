@@ -280,6 +280,7 @@ export function WorkspacePanel({
               terminalId={terminalId ?? undefined}
               setupImagePaste={setupImagePaste}
               onSend={handleTerminalSend}
+              onReset={terminalId ? handleRecreate : undefined}
             />
           </div>
         </TabsContent>
@@ -311,6 +312,7 @@ export function WorkspacePanel({
             terminalId={terminalId ?? undefined}
             setupImagePaste={setupImagePaste}
             onSend={handleTerminalSend}
+            onReset={terminalId ? handleRecreate : undefined}
           />
         </div>
       </ResizablePanel>

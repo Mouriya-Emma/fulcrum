@@ -6,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { ContentRenderer } from './content-renderer'
@@ -113,16 +112,6 @@ export function CanvasPanel({
                 {selectedArtifact.title}
               </div>
             )}
-            <Tooltip>
-              <TooltipTrigger>
-                <Badge variant="destructive" className="text-[0.6rem] h-4 px-1.5 cursor-help border border-destructive/30">
-                  {t('preview.badge')}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" align="end" className="max-w-[200px]">
-                {t('preview.tooltip')}
-              </TooltipContent>
-            </Tooltip>
           </div>
         </div>
 

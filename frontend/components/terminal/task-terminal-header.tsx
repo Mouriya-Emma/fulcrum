@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { GitActionsButtons } from './git-actions-buttons'
 import { TaskActionsDropdown } from './task-actions-dropdown'
-import { GitStatusBadge } from '@/components/viewer/git-status-badge'
+
 import { DeleteTaskDialog } from '@/components/delete-task-dialog'
 import { useUpdateTaskStatus } from '@/hooks/use-tasks'
 import { useTasks } from '@/hooks/use-tasks'
@@ -62,7 +62,7 @@ interface TaskTerminalHeaderProps {
 
 const FULL_THRESHOLD = 600        // All elements visible
 const MEDIUM_THRESHOLD = 450      // Hide project/CWD, keep git buttons inline
-const HIDE_BADGE_THRESHOLD = 250  // Hide git status badge
+const HIDE_BADGE_THRESHOLD = 250  // Hide task status badge
 
 export function TaskTerminalHeader({
   taskInfo,
@@ -97,7 +97,7 @@ export function TaskTerminalHeader({
   const isStandalone = !taskInfo.repoPath
   const showProjectAndCwd = containerWidth >= FULL_THRESHOLD && !isStandalone
   const showGitButtonsInline = containerWidth >= MEDIUM_THRESHOLD && !isMobile && !isStandalone
-  const showBadge = containerWidth >= HIDE_BADGE_THRESHOLD && !isStandalone
+  const showBadge = containerWidth >= HIDE_BADGE_THRESHOLD
 
   // Build a partial Task object for DeleteTaskDialog
   const taskForDialog: Task = {
@@ -183,44 +183,45 @@ export function TaskTerminalHeader({
         )}
 
         {/* Right-side actions */}
-        <div className="ml-auto flex items-center gap-1">
-          {/* Git status badge - visible until very narrow */}
-          {showBadge && <GitStatusBadge worktreePath={taskInfo.worktreePath} />}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {/* Task status badge - visible until very narrow */}
+          {showBadge && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button
+                    type="button"
+                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[taskStatus]}`}
+                  />
+                }
+              >
+                {STATUS_LABELS[taskStatus]}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuRadioGroup
+                  value={taskStatus}
+                  onValueChange={(newStatus) => {
+                    const statusTasks = tasks?.filter((t) => t.status === newStatus) ?? []
+                    updateTaskStatus.mutate({
+                      taskId: taskInfo.taskId,
+                      status: newStatus as TaskStatus,
+                      position: statusTasks.length,
+                    })
+                  }}
+                >
+                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                    <DropdownMenuRadioItem key={value} value={value}>
+                      {label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-          {/* Actions: status badge + delete for scratch, git buttons for worktree */}
+          {/* Actions: delete for scratch, git buttons for worktree */}
           {isStandalone ? (
             <>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <button
-                      type="button"
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[taskStatus]}`}
-                    />
-                  }
-                >
-                  {STATUS_LABELS[taskStatus]}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuRadioGroup
-                    value={taskStatus}
-                    onValueChange={(newStatus) => {
-                      const statusTasks = tasks?.filter((t) => t.status === newStatus) ?? []
-                      updateTaskStatus.mutate({
-                        taskId: taskInfo.taskId,
-                        status: newStatus as TaskStatus,
-                        position: statusTasks.length,
-                      })
-                    }}
-                  >
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                      <DropdownMenuRadioItem key={value} value={value}>
-                        {label}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
               <Button
                 variant="ghost"
                 size="icon-xs"

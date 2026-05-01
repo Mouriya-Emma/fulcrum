@@ -21,6 +21,35 @@ import type {
 
 const app = new Hono()
 
+async function runCommand(
+  cmd: string[],
+  opts: { cwd?: string; timeoutMs?: number } = {}
+): Promise<{ stdout: string; stderr: string }> {
+  const { cwd, timeoutMs = 120_000 } = opts
+  const proc = Bun.spawn(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' })
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    proc.kill()
+  }, timeoutMs)
+  try {
+    const [stdout, stderr] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ])
+    const code = await proc.exited
+    if (timedOut) {
+      throw new Error(`Command timed out after ${timeoutMs}ms: ${cmd.join(' ')}`)
+    }
+    if (code !== 0) {
+      throw new Error(stderr.trim() || `${cmd[0]} exited with code ${code}`)
+    }
+    return { stdout, stderr }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /**
  * Check if uv is installed
  */
@@ -261,20 +290,21 @@ app.post('/create', async (c) => {
     answersFile = join(tmpdir(), `copier-answers-${crypto.randomUUID()}.json`)
     writeFileSync(answersFile, JSON.stringify(filteredAnswers))
 
-    // Execute copier via uvx
+    // Execute copier via uvx (async so the event loop stays responsive
+    // — uvx's first-run copier download can take tens of seconds)
     try {
-      const trustFlag = trust ? '--trust ' : ''
-      execSync(
-        `uvx copier copy --data-file "${answersFile}" --force --vcs-ref HEAD ${trustFlag}"${templatePath}" "${fullOutputPath}"`,
-        {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-          timeout: 120000, // 2 minute timeout
-        }
-      )
+      const copierArgs = [
+        'uvx', 'copier', 'copy',
+        '--data-file', answersFile,
+        '--force',
+        '--vcs-ref', 'HEAD',
+        ...(trust ? ['--trust'] : []),
+        templatePath,
+        fullOutputPath,
+      ]
+      await runCommand(copierArgs, { timeoutMs: 180_000 })
     } catch (err) {
-      const error = err as { stderr?: string; message?: string }
-      const errorMessage = error.stderr || error.message || 'Copier execution failed'
+      const errorMessage = err instanceof Error ? err.message : 'Copier execution failed'
       log.api.error('Copier execution failed', { templatePath, outputPath: fullOutputPath, error: errorMessage })
       return c.json({ error: errorMessage }, 500)
     }
@@ -284,16 +314,11 @@ app.post('/create', async (c) => {
     const gitPath = join(fullOutputPath, '.git')
     if (!existsSync(gitPath)) {
       try {
-        execSync('git init', {
+        await runCommand(['git', 'init'], { cwd: fullOutputPath, timeoutMs: 15_000 })
+        await runCommand(['git', 'add', '-A'], { cwd: fullOutputPath, timeoutMs: 30_000 })
+        await runCommand(['git', 'commit', '-m', 'Initial commit from template'], {
           cwd: fullOutputPath,
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        })
-        // Create initial commit
-        execSync('git add -A && git commit -m "Initial commit from template"', {
-          cwd: fullOutputPath,
-          encoding: 'utf-8',
-          stdio: 'pipe',
+          timeoutMs: 30_000,
         })
         log.api.info('Initialized git repository', { path: fullOutputPath })
       } catch (gitErr) {

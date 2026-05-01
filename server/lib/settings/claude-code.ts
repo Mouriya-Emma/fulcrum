@@ -2,7 +2,6 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { log } from '../logger'
 import { getHomeDir, assertNotProductionPath } from './paths'
-import { getSettings } from './core'
 
 // ==================== Claude Code Settings ====================
 // These functions manage ~/.claude/settings.json for configuring Claude Code
@@ -74,17 +73,4 @@ export function updateClaudeConfig(updates: Record<string, unknown>): void {
   }).catch((err) => {
     log.settings.error('Failed to update Claude config', { error: String(err) })
   })
-}
-
-// Update Claude Code theme if sync is enabled
-// Uses user-configured themes for light/dark mode
-export function syncClaudeCodeTheme(resolvedTheme: 'light' | 'dark'): void {
-  const settings = getSettings()
-  if (!settings.appearance.syncClaudeCodeTheme) return
-
-  const claudeTheme = resolvedTheme === 'light'
-    ? settings.appearance.claudeCodeLightTheme
-    : settings.appearance.claudeCodeDarkTheme
-  updateClaudeConfig({ theme: claudeTheme })
-  log.settings.info('Synced Claude Code theme', { claudeTheme, resolvedTheme })
 }

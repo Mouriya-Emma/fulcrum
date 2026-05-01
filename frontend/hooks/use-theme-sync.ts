@@ -1,22 +1,17 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { useTheme as useNextTheme } from 'next-themes'
-import { useSyncClaudeCodeTheme, type Theme } from './use-config'
+import { type Theme } from './use-config'
 import { useStore } from '@/stores'
-import { fetchJSON } from '@/lib/api'
 import { reaction } from 'mobx'
 
 /**
  * Hook to sync theme across all clients via WebSocket.
  * - Listens for theme:synced messages from server
  * - Broadcasts theme changes to all connected clients
- * - Optionally syncs theme to Claude Code config when enabled
  */
 export function useThemeSync() {
   const store = useStore()
   const { setTheme, resolvedTheme, theme: currentTheme } = useNextTheme()
-  const { data: syncClaudeCode } = useSyncClaudeCodeTheme()
-  const prevSyncClaudeCode = useRef<boolean | undefined>(undefined)
-  const hasInitialized = useRef(false)
 
   // Track if we're applying a broadcasted theme (to skip re-broadcasting)
   const isApplyingBroadcast = useRef(false)
@@ -54,21 +49,6 @@ export function useThemeSync() {
     link.href = '/logo.png'
   }, [])
 
-  // Sync to Claude Code when sync setting is toggled on (immediate sync with current theme)
-  useEffect(() => {
-    const syncJustEnabled = hasInitialized.current && syncClaudeCode && prevSyncClaudeCode.current === false
-
-    prevSyncClaudeCode.current = syncClaudeCode
-    hasInitialized.current = true
-
-    if (resolvedTheme && syncJustEnabled) {
-      fetchJSON('/api/config/sync-claude-theme', {
-        method: 'POST',
-        body: JSON.stringify({ resolvedTheme }),
-      }).catch(() => {})
-    }
-  }, [syncClaudeCode, resolvedTheme])
-
   // Function to change theme and broadcast to all clients
   const changeTheme = useCallback(
     (theme: Theme) => {
@@ -79,25 +59,13 @@ export function useThemeSync() {
 
       // Broadcast via WebSocket to all clients (server also persists to settings)
       store.syncTheme(theme)
-
-      // Sync to Claude Code if enabled (only on explicit user action)
-      if (syncClaudeCode) {
-        const effectiveTheme = theme === 'system'
-          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-          : theme
-        fetchJSON('/api/config/sync-claude-theme', {
-          method: 'POST',
-          body: JSON.stringify({ resolvedTheme: effectiveTheme }),
-        }).catch(() => {})
-      }
     },
-    [setTheme, store, syncClaudeCode]
+    [setTheme, store]
   )
 
   return {
     theme: (currentTheme as Theme) ?? 'system',
     resolvedTheme: resolvedTheme as 'light' | 'dark' | undefined,
-    syncClaudeCode,
     changeTheme,
     isUpdating: false,
   }

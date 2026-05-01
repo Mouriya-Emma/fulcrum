@@ -365,7 +365,7 @@ export async function* streamMessage(
         systemPrompt,
         permissionMode: 'bypassPermissions', // Bypass all permissions for seamless chat
         allowDangerouslySkipPermissions: true, // Required for bypassPermissions mode
-        settingSources: [], // SDK isolation — don't load user MCP servers or plugins
+        settingSources: ['user'], // Load user-level MCP servers and plugins from ~/.claude/settings.json
       },
     })
 

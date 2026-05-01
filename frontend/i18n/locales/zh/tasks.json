@@ -127,6 +127,7 @@
     "uncommittedFilesNotice": "源仓库有 {{count}} 个未提交的文件（不会包含在工作树中）",
     "selectPullBranch": "选择远程分支",
     "startImmediately": "立即开始工作",
+    "advanced": "高级",
     "pinTask": "置顶任务",
     "unpinTask": "取消置顶",
     "errors": {

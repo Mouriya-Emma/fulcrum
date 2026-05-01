@@ -203,7 +203,7 @@ async function handleUpCommand(flags: Record<string, string>) {
   }
   const ptyLibPath = join(packageRoot, 'lib', ptyLibName)
 
-  // Ensure fnox is initialized (age key + .fnox.toml)
+  // Ensure fnox is initialized (age key + config/fnox.toml)
   const fulcrumDir = getFulcrumDir()
   ensureFnoxSetup(fulcrumDir)
 

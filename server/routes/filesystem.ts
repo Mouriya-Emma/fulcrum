@@ -524,8 +524,8 @@ app.get('/raw', (c) => {
 // POST /api/fs/write
 // Body: { path: string, root: string, content: string }
 app.post('/write', async (c) => {
-  const body = await c.req.json<{ path?: string; root?: string; content?: string }>()
-  const { path: filePath, root, content } = body
+  const body = await c.req.json<{ path?: string; root?: string; content?: string; create?: boolean }>()
+  const { path: filePath, root, content, create } = body
 
   if (!filePath) {
     return c.json({ error: 'path is required' }, 400)
@@ -549,12 +549,16 @@ app.post('/write', async (c) => {
 
   try {
     if (!fs.existsSync(resolvedPath)) {
-      return c.json({ error: 'File not found' }, 404)
-    }
-
-    const stat = fs.statSync(resolvedPath)
-    if (!stat.isFile()) {
-      return c.json({ error: 'Path is not a file' }, 400)
+      if (!create) {
+        return c.json({ error: 'File not found' }, 404)
+      }
+      // Create parent directories and write new file
+      fs.mkdirSync(path.dirname(resolvedPath), { recursive: true })
+    } else {
+      const stat = fs.statSync(resolvedPath)
+      if (!stat.isFile()) {
+        return c.json({ error: 'Path is not a file' }, 400)
+      }
     }
 
     // Write the content
