@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { Alert02Icon } from '@hugeicons/core-free-icons'
 import {
   Select,
   SelectContent,
@@ -79,8 +81,9 @@ export function PullToLatestField({
         <FieldDescription>{t('createModal.pullToLatestHint')}</FieldDescription>
       )}
       {uncommittedFiles > 0 && (
-        <FieldDescription>
-          {t('createModal.uncommittedFilesNotice', { count: uncommittedFiles })}
+        <FieldDescription className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+          <HugeiconsIcon icon={Alert02Icon} size={14} className="mt-0.5 shrink-0" />
+          <span>{t('createModal.uncommittedFilesNotice', { count: uncommittedFiles })}</span>
         </FieldDescription>
       )}
     </Field>
