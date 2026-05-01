@@ -42,7 +42,7 @@ app.post('/commands', async (c) => {
     return c.json({ response_type: 'ephemeral', text: 'Mattermost integration disabled.' })
   }
   if (!config.commandToken) {
-    log.error('Mattermost commandToken not configured — refusing command')
+    log.messaging.error('Mattermost commandToken not configured — refusing command')
     return c.json({ response_type: 'ephemeral', text: 'Mattermost commandToken not configured.' })
   }
 
@@ -67,7 +67,7 @@ app.post('/commands', async (c) => {
       props: { attachments: [attachment] },
     })
   } catch (err) {
-    log.error('Mattermost command error', { text, error: String(err) })
+    log.messaging.error('Mattermost command error', { text, error: String(err) })
     return c.json({
       response_type: 'ephemeral',
       text: `Error: ${err instanceof Error ? err.message : String(err)}`,
@@ -392,7 +392,7 @@ app.post('/actions', async (c) => {
             },
           })
         } catch (err) {
-          log.error('Mattermost app_logs error', { appId, error: String(err) })
+          log.messaging.error('Mattermost app_logs error', { appId, error: String(err) })
           return c.json({ ephemeral_text: 'Failed to fetch logs.' })
         }
       }
@@ -434,7 +434,7 @@ app.post('/actions', async (c) => {
         return c.json({ ephemeral_text: `Unknown action: ${action}` })
     }
   } catch (err) {
-    log.error('Mattermost action error', { action, error: String(err) })
+    log.messaging.error('Mattermost action error', { action, error: String(err) })
     return c.json({ ephemeral_text: `Error: ${err instanceof Error ? err.message : String(err)}` })
   }
 })
@@ -503,7 +503,7 @@ app.post('/dialogs', async (c) => {
         return c.json({ errors: { '': `Unknown dialog: ${callbackId}` } })
     }
   } catch (err) {
-    log.error('Mattermost dialog error', { callbackId, error: String(err) })
+    log.messaging.error('Mattermost dialog error', { callbackId, error: String(err) })
     return c.json({ errors: { '': `Error: ${err instanceof Error ? err.message : String(err)}` } })
   }
 })
