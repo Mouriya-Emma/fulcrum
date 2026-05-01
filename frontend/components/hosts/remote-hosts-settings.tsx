@@ -50,9 +50,10 @@ function EnvChecks({ result, checkedAt, onRecheck, isRechecking }: { result: Env
   const optional = ['claude', 'opencode']
   const [, force] = useState(0)
 
-  // Re-render every 15s so the relative timestamp stays fresh
+  // Re-render every 1s so "Xs ago" actually ticks per second instead of
+  // jumping in 15s steps (formatRelativeTime is 1s-precision).
   useEffect(() => {
-    const id = setInterval(() => force((n) => n + 1), 15000)
+    const id = setInterval(() => force((n) => n + 1), 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -174,11 +175,13 @@ export function RemoteHostsSettings() {
   const [testingHostId, setTestingHostId] = useState<string | null>(null)
   const [checkingEnvHostId, setCheckingEnvHostId] = useState<string | null>(null)
 
-  // Latest envResults seen by the visibility listener — without this ref the
-  // listener would close over the initial empty object and never see new
-  // entries.
+  // Latest envResults / envCheckedAt seen by the visibility listener — without
+  // these refs the listener closes over the initial empty objects and never
+  // sees subsequent updates.
   const envResultsRef = useRef(envResults)
   envResultsRef.current = envResults
+  const envCheckedAtRef = useRef(envCheckedAt)
+  envCheckedAtRef.current = envCheckedAt
 
   function resetForm() {
     setFormName('')
@@ -300,11 +303,17 @@ export function RemoteHostsSettings() {
   // env check silently for any host whose last result was not ready. This
   // closes the gap where "I installed it on the box, why does the UI still
   // say fulcrum ✗?" — they don't have to remember to click again.
+  //
+  // Cooldown: skip hosts checked within the last 30s. Without this, alt-tabbing
+  // every few seconds with N not-ready hosts fires N parallel SSH connects on
+  // each return, which trips fail2ban / sshd MaxStartups on the remote.
+  const RECHECK_COOLDOWN_MS = 30_000
   useEffect(() => {
     function onVisible() {
       if (document.visibilityState !== 'visible') return
+      const now = Date.now()
       const stale = Object.entries(envResultsRef.current)
-        .filter(([, r]) => !r.ready)
+        .filter(([id, r]) => !r.ready && (now - (envCheckedAtRef.current[id] ?? 0)) >= RECHECK_COOLDOWN_MS)
         .map(([id]) => id)
       for (const id of stale) {
         void handleCheckEnv(id, { silent: true })
