@@ -312,9 +312,20 @@ export function RemoteHostsSettings() {
     function onVisible() {
       if (document.visibilityState !== 'visible') return
       const now = Date.now()
-      const stale = Object.entries(envResultsRef.current)
-        .filter(([id, r]) => !r.ready && (now - (envCheckedAtRef.current[id] ?? 0)) >= RECHECK_COOLDOWN_MS)
+      const all = Object.entries(envResultsRef.current)
+      const notReady = all.filter(([, r]) => !r.ready)
+      const stale = notReady
+        .filter(([id]) => (now - (envCheckedAtRef.current[id] ?? 0)) >= RECHECK_COOLDOWN_MS)
         .map(([id]) => id)
+      // Trace breadcrumb so e2e / reviewer can verify the listener fired and
+      // see why a particular host did or did not trigger a re-check (cooldown
+      // skip vs no envResults entry vs ready-already).
+      console.log('[RemoteHosts] visibilitychange fired', {
+        envResultsCount: all.length,
+        notReadyCount: notReady.length,
+        staleCount: stale.length,
+        cooldownMs: RECHECK_COOLDOWN_MS,
+      })
       for (const id of stale) {
         void handleCheckEnv(id, { silent: true })
       }
