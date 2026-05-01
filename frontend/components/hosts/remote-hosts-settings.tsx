@@ -274,7 +274,7 @@ export function RemoteHostsSettings() {
   }
 
   async function handleResetFingerprint(host: Host) {
-    if (!confirm(`Clear stored TOFU fingerprint for "${host.name}"? Next connection will accept and re-record whatever host key the server presents.`)) {
+    if (!confirm(`Clear stored TOFU fingerprint for "${host.name}"?\n\nAll active SSH terminals to this host will be hung up. The next connection will accept and re-record whatever host key the server presents.`)) {
       return
     }
     try {

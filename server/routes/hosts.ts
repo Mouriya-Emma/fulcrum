@@ -221,8 +221,10 @@ app.post('/:id/test', async (c) => {
 })
 
 // POST /api/hosts/:id/reset-fingerprint - Clear stored TOFU host key fingerprint
-// so the next connection re-records it. Use when the remote host's SSH key
-// has legitimately rotated and existing fingerprint is no longer valid.
+// AND tear down every pooled SSH connection currently attached to this host.
+// Without the second step, existing terminals would keep talking to a server
+// whose identity we just declared "no longer trusted" — defeats the security
+// point of letting the operator reset.
 app.post('/:id/reset-fingerprint', (c) => {
   const id = c.req.param('id')
   const host = db.select().from(hosts).where(eq(hosts.id, id)).get()
@@ -236,9 +238,15 @@ app.post('/:id/reset-fingerprint', (c) => {
     .where(eq(hosts.id, id))
     .run()
 
+  const closed = getSSHConnectionManager().destroyForHost({
+    host: host.hostname,
+    port: host.port,
+    username: host.username,
+  })
+
   broadcast({ type: 'hosts:updated', payload: {} })
 
-  return c.json({ success: true })
+  return c.json({ success: true, closedConnections: closed })
 })
 
 // POST /api/hosts/:id/check-env - Check remote environment readiness
