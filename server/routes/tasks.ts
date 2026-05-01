@@ -841,6 +841,15 @@ app.patch('/:id', async (c) => {
       if (existing.type !== 'worktree' && existing.type !== 'scratch') {
         return c.json({ error: 'Host can only be set on worktree or scratch tasks.' }, 400)
       }
+      // Verify the target host exists. Without this a typo'd id silently writes
+      // through and worktree init crashes later when joining hosts. POST does
+      // the same check (line 261) — PATCH must too.
+      if (body.hostId !== null) {
+        const host = db.select().from(hosts).where(eq(hosts.id, body.hostId)).get()
+        if (!host) {
+          return c.json({ error: `Host not found: ${body.hostId}` }, 400)
+        }
+      }
     }
 
     // Handle status change via centralized function
