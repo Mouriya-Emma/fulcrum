@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
@@ -36,24 +37,41 @@ export function PullToLatestField({
 }: PullToLatestFieldProps) {
   const { t } = useTranslation('tasks')
 
+  const blockedByUnpushed = unpushedCommits > 0
+  const toggleDisabled = disabled || blockedByUnpushed
+
+  // Avoid the "ON but rejected" third state — if the user had pullToLatest=true
+  // and a switch in the source repo introduces unpushed commits, force it back
+  // to OFF so submit reads a coherent value.
+  useEffect(() => {
+    if (blockedByUnpushed && pullToLatest) {
+      onPullToLatestChange(false)
+    }
+  }, [blockedByUnpushed, pullToLatest, onPullToLatestChange])
+
   if (remoteBranches.length === 0) return null
 
   return (
-    <Field>
-      <div className="flex items-center justify-between">
+    <Field data-disabled={toggleDisabled || undefined}>
+      <div
+        className="flex items-center justify-between"
+        title={blockedByUnpushed ? t('createModal.pullToLatestBlockedByUnpushed', { count: unpushedCommits, branch: baseBranch }) : undefined}
+      >
         <FieldLabel>{t('createModal.pullToLatest')}</FieldLabel>
         <Switch
-          checked={pullToLatest}
+          checked={pullToLatest && !blockedByUnpushed}
           onCheckedChange={onPullToLatestChange}
+          disabled={toggleDisabled}
+          aria-disabled={toggleDisabled}
           size="sm"
         />
       </div>
-      {pullToLatest && unpushedCommits > 0 && (
+      {blockedByUnpushed && (
         <p className="text-sm text-destructive">
           {t('createModal.pullToLatestBlockedByUnpushed', { count: unpushedCommits, branch: baseBranch })}
         </p>
       )}
-      {pullToLatest && !unpushedCommits && (
+      {pullToLatest && !blockedByUnpushed && (
         <Select
           value={pullRemoteBranch}
           onValueChange={(v) => onPullRemoteBranchChange(v ?? '')}
@@ -77,7 +95,7 @@ export function PullToLatestField({
           </SelectContent>
         </Select>
       )}
-      {pullToLatest && !unpushedCommits && (
+      {pullToLatest && !blockedByUnpushed && (
         <FieldDescription>{t('createModal.pullToLatestHint')}</FieldDescription>
       )}
       {uncommittedFiles > 0 && (
