@@ -329,7 +329,6 @@ app.post('/:taskId/sync-issues', async (c) => {
       })
 
       if (res.status === 403 || res.status === 429) {
-        const errorBody = await res.text()
         errors.push(`Rate limited creating issue for "${item.title}": ${res.status}. ${res.status === 403 ? 'Check PAT has repo scope.' : 'Try again later.'}`)
         break // stop trying more items
       }
