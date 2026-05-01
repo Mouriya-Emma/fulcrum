@@ -13,13 +13,6 @@ describe('Draft Items Routes', () => {
     testEnv.cleanup()
   })
 
-  // Helper: create a project and return its id
-  async function createProject(client: ReturnType<typeof createTestApp>, name = 'Test Project') {
-    const res = await client.post('/api/projects', { name })
-    const body = await res.json()
-    return body.id as string
-  }
-
   // Helper: create a draft task and return its id
   async function createDraftTask(
     client: ReturnType<typeof createTestApp>,
