@@ -25,6 +25,7 @@ describe('fnox', () => {
         'notifications.telegram.enabled',
         'notifications.gmail.enabled',
         'notifications.gmail.googleAccountId',
+        'notifications.mattermost.enabled',
         'notifications._updatedAt',
         'zai.enabled',
         'zai.apiKey',
@@ -120,8 +121,8 @@ describe('fnox', () => {
       }
     })
 
-    test('has expected number of secret mappings (15)', () => {
-      expect(Object.keys(FNOX_SECRET_MAP).length).toBe(15)
+    test('has expected number of secret mappings (17)', () => {
+      expect(Object.keys(FNOX_SECRET_MAP).length).toBe(17)
     })
   })
 
