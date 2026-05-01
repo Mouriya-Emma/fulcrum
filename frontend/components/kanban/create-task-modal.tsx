@@ -1385,6 +1385,12 @@ export function CreateTaskModal({ open: controlledOpen, onOpenChange, defaultRep
               </Field>
             </FieldGroup>
 
+            {createTask.isPending && pullToLatest && taskType === 'worktree' && (
+              <p className="px-3 text-xs text-muted-foreground italic" aria-live="polite">
+                {t('createModal.pullingFromRemoteHint')}
+              </p>
+            )}
+
             <DialogFooter className="mt-4 shrink-0 px-3">
               {(taskType === 'worktree' || taskType === 'scratch') && (
                 <label className="flex items-center gap-2 mr-auto cursor-pointer">

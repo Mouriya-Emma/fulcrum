@@ -115,6 +115,7 @@
     "noBranchesFound": "未找到分支",
     "current": "（当前）",
     "createTask": "创建任务",
+    "pullingFromRemoteHint": "正在从远程拉取——创建工作树可能需要片刻。",
     "noProject": "无项目（收件箱）",
     "projectHint": "无项目的任务将显示在收件箱中。",
     "blockedByHint": "必须完成才能开始此任务的前置任务。",
