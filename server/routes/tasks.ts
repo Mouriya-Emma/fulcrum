@@ -329,6 +329,24 @@ app.post('/', async (c) => {
       if (parentTask.status === 'DONE' || parentTask.status === 'CANCELED') {
         return c.json({ error: `Cannot derive from a ${parentTask.status} task` }, 400)
       }
+      // Cycle defense: walk parent's chain. The new task's id is fresh so it
+      // cannot already appear, but if a future migration ever lets PATCH set
+      // derivedFromTaskId we'd want this here regardless. Bound the walk by
+      // visited set to avoid loops in pre-existing data.
+      const visited = new Set<string>([newTask.id])
+      let cursor: string | null = body.derivedFromTaskId
+      while (cursor) {
+        if (visited.has(cursor)) {
+          return c.json({ error: 'Derivation would create a cycle' }, 400)
+        }
+        visited.add(cursor)
+        const ancestor: { derivedFromTaskId: string | null } | undefined = db
+          .select({ derivedFromTaskId: tasks.derivedFromTaskId })
+          .from(tasks)
+          .where(eq(tasks.id, cursor))
+          .get()
+        cursor = ancestor?.derivedFromTaskId ?? null
+      }
     }
 
     // All DB writes in a single transaction: task insert + tags + dependencies + derivation
@@ -966,6 +984,15 @@ app.delete('/:id', (c) => {
   db.delete(taskRelationships).where(
     or(eq(taskRelationships.taskId, id), eq(taskRelationships.relatedTaskId, id))
   ).run()
+
+  // Cascade-unset derivedFromTaskId on any task that pointed at this one as parent.
+  // Reviewer note (#58): the schema field has no FK + no onDelete, so without this
+  // children would silently keep a dangling parent id and DerivedFromBadge would
+  // resolve to undefined. Equivalent to onDelete: 'set null'.
+  db.update(tasks)
+    .set({ derivedFromTaskId: null, updatedAt: now })
+    .where(eq(tasks.derivedFromTaskId, id))
+    .run()
 
   db.delete(tasks).where(eq(tasks.id, id)).run()
   broadcast({ type: 'task:updated', payload: { taskId: id } })

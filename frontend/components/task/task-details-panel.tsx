@@ -19,6 +19,7 @@ import { PriorityPicker } from '@/components/task/priority-picker'
 import { LinksManager } from '@/components/task/links-manager'
 import { DependencyManager } from '@/components/task/dependency-manager'
 import { DerivedFromBadge } from '@/components/task/derived-from-badge'
+import { DerivedTasksList } from '@/components/task/derived-tasks-list'
 import { AttachmentsManager } from '@/components/task/attachments-manager'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon, LockIcon } from '@hugeicons/core-free-icons'
@@ -517,6 +518,9 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
 
         {/* Derived from */}
         {task.derivedFromTaskId && <DerivedFromBadge taskId={task.derivedFromTaskId} />}
+
+        {/* Derived tasks (reverse-lookup) */}
+        <DerivedTasksList taskId={task.id} />
 
         {/* Dependencies */}
         <div className="rounded-lg border bg-card p-4">
