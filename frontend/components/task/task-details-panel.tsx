@@ -21,7 +21,7 @@ import { DependencyManager } from '@/components/task/dependency-manager'
 import { DerivedFromBadge } from '@/components/task/derived-from-badge'
 import { AttachmentsManager } from '@/components/task/attachments-manager'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon } from '@hugeicons/core-free-icons'
+import { Cancel01Icon, GitPullRequestIcon, Link02Icon, Loading03Icon, LockIcon } from '@hugeicons/core-free-icons'
 import { useUpdateTask } from '@/hooks/use-tasks'
 import { useAddTaskTag, useRemoveTaskTag } from '@/hooks/use-tags'
 import { useBranches } from '@/hooks/use-filesystem'
@@ -475,13 +475,23 @@ export function TaskDetailsPanel({ task }: TaskDetailsPanelProps) {
           </p>
         </div>
 
-        {/* Execution Host (only when task hasn't been initialized yet) */}
+        {/* Execution Host — once-only decision, locked once worktree is created.
+            Distinct visual treatment (amber accent + lock icon) so user notices
+            this isn't a casual round-trip field like priority or tags. */}
         {canChangeHost && hostsList.length > 0 && (
-          <div className="rounded-lg border bg-card p-4">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">{t('executionHost.heading')}</h3>
+          <div className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 p-4">
+            <h3 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mb-2">
+              <HugeiconsIcon icon={LockIcon} size={13} className="text-amber-600 dark:text-amber-500" />
+              {t('executionHost.heading')}
+            </h3>
             <Select
               value={task.hostId ?? '__local__'}
-              onValueChange={(v) => handleHostChange(v === '__local__' ? null : v)}
+              onValueChange={(v) => {
+                const next = v === '__local__' ? null : v
+                if (next === task.hostId) return
+                if (!confirm(t('executionHost.confirmChange'))) return
+                handleHostChange(next)
+              }}
             >
               <SelectTrigger className="w-full">
                 <SelectValue>
