@@ -64,13 +64,22 @@ async function handleAdd(
     throw new CliError('MISSING_USERNAME', '--username is required', ExitCodes.INVALID_ARGS)
   }
 
+  const authMethod = (flags['auth-method'] ?? 'key') as 'key' | 'password'
+  if (authMethod !== 'key' && authMethod !== 'password') {
+    throw new CliError('INVALID_AUTH_METHOD', '--auth-method must be "key" or "password"', ExitCodes.INVALID_ARGS)
+  }
+  if (authMethod === 'password' && !flags.password) {
+    throw new CliError('MISSING_PASSWORD', '--password is required when --auth-method=password', ExitCodes.INVALID_ARGS)
+  }
+
   const input: CreateHostInput = {
     name,
     hostname,
     username,
     port: flags.port ? Number(flags.port) : undefined,
-    authMethod: 'key',
-    privateKeyPath: flags['key-path'],
+    authMethod,
+    privateKeyPath: authMethod === 'key' ? flags['key-path'] : undefined,
+    password: authMethod === 'password' ? flags.password : undefined,
     defaultDirectory: flags.directory,
     fulcrumUrl: flags['fulcrum-url'],
   }
@@ -149,7 +158,9 @@ const hostsAddCommand = defineCommand({
     name: { type: 'positional' as const, description: 'Host name (display label, must be unique)', required: true },
     hostname: { type: 'string' as const, description: 'SSH hostname or IP', required: true },
     username: { type: 'string' as const, description: 'SSH username', required: true },
-    'key-path': { type: 'string' as const, description: 'Private key path (default: ~/.ssh/id_ed25519)' },
+    'auth-method': { type: 'string' as const, description: 'Authentication method: key (default) or password' },
+    'key-path': { type: 'string' as const, description: 'Private key path (default: ~/.ssh/id_ed25519, only used with --auth-method=key)' },
+    password: { type: 'string' as const, description: 'SSH password (required when --auth-method=password; consider env var to avoid shell history)' },
     directory: { type: 'string' as const, description: 'Default directory on remote host' },
     'fulcrum-url': { type: 'string' as const, description: 'URL the remote agent uses to reach this Fulcrum server' },
   },

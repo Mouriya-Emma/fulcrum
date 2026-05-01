@@ -47,6 +47,7 @@ export interface CreateHostInput {
   username: string
   authMethod?: 'key' | 'password'
   privateKeyPath?: string
+  password?: string
   defaultDirectory?: string
   fulcrumUrl?: string
 }
