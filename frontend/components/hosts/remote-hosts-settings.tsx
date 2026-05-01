@@ -482,22 +482,34 @@ export function RemoteHostsSettings() {
                 </div>
               )}
 
-              {/* TOFU fingerprint row */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground pl-4">
+              {/* TOFU fingerprint row — shown in full so the operator can
+                  hand-compare against `ssh-keyscan ... | ssh-keygen -lf -`
+                  output to detect MITM. SHA-256 base64 is 44 chars, fits on
+                  one line at text-sm/font-mono. */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground pl-4">
                 <span title="SSH host key fingerprint stored on first connection (Trust On First Use)">
                   Fingerprint:
                 </span>
                 {host.hostFingerprint ? (
                   <>
-                    <code
-                      className="font-mono select-all truncate max-w-[280px]"
-                      title={`SHA256:${host.hostFingerprint}`}
-                    >
+                    <code className="font-mono select-all break-all">
                       SHA256:{host.hostFingerprint}
                     </code>
                     <button
                       type="button"
-                      className="underline hover:text-foreground disabled:opacity-50 disabled:no-underline"
+                      className="text-xs underline hover:text-foreground"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(`SHA256:${host.hostFingerprint}`)
+                          .then(() => toast.success('Fingerprint copied to clipboard'))
+                          .catch(() => toast.error('Copy failed'))
+                      }}
+                      title="Copy fingerprint to clipboard"
+                    >
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs underline hover:text-foreground disabled:opacity-50 disabled:no-underline"
                       onClick={() => handleResetFingerprint(host)}
                       disabled={resetFingerprint.isPending}
                     >
