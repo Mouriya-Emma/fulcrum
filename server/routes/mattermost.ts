@@ -10,6 +10,8 @@ import { Hono } from 'hono'
 import { getSettings } from '../lib/settings'
 import { log } from '../lib/logger'
 import { updateTaskStatus } from '../services/task-status'
+import { deployApp, stopApp, rollbackApp, getProjectName } from '../services/deployment'
+import { stackServices, serviceLogs } from '../services/docker-swarm'
 import { db, tasks, projects, repositories, apps } from '../db'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
@@ -26,11 +28,24 @@ import {
 import { openDialog, postMessage, getActionsUrl } from '../services/mattermost/client'
 import type { MattermostDialog } from '../services/mattermost/client'
 
+const VALID_STATUS = new Set(['TO_DO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'CANCELED'])
+const VALID_PRIORITY = new Set(['high', 'medium', 'low'])
+const IN_CHANNEL_SUBCOMMANDS = new Set(['', 'deploy'])
+
 const app = new Hono()
 
 // --- Slash Command Handler ---
 // Mattermost sends application/x-www-form-urlencoded
 app.post('/commands', async (c) => {
+  const config = getSettings().channels.mattermost
+  if (!config.enabled) {
+    return c.json({ response_type: 'ephemeral', text: 'Mattermost integration disabled.' })
+  }
+  if (!config.commandToken) {
+    log.error('Mattermost commandToken not configured — refusing command')
+    return c.json({ response_type: 'ephemeral', text: 'Mattermost commandToken not configured.' })
+  }
+
   const body = await c.req.parseBody()
   const token = body.token as string
   const text = (body.text as string || '').trim()
@@ -38,16 +53,17 @@ app.post('/commands', async (c) => {
   const channelId = body.channel_id as string
   const userId = body.user_id as string
 
-  // Verify command token
-  const config = getSettings().channels.mattermost
-  if (config.commandToken && token !== config.commandToken) {
+  if (token !== config.commandToken) {
     return c.json({ response_type: 'ephemeral', text: 'Invalid command token.' })
   }
+
+  const subcommand = text.split(/\s+/)[0]?.toLowerCase() || ''
+  const inChannel = IN_CHANNEL_SUBCOMMANDS.has(subcommand)
 
   try {
     const attachment = await dispatchCommand(text, triggerId, channelId, userId)
     return c.json({
-      response_type: 'in_channel',
+      response_type: inChannel ? 'in_channel' : 'ephemeral',
       props: { attachments: [attachment] },
     })
   } catch (err) {
@@ -60,7 +76,7 @@ app.post('/commands', async (c) => {
 })
 
 // Command dispatcher - parse subcommand and args
-async function dispatchCommand(text: string, triggerId: string, channelId: string, userId: string) {
+async function dispatchCommand(text: string, triggerId: string, _channelId: string, _userId: string) {
   const parts = text.split(/\s+/)
   const subcommand = parts[0]?.toLowerCase() || ''
   const args = parts.slice(1).join(' ')
@@ -112,14 +128,9 @@ async function dispatchCommand(text: string, triggerId: string, channelId: strin
       return buildHelpCard()
 
     default:
-      // Try as task ID
-      if (subcommand.match(/^[a-zA-Z0-9_-]{4,}$/)) {
-        const card = await buildTaskDetailCard(subcommand)
-        if (card.pretext?.includes('not found')) {
-          return buildHelpCard()
-        }
-        return card
-      }
+      // Unknown subcommand — show help.
+      // Use `/f task <id>` to look up a task by ID; we don't auto-detect IDs here
+      // because nanoid prefixes can collide and arbitrary 4+ char tokens are too greedy.
       return buildHelpCard()
   }
 }
@@ -252,11 +263,16 @@ async function openCreateTaskDialog(triggerId: string, prefillTitle: string) {
 // --- Action Handler (button/select callbacks) ---
 
 app.post('/actions', async (c) => {
+  const config = getSettings().channels.mattermost
+  if (!config.enabled) {
+    return c.json({ ephemeral_text: 'Mattermost integration disabled.' })
+  }
+
   const body = await c.req.json()
   const context = body.context || {}
   const action = context.action as string
-  const userId = body.user_id as string
-  const postId = body.post_id as string
+  const _userId = body.user_id as string
+  const _postId = body.post_id as string
   const triggerId = body.trigger_id as string
 
   try {
@@ -277,6 +293,9 @@ app.post('/actions', async (c) => {
       case 'status_change': {
         const taskId = context.task_id as string
         const newStatus = context.status as string
+        if (!VALID_STATUS.has(newStatus)) {
+          return c.json({ ephemeral_text: `Invalid status: ${newStatus}` })
+        }
         await updateTaskStatus(taskId, newStatus)
         const card = await buildTaskDetailCard(taskId)
         return c.json({ update: { props: { attachments: [card] } } })
@@ -284,13 +303,14 @@ app.post('/actions', async (c) => {
 
       case 'change_priority': {
         const taskId = context.task_id as string
-        const newPriority = body.context?.selected_option || body.selected_option
-        if (newPriority) {
-          db.update(tasks).set({
-            priority: newPriority,
-            updatedAt: new Date().toISOString(),
-          }).where(eq(tasks.id, taskId)).run()
+        const newPriority = body.selected_option as string | undefined
+        if (!newPriority || !VALID_PRIORITY.has(newPriority)) {
+          return c.json({ ephemeral_text: `Invalid priority: ${newPriority ?? '(none)'}` })
         }
+        db.update(tasks).set({
+          priority: newPriority,
+          updatedAt: new Date().toISOString(),
+        }).where(eq(tasks.id, taskId)).run()
         const card = await buildTaskDetailCard(taskId)
         return c.json({ update: { props: { attachments: [card] } } })
       }
@@ -306,12 +326,14 @@ app.post('/actions', async (c) => {
       }
 
       case 'deploy_app': {
-        // Trigger deploy via internal API
         const appId = context.app_id as string
         try {
-          const port = getSettings().server.port
-          await fetch(`http://localhost:${port}/api/apps/${appId}/deploy`, { method: 'POST' })
-          return c.json({ ephemeral_text: `🚀 Deployment triggered for app.` })
+          const result = await deployApp(appId, { deployedBy: 'manual' })
+          if (!result.success) {
+            return c.json({ ephemeral_text: `❌ Deploy failed: ${result.error || 'unknown error'}` })
+          }
+          const card = await buildAppDetailCard(appId)
+          return c.json({ update: { props: { attachments: [card] } } })
         } catch (err) {
           return c.json({ ephemeral_text: `❌ Deploy failed: ${err}` })
         }
@@ -320,9 +342,12 @@ app.post('/actions', async (c) => {
       case 'stop_app': {
         const appId = context.app_id as string
         try {
-          const port = getSettings().server.port
-          await fetch(`http://localhost:${port}/api/apps/${appId}/stop`, { method: 'POST' })
-          return c.json({ ephemeral_text: `⏹ App stopped.` })
+          const result = await stopApp(appId)
+          if (!result.success) {
+            return c.json({ ephemeral_text: `❌ Stop failed: ${result.error || 'unknown error'}` })
+          }
+          const card = await buildAppDetailCard(appId)
+          return c.json({ update: { props: { attachments: [card] } } })
         } catch (err) {
           return c.json({ ephemeral_text: `❌ Stop failed: ${err}` })
         }
@@ -331,9 +356,21 @@ app.post('/actions', async (c) => {
       case 'app_logs': {
         const appId = context.app_id as string
         try {
-          const port = getSettings().server.port
-          const res = await fetch(`http://localhost:${port}/api/apps/${appId}/logs?tail=20`)
-          const data = await res.json() as { logs: string }
+          const appRecord = db.select().from(apps).where(eq(apps.id, appId)).get()
+          if (!appRecord) {
+            return c.json({ ephemeral_text: 'App not found.' })
+          }
+          const repo = db.select().from(repositories).where(eq(repositories.id, appRecord.repositoryId)).get()
+          const projectName = getProjectName(appId, repo?.displayName)
+          const services = await stackServices(projectName)
+          const allLogs: string[] = []
+          for (const svc of services) {
+            const svcLogs = await serviceLogs(svc.name, 20)
+            if (svcLogs) {
+              allLogs.push(`=== ${svc.serviceName} ===\n${svcLogs}`)
+            }
+          }
+          const logText = allLogs.join('\n\n')
           return c.json({
             update: {
               props: {
@@ -341,7 +378,7 @@ app.post('/actions', async (c) => {
                   fallback: 'App Logs',
                   color: '#6B7280',
                   pretext: '#### 📋 App Logs (last 20 lines)',
-                  text: `\`\`\`\n${data.logs?.slice(-2000) || 'No logs available'}\n\`\`\``,
+                  text: `\`\`\`\n${logText.slice(-2000) || 'No logs available'}\n\`\`\``,
                   actions: [
                     {
                       id: 'back',
@@ -354,20 +391,23 @@ app.post('/actions', async (c) => {
               },
             },
           })
-        } catch {
+        } catch (err) {
+          log.error('Mattermost app_logs error', { appId, error: String(err) })
           return c.json({ ephemeral_text: 'Failed to fetch logs.' })
         }
       }
 
       case 'rollback_app': {
         const appId = context.app_id as string
-        const deploymentId = body.context?.selected_option || body.selected_option
+        const deploymentId = body.selected_option as string | undefined
         if (!deploymentId) {
           return c.json({ ephemeral_text: 'No deployment selected for rollback.' })
         }
         try {
-          const port = getSettings().server.port
-          await fetch(`http://localhost:${port}/api/apps/${appId}/rollback/${deploymentId}`, { method: 'POST' })
+          const result = await rollbackApp(appId, deploymentId)
+          if (!result.success) {
+            return c.json({ ephemeral_text: `Rollback failed: ${result.error || 'unknown error'}` })
+          }
           const card = await buildAppDetailCard(appId)
           return c.json({ update: { props: { attachments: [card] } } })
         } catch (err) {
@@ -402,11 +442,16 @@ app.post('/actions', async (c) => {
 // --- Dialog Submission Handler ---
 
 app.post('/dialogs', async (c) => {
+  const config = getSettings().channels.mattermost
+  if (!config.enabled) {
+    return c.json({ errors: { '': 'Mattermost integration disabled.' } })
+  }
+
   const body = await c.req.json()
   const callbackId = body.callback_id as string
   const submission = body.submission || {}
   const channelId = body.channel_id as string
-  const userId = body.user_id as string
+  const _userId = body.user_id as string
 
   try {
     switch (callbackId) {

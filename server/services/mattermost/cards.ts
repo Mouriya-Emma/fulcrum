@@ -5,9 +5,8 @@
 
 import { db, tasks, apps, deployments, projects, tags, taskTags } from '../../db'
 import { eq, desc, and } from 'drizzle-orm'
-import { getActionsUrl } from './client'
+import { getActionsUrl, fulcrumUrl } from './client'
 import type { MattermostAttachment, MattermostAction, MattermostField } from './client'
-import { getSettings } from '../../lib/settings'
 
 // --- Helpers ---
 
@@ -60,13 +59,6 @@ function timeAgo(dateStr: string | null): string {
   if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
   return `${days}d ago`
-}
-
-function fulcrumUrl(path: string): string {
-  const settings = getSettings()
-  const port = settings.server.port
-  const host = process.env.FULCRUM_HOST || settings.editor.host || 'localhost'
-  return `http://${host}:${port}${path}`
 }
 
 // --- Dashboard Card ---
@@ -143,8 +135,6 @@ export async function buildTaskListCard(filter?: {
   projectId?: string
   tag?: string
 }): Promise<MattermostAttachment> {
-  let query = db.select().from(tasks)
-
   // Build conditions
   const conditions: ReturnType<typeof eq>[] = []
 
@@ -319,6 +309,12 @@ export async function buildTaskDetailCard(taskId: string): Promise<MattermostAtt
   }
 
   // Priority change dropdown
+  const priorityOptions = [
+    { text: '🔴 High', value: 'high' },
+    { text: '🟡 Medium', value: 'medium' },
+    { text: '🟢 Low', value: 'low' },
+  ]
+  const currentPriority = task.priority || 'medium'
   actions.push({
     id: 'change_priority',
     name: 'Priority',
@@ -327,11 +323,8 @@ export async function buildTaskDetailCard(taskId: string): Promise<MattermostAtt
       url: getActionsUrl(),
       context: { action: 'change_priority', task_id: task.id },
     },
-    options: [
-      { text: '🔴 High', value: 'high' },
-      { text: '🟡 Medium', value: 'medium' },
-      { text: '🟢 Low', value: 'low' },
-    ],
+    options: priorityOptions,
+    default_option: priorityOptions.find(o => o.value === currentPriority),
   })
 
   actions.push(actionBtn('open', 'Open ↗', { action: 'open_link', url: fulcrumUrl(`/tasks/${task.id}`) }))

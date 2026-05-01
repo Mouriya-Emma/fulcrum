@@ -42,6 +42,7 @@ export interface MattermostAction {
   }
   data_source?: 'users' | 'channels'
   options?: Array<{ text: string; value: string }>
+  default_option?: { text: string; value: string }
 }
 
 export interface MattermostDialog {
@@ -67,11 +68,22 @@ function getConfig(): MattermostSettings {
   return getSettings().channels.mattermost
 }
 
-function getCallbackUrl(path: string): string {
+function getHostPort(): { host: string; port: number } {
   const settings = getSettings()
-  const port = settings.server.port
-  const host = process.env.FULCRUM_HOST || settings.editor.host || 'localhost'
+  return {
+    host: process.env.FULCRUM_HOST || settings.editor.host || 'localhost',
+    port: settings.server.port,
+  }
+}
+
+function getCallbackUrl(path: string): string {
+  const { host, port } = getHostPort()
   return `http://${host}:${port}/api/mattermost${path}`
+}
+
+export function fulcrumUrl(path: string): string {
+  const { host, port } = getHostPort()
+  return `http://${host}:${port}${path}`
 }
 
 async function mmFetch(path: string, options: RequestInit = {}): Promise<Response> {
@@ -118,7 +130,6 @@ export async function updatePost(postId: string, post: Partial<MattermostPost> &
 
 /** Open an interactive dialog */
 export async function openDialog(triggerId: string, dialog: MattermostDialog): Promise<void> {
-  const config = getConfig()
   await mmFetch('/actions/dialogs/open', {
     method: 'POST',
     body: JSON.stringify({
