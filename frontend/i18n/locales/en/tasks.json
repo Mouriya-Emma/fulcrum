@@ -143,6 +143,9 @@
     "derivedFromUnknown": "Derived from another task",
     "derivedLabel": "derived"
   },
+  "derivedTasks": {
+    "heading": "Derived tasks ({{count}})"
+  },
   "initializeModal": {
     "title": "Initialize as Worktree Task",
     "description": "Create a git worktree and start a coding session for \"{{taskTitle}}\"",

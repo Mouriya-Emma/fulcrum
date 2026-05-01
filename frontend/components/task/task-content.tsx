@@ -7,6 +7,7 @@ import { TimeEstimatePicker } from '@/components/task/time-estimate-picker'
 import { LinksManager } from '@/components/task/links-manager'
 import { DependencyManager } from '@/components/task/dependency-manager'
 import { DerivedFromBadge } from '@/components/task/derived-from-badge'
+import { DerivedTasksList } from '@/components/task/derived-tasks-list'
 import { AttachmentsManager } from '@/components/task/attachments-manager'
 import { WorktreeTaskSettings } from '@/components/task/worktree-task-settings'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -592,6 +593,9 @@ export function TaskContent({ task, onDeleted, compact }: TaskContentProps) {
 
           {/* Derived from */}
           {task.derivedFromTaskId && <DerivedFromBadge taskId={task.derivedFromTaskId} />}
+
+          {/* Derived tasks (reverse-lookup) */}
+          <DerivedTasksList taskId={task.id} />
 
           {/* Dependencies */}
           <div className={`rounded-lg border bg-card ${paddingClass}`}>
