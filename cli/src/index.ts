@@ -17,7 +17,7 @@ import { doctorCommand } from './commands/doctor'
 import { devCommand } from './commands/dev'
 import { mcpCommand } from './commands/mcp'
 
-import { boardCommand } from './commands/board'
+import { hostsCommand } from './commands/hosts'
 import { migrateFromViboraCommand } from './commands/migrate-from-vibora'
 import { updateCommand } from './commands/update'
 
@@ -64,12 +64,12 @@ const main = defineCommand({
     opencode: opencodeCommand,
     claude: claudeCommand,
 
-    // Agent coordination
-    board: boardCommand,
-
     // Notifications
     notifications: notificationsCommand,
     notify: notifyCommand,
+
+    // Remote hosts
+    hosts: hostsCommand,
 
     // Server management
     up: upCommand,

@@ -37,7 +37,32 @@ import type {
   CopierQuestionsResponse,
   CreateProjectRequest,
   CreateProjectResponse,
+  Host,
 } from '@shared/types'
+
+export interface CreateHostInput {
+  name: string
+  hostname: string
+  port?: number
+  username: string
+  authMethod?: 'key' | 'password'
+  privateKeyPath?: string
+  password?: string
+  defaultDirectory?: string
+  fulcrumUrl?: string
+}
+
+export interface TestHostResult {
+  success: boolean
+  error?: string
+  latencyMs?: number
+  fingerprint?: string
+}
+
+export interface CheckHostEnvResult {
+  checks: Record<string, { installed: boolean; version?: string; error?: string }>
+  ready: boolean
+}
 
 export interface CreateTaskInput {
   title: string
@@ -640,6 +665,34 @@ export class FulcrumClient {
       method: 'POST',
       body: JSON.stringify({ title, message }),
     })
+  }
+
+  // Hosts
+  async listHosts(): Promise<Host[]> {
+    return this.fetch('/api/hosts')
+  }
+
+  async getHost(id: string): Promise<Host> {
+    return this.fetch(`/api/hosts/${id}`)
+  }
+
+  async createHost(input: CreateHostInput): Promise<Host> {
+    return this.fetch('/api/hosts', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  }
+
+  async deleteHost(id: string): Promise<{ success: boolean }> {
+    return this.fetch(`/api/hosts/${id}`, { method: 'DELETE' })
+  }
+
+  async testHost(id: string): Promise<TestHostResult> {
+    return this.fetch(`/api/hosts/${id}/test`, { method: 'POST' })
+  }
+
+  async checkHostEnv(id: string): Promise<CheckHostEnvResult> {
+    return this.fetch(`/api/hosts/${id}/check-env`, { method: 'POST' })
   }
 
   // Developer mode
