@@ -77,8 +77,8 @@ describe('Hosts API', () => {
     })
 
     test('returns all hosts', async () => {
-      const host1 = insertTestHost({ name: 'host-1', hostname: '10.0.0.1' })
-      const host2 = insertTestHost({ name: 'host-2', hostname: '10.0.0.2' })
+      insertTestHost({ name: 'host-1', hostname: '10.0.0.1' })
+      insertTestHost({ name: 'host-2', hostname: '10.0.0.2' })
 
       const { get } = createTestApp()
       const res = await get('/api/hosts')
