@@ -3,6 +3,13 @@ import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync, renameSy
 import { basename, dirname, join } from 'node:path'
 import { CliError, ExitCodes } from './errors'
 
+// Tmp+rename so a crash mid-write can't leave a half-written fnox.toml that fnox would refuse to decode.
+function writeFileAtomicSync(filePath: string, content: string): void {
+  const tmpPath = `${filePath}.tmp`
+  writeFileSync(tmpPath, content, 'utf-8')
+  renameSync(tmpPath, filePath)
+}
+
 /**
  * Ensure fnox is set up in the given Fulcrum directory.
  *
@@ -71,14 +78,14 @@ export function ensureFnoxSetup(fulcrumDir: string): void {
     console.error('Creating fnox configuration...')
     mkdirSync(dirname(fnoxConfigPath), { recursive: true })
     const config = `[providers.plain]\ntype = "plain"\n\n[providers.age]\ntype = "age"\nrecipients = ["${publicKey}"]\n`
-    writeFileSync(fnoxConfigPath, config, 'utf-8')
+    writeFileAtomicSync(fnoxConfigPath, config)
     console.error('fnox configuration created.')
   } else {
     // Ensure plain provider exists in existing config (upgrade from age-only)
     const existingConfig = readFileSync(fnoxConfigPath, 'utf-8')
     if (!existingConfig.includes('[providers.plain]')) {
       const updatedConfig = `[providers.plain]\ntype = "plain"\n\n${existingConfig}`
-      writeFileSync(fnoxConfigPath, updatedConfig, 'utf-8')
+      writeFileAtomicSync(fnoxConfigPath, updatedConfig)
       console.error('Added plain provider to fnox configuration.')
     }
   }

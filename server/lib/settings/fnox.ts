@@ -155,6 +155,13 @@ function getLegacyFnoxConfigPaths(fulcrumDir: string): string[] {
   return [join(fulcrumDir, '.fnox.toml'), join(fulcrumDir, 'fnox.toml')]
 }
 
+// Tmp+rename so a crash mid-write can't leave a half-written fnox.toml that fnox would refuse to decode.
+function writeFileAtomicSync(filePath: string, content: string): void {
+  const tmpPath = `${filePath}.tmp`
+  writeFileSync(tmpPath, content, 'utf-8')
+  renameSync(tmpPath, filePath)
+}
+
 export function migrateLegacyFnoxConfig(fulcrumDir: string): boolean {
   const newPath = join(fulcrumDir, 'config', 'fnox.toml')
   if (existsSync(newPath)) return false
@@ -270,13 +277,13 @@ export function ensureFnoxBootstrap(): void {
     log.settings.info('Creating fnox configuration...')
     mkdirSync(dirname(fnoxConfigPath), { recursive: true })
     const config = `[providers.plain]\ntype = "plain"\n\n[providers.age]\ntype = "age"\nrecipients = ["${publicKey}"]\n`
-    writeFileSync(fnoxConfigPath, config, 'utf-8')
+    writeFileAtomicSync(fnoxConfigPath, config)
   } else {
     // Ensure plain provider exists (upgrade from age-only)
     const existingConfig = readFileSync(fnoxConfigPath, 'utf-8')
     if (!existingConfig.includes('[providers.plain]')) {
       const updatedConfig = `[providers.plain]\ntype = "plain"\n\n${existingConfig}`
-      writeFileSync(fnoxConfigPath, updatedConfig, 'utf-8')
+      writeFileAtomicSync(fnoxConfigPath, updatedConfig)
     }
   }
 
