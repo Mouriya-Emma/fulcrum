@@ -1,4 +1,5 @@
 import type { Client as ClientType } from 'ssh2'
+import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import { log } from '../lib/logger'
 
@@ -204,7 +205,7 @@ export class SSHConnectionManager {
 
       // TOFU host key verification
       connectConfig.hostVerifier = (key: Buffer) => {
-        const fingerprint = require('crypto').createHash('sha256').update(key).digest('base64')
+        const fingerprint = createHash('sha256').update(key).digest('base64')
         if (config.hostFingerprint) {
           if (fingerprint !== config.hostFingerprint) {
             log.pty.error('SSH host key mismatch! Possible MITM attack', {
@@ -226,7 +227,7 @@ export class SSHConnectionManager {
       if (config.authMethod === 'key' && config.privateKeyPath) {
         try {
           connectConfig.privateKey = readFileSync(config.privateKeyPath)
-        } catch (err) {
+        } catch {
           clearTimeout(timeout)
           reject(new Error(`Failed to read private key at: ${config.privateKeyPath}`))
           return

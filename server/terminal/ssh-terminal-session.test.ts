@@ -1,4 +1,5 @@
-import { describe, test, expect, beforeEach, mock } from 'bun:test'
+import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
+import { setupTestEnv, type TestEnv } from '../__tests__/utils/env'
 
 // Mock ssh2 module
 class MockClient {
@@ -43,7 +44,7 @@ class MockClient {
       },
       setWindow() {},
       stderr: {
-        on(event: string, handler: (...args: unknown[]) => void) { return this },
+        on(_event: string, _handler: (...args: unknown[]) => void) { return this },
       },
     }
     cb(null, mockStream)
@@ -52,25 +53,13 @@ class MockClient {
 
 mock.module('ssh2', () => ({ Client: MockClient }))
 
-// Mock database
-mock.module('../db', () => ({
-  db: {
-    update: () => ({ set: () => ({ where: () => ({ run: () => {} }) }) }),
-  },
-  terminals: { id: 'id' },
-}))
-
-mock.module('drizzle-orm', () => ({
-  eq: (a: unknown, b: unknown) => ({ a, b }),
-}))
-
-// Mock logger
-mock.module('../lib/logger', () => ({
-  log: {
-    terminal: { info: () => {}, debug: () => {}, error: () => {}, warn: () => {} },
-    pty: { info: () => {}, debug: () => {}, error: () => {}, warn: () => {} },
-  },
-}))
+// Note: deliberately NOT mocking '../db', '../lib/logger', or 'drizzle-orm'.
+// Bun's mock.module() leaks across test files (process-wide), so module-level
+// mocks of these widely-imported singletons would corrupt unrelated test
+// suites that run after this file. Instead each test below calls
+// setupTestEnv() to get a real isolated sqlite + log file under tmpdir, which
+// gives ssh-terminal-session.ts's `db.update(terminals)…run()` a working
+// target without polluting global state.
 
 // Mock buffer manager
 mock.module('./buffer-manager', () => ({
@@ -114,8 +103,15 @@ function createSession(overrides?: Partial<ConstructorParameters<typeof SSHTermi
 }
 
 describe('SSHTerminalSession', () => {
+  let env: TestEnv
+
   beforeEach(() => {
+    env = setupTestEnv()
     resetSSHConnectionManager()
+  })
+
+  afterEach(() => {
+    env?.cleanup()
   })
 
   test('getInfo returns correct fields', () => {
