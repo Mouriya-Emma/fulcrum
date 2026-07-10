@@ -74,6 +74,49 @@ jobs:
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         run: |
           set -euo pipefail
+          variable_response="$RUNNER_TEMP/fulcrum-version-variable.json"
+          get_variable=$(jq -nc '{
+            type: "GetVariable",
+            params: { name: "FULCRUM_VERSION" }
+          }')
+          status=$(curl -sS -o "$variable_response" -w '%{http_code}' \
+            -X POST "${KOMODO_URL}/read" \
+            -H "x-api-key: ${KOMODO_API_KEY}" \
+            -H "x-api-secret: ${KOMODO_API_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "$get_variable")
+
+          case "$status" in
+            200)
+              variable_write=$(jq -nc --arg value "$IMAGE_TAG" '{
+                type: "UpdateVariableValue",
+                params: { name: "FULCRUM_VERSION", value: $value }
+              }')
+              ;;
+            404|500)
+              variable_write=$(jq -nc --arg value "$IMAGE_TAG" '{
+                type: "CreateVariable",
+                params: {
+                  name: "FULCRUM_VERSION",
+                  value: $value,
+                  is_secret: false
+                }
+              }')
+              ;;
+            *)
+              cat "$variable_response" >&2
+              echo "::error::GetVariable FULCRUM_VERSION returned HTTP $status" >&2
+              exit 1
+              ;;
+          esac
+
+          curl -fsS -X POST "${KOMODO_URL}/write" \
+            -H "x-api-key: ${KOMODO_API_KEY}" \
+            -H "x-api-secret: ${KOMODO_API_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "$variable_write" >/dev/null
+          echo "Updated Komodo Variable FULCRUM_VERSION=$IMAGE_TAG"
+
           stack=$(curl -fsS -X POST "${KOMODO_URL}/read" \
             -H "x-api-key: ${KOMODO_API_KEY}" \
             -H "x-api-secret: ${KOMODO_API_SECRET}" \
