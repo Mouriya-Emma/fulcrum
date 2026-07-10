@@ -73,28 +73,80 @@ jobs:
           KOMODO_API_SECRET: ${{ secrets.KOMODO_API_SECRET }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         run: |
+          set -euo pipefail
+          stack=$(curl -fsS -X POST "${KOMODO_URL}/read" \
+            -H "x-api-key: ${KOMODO_API_KEY}" \
+            -H "x-api-secret: ${KOMODO_API_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d '{"type":"GetStack","params":{"stack":"fulcrum"}}')
+          current_environment=$(jq -r '.config.environment // ""' <<<"$stack")
+          environment=$(
+            sed '/^FULCRUM_VERSION=/d' <<<"$current_environment"
+            printf 'FULCRUM_VERSION=%s\n' "$IMAGE_TAG"
+          )
+
           curl -fsS -X POST "${KOMODO_URL}/write" \
             -H "x-api-key: ${KOMODO_API_KEY}" \
             -H "x-api-secret: ${KOMODO_API_SECRET}" \
             -H "Content-Type: application/json" \
-            -d "$(jq -n --arg tag "$IMAGE_TAG" '{
+            -d "$(jq -n --arg environment "$environment" '{
               type: "UpdateStack",
               params: {
                 id: "fulcrum",
                 config: {
-                  environment: ("FULCRUM_VERSION=" + $tag)
+                  environment: $environment
                 }
               }
             }')"
 
-      - name: Komodo DeployStack
+      - name: Komodo DeployStack — wait for terminal success
         env:
           KOMODO_URL: http://moat-app1.mouriya.lan:9120
           KOMODO_API_KEY: ${{ secrets.KOMODO_API_KEY }}
           KOMODO_API_SECRET: ${{ secrets.KOMODO_API_SECRET }}
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         run: |
-          curl -fsS -X POST "${KOMODO_URL}/execute" \
+          set -euo pipefail
+          response=$(curl -fsS -X POST "${KOMODO_URL}/execute" \
             -H "x-api-key: ${KOMODO_API_KEY}" \
             -H "x-api-secret: ${KOMODO_API_SECRET}" \
             -H "Content-Type: application/json" \
-            -d '{"type":"DeployStack","params":{"stack":"fulcrum"}}'
+            -d '{"type":"DeployStack","params":{"stack":"fulcrum"}}')
+          update_id=$(jq -er '._id."$oid"' <<<"$response")
+          echo "DeployStack update id: $update_id"
+
+          while true; do
+            update=$(curl -fsS -X POST "${KOMODO_URL}/read" \
+              -H "x-api-key: ${KOMODO_API_KEY}" \
+              -H "x-api-secret: ${KOMODO_API_SECRET}" \
+              -H "Content-Type: application/json" \
+              -d "{\"type\":\"GetUpdate\",\"params\":{\"id\":\"${update_id}\"}}")
+            status=$(jq -er '.status' <<<"$update")
+            success=$(jq -er '.success' <<<"$update")
+            echo "DeployStack status=$status success=$success"
+
+            case "$status" in
+              Complete)
+                jq . <<<"$update"
+                test "$success" = true
+                break
+                ;;
+              InProgress|Queued)
+                sleep 2
+                ;;
+              *)
+                jq . <<<"$update" >&2
+                echo "::error::DeployStack reached unexpected terminal state: $status" >&2
+                exit 1
+                ;;
+            esac
+          done
+
+          stack=$(curl -fsS -X POST "${KOMODO_URL}/read" \
+            -H "x-api-key: ${KOMODO_API_KEY}" \
+            -H "x-api-secret: ${KOMODO_API_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d '{"type":"GetStack","params":{"stack":"fulcrum"}}')
+          deployed_image=$(jq -er '.info.deployed_services[] | select(.service_name == "fulcrum") | .image' <<<"$stack")
+          test "$deployed_image" = "$IMAGE_TAG"
+          echo "Verified deployed image: $deployed_image"
